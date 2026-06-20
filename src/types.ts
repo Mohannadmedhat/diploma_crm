@@ -1,0 +1,373 @@
+export interface DiplomaType {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  description: string;
+  status: 'Active' | 'Inactive';
+}
+
+export interface Instructor {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  status: 'Active' | 'Inactive';
+}
+
+export interface Mentor {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  status: 'Active' | 'Inactive';
+}
+
+export interface Diploma {
+  id: string;
+  name: string; // Arabic Name
+  description: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  status: 'Upcoming' | 'Active' | 'Completed'; // 'قادم' | 'نشط' | 'مكتمل'
+  typeId?: string; // links to DiplomaType
+  instructorId?: string; // links to Instructor
+  mentorId?: string; // links to Mentor
+  instructorName?: string;
+  instructorPhone?: string;
+  instructorEmail?: string;
+  mentorName?: string;
+  mentorPhone?: string;
+  mentorEmail?: string;
+  googleSheetUrl?: string;
+  googleDocUrl?: string; // Google Drive
+  googleClassroomUrl?: string; // Google Classroom
+  googleFormUrl?: string;
+  whatsappGroupUrl?: string;
+  
+  // Additional settings
+  numberOfSessionsPlanned?: number;
+  studyDays?: string; // e.g. "الأحد، الثلاثاء"
+  sessionTime?: string; // e.g. "06:00 مساءً"
+  studyLocation?: string; // e.g. "المنصة أونلاين"
+  requiredAttendanceRate?: number; // e.g. 75
+  allowedAbsences?: number; // e.g. 3
+}
+
+export interface DiplomaTemplate {
+  id: string;
+  name: string; // Arabic name
+  description: string;
+  estimatedDurationMonths: number;
+}
+
+export type AttendanceStatus = 'Present' | 'Absent' | 'Excused' | 'Unmarked'; // 'حاضر' | 'غائب' | 'معذور' | 'غير مسجل'
+
+export interface AttendanceRecord {
+  studentId: string;
+  status: AttendanceStatus;
+  note: string;
+}
+
+export interface Session {
+  id: string;
+  diplomaId: string;
+  title: string; // Arabic
+  instructor: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  notes: string;
+  attendance: Record<string, AttendanceRecord>; // keyed by studentId
+  googleFormUrl?: string; // Google Form Link
+  googleSheetUrl?: string; // Google Sheet Link
+  recordingUploaded?: boolean;
+  materialsUploaded?: boolean;
+  attendanceReviewed?: boolean;
+  absenteesFollowedUp?: boolean;
+  instructorPresent?: boolean; // Whether the instructor was present for this session
+  sessionStatus?: 'Scheduled' | 'Held' | 'Cancelled' | 'Postponed'; // Lifecycle status
+}
+
+export interface CommunicationLog {
+  id: string;
+  date: string; // YYYY-MM-DD or HH:MM
+  text: string;
+}
+
+export interface Student {
+  id: string;
+  name: string; // Arabic name
+  parentName: string; // Arabic guardian name
+  phone: string; // e.g., +966500000000
+  diplomaIds: string[]; // assigned to one or more diplomas
+  joinedDate: string; // YYYY-MM-DD
+  notes: string;
+  email?: string;
+  communicationLogs?: CommunicationLog[];
+  studentType?: string;      // maps to St-Type
+  coursePrice?: number;      // maps to Course Price
+  remainingAmount?: number;  // maps to Remaining Amount
+  payedAmount?: number;      // maps to Payed
+  discount?: string;         // maps to Discount
+  deposit?: number;          // maps to Deposit
+  paymentMethod?: string;    // maps to Payment method
+  salesName?: string;        // maps to Sales-Name
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  targetType: 'all' | 'diploma' | 'students';
+  targetDiplomaId?: string; // if diploma
+  targetStudentIds?: string[]; // if specific students
+  date: string; // YYYY-MM-DD HH:MM
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  dueDate: string; // YYYY-MM-DD
+  priority: 'Low' | 'Medium' | 'High'; // 'منخفض' | 'متوسط' | 'مرتفع'
+  status: 'Pending' | 'In Progress' | 'Completed'; // 'قيد الانتظار' | 'قيد التنفيذ' | 'مكتمل'
+  notes: string;
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  text: string;
+}
+
+export interface AppConfig {
+  minAttendanceRate: number; // e.g. 75
+  language: 'ar' | 'en'; // Arabic first by default
+}
+
+export const DEFAULT_CONFIG: AppConfig = {
+  minAttendanceRate: 75,
+  language: 'ar'
+};
+
+export const DEFAULT_ARABIC_TEMPLATES: MessageTemplate[] = [
+  {
+    id: 'ar-parent-polite',
+    name: 'رسالة ودية للطالب (عن الغياب)',
+    text: 'السلام عليكم {studentName}، افتقدنا حضورك في جلسة {course} اليوم بتاريخ {date}. نأمل أن يكون المانع خيراً! يرجى مراجعة التسجيل فور رفعه على المنصة لتعويض ما فاتك. نراك الجلسة القادمة 🙂 — إدارة البرنامج.'
+  },
+  {
+    id: 'ar-student-direct',
+    name: 'تواصل مباشر مع الطالب (تحفيزي)',
+    text: 'مرحباً {studentName}، افتقدنا حضورك المميز اليوم وبصمتك في دبلوم {course} بتاريخ {date}. نتمنى أن تكون بأفضل حال! يرجى الاطلاع على منصتنا التعليمية لمراجعة محاضرات اليوم حتى تظل مواكباً لزملائك. نراك الجلسة القادمة! منسق البرنامج الأكاديمي.'
+  },
+  {
+    id: 'ar-formal-warning',
+    name: 'إشعار أكاديمي رسمي (تنبيه غياب)',
+    text: 'عزيزي {studentName}، نفيدك علماً بتسجيل غيابك عن الجلسة الأكاديمية لدبلوم {course} بتاريخ {date}. نظراً لأهمية الوحدات والمشاريع العملية الحالية، فإن المواظبة شرط أساسي للاستمرار وإصدار الشهادة. يرجى التواصل معنا لتأكيد سبب الغياب. إدارة الشؤون الأكاديمية.'
+  },
+  {
+    id: 'ar-risk-alert',
+    name: 'تنبيه تدني نسبة الحضور (حالة خطر)',
+    text: 'تنبيه أكاديمي عاجل: عزيزي {studentName}، نود إشعارك بأن نسبة حضورك في دبلوم {course} قد انخفضت دون الحد المقبول أكاديمياً. استمرار الغياب المتكرر قد يعرضك لعدم الاستحقاق في شهادة الدبلوم. يرجى التواصل معنا عاجلاً لتسوية الوضع وتفادي الاستبعاد الأكاديمي.'
+  }
+];
+
+// High fidelity demo databases in professional Arabic
+export const DUMMY_DIPLOMAS: Diploma[] = [
+  {
+    id: 'dip-1',
+    name: 'دبلوم هندسة البرمجيات المتقدمة',
+    description: 'تأهيل شامل للمهندسين لبناء وتصميم الأنظمة السحابية المعقدة وبنية الخدمات المصغرة.',
+    startDate: '2026-01-01',
+    endDate: '2026-06-30',
+    status: 'Active',
+    studyDays: 'الأحد، الأربعاء',
+    sessionTime: '06:00 مساءً'
+  },
+  {
+    id: 'dip-2',
+    name: 'دبلوم تطوير الويب المتكامل (Fullstack)',
+    description: 'إتقان تقنيات الويب الحديثة وتصميم قواعد البيانات الموزعة وتطوير الواجهات الخلفية.',
+    startDate: '2026-02-15',
+    endDate: '2026-08-15',
+    status: 'Active',
+    studyDays: 'السبت، الإثنين، الأربعاء',
+    sessionTime: '08:00 مساءً'
+  },
+  {
+    id: 'dip-3',
+    name: 'دبلوم تصميم واجهات وتجربة المستخدم UX/UI',
+    description: 'دراسة وتطبيق واجهات وتجربة المستخدم الموجهة للمستهلك والتفاعل الإنساني الحاسوبي بروتوتايبينغ.',
+    startDate: '2026-07-01',
+    endDate: '2026-12-31',
+    status: 'Upcoming'
+  }
+];
+
+export const DUMMY_STUDENTS: Student[] = [
+  {
+    id: 'st-1',
+    name: 'سليمان الحربي',
+    parentName: 'أبو سليمان الحربي',
+    phone: '+966501111111',
+    diplomaIds: ['dip-1', 'dip-2'],
+    joinedDate: '2026-01-05',
+    notes: 'طالب متميز جداً ولديه خلفية تقنية جيدة. يحتاج متابعة في واجهات React المتقدمة.'
+  },
+  {
+    id: 'st-2',
+    name: 'فاطمة الغامدي',
+    parentName: 'عبد الرحمن الغامدي',
+    phone: '+966502222222',
+    diplomaIds: ['dip-1'],
+    joinedDate: '2026-01-10',
+    notes: 'مجتهدة للغاية، مهارات ممتازة في الخوارزميات وبناء قواعد البيانات.'
+  },
+  {
+    id: 'st-3',
+    name: 'خالد العنزي',
+    parentName: 'أبو خالد العنزي',
+    phone: '+966503333333',
+    diplomaIds: ['dip-2'],
+    joinedDate: '2026-02-20',
+    notes: 'ملتزم بالحضور والأنشطة العملية. يواجه صعوبة في الربط مع واجهات REST في البداية.'
+  },
+  {
+    id: 'st-4',
+    name: 'رهف القحطاني',
+    parentName: 'علي القحطاني',
+    phone: '+966504444444',
+    diplomaIds: ['dip-1', 'dip-3'],
+    joinedDate: '2026-01-12',
+    notes: 'لديها حس فني وجمالي رائع وتدمج بين الجانب البرمجي والجمالي.'
+  },
+  {
+    id: 'st-5',
+    name: 'فيصل الثبيتي',
+    parentName: 'أبو فيصل الثبيتي',
+    phone: '+966505555555',
+    diplomaIds: ['dip-2'],
+    joinedDate: '2026-02-25',
+    notes: 'يحتاج لرفع معدل الحضور لتجنب نزول النسبة لخطورة الغياب.'
+  }
+];
+
+export const DUMMY_SESSIONS: Session[] = [
+  {
+    id: 'ses-1',
+    diplomaId: 'dip-1',
+    title: 'مقدمة في معمارية البرمجيات المتقدمة',
+    instructor: 'د. عادل القحطاني',
+    date: '2026-06-10',
+    startTime: '09:00',
+    endTime: '12:00',
+    notes: 'تغطية أنماط التصميم والتركيز على الخدمات المصغرة.',
+    attendance: {
+      'st-1': { studentId: 'st-1', status: 'Present', note: 'مشارك متفاعل' },
+      'st-2': { studentId: 'st-2', status: 'Present', note: 'ناقشت بشكل ممتاز' },
+      'st-4': { studentId: 'st-4', status: 'Absent', note: 'عذر مرضي مقبول' }
+    }
+  },
+  {
+    id: 'ses-2',
+    diplomaId: 'dip-1',
+    title: 'إدارة الحالة المتطورة وإطار العمل React',
+    instructor: 'م. أحمد الشمري',
+    date: '2026-06-12',
+    startTime: '10:00',
+    endTime: '13:00',
+    notes: 'شرح فصلي وتطبيقات عملية على Redux Toolkit و Context API.',
+    attendance: {
+      'st-1': { studentId: 'st-1', status: 'Present', note: 'أنجز تمرين التحدي' },
+      'st-2': { studentId: 'st-2', status: 'Present', note: 'متفاعلة' },
+      'st-4': { studentId: 'st-4', status: 'Present', note: '' }
+    }
+  },
+  {
+    id: 'ses-3',
+    diplomaId: 'dip-2',
+    title: 'تأسيس قواعد البيانات SQL وتدشين الجداول',
+    instructor: 'م. ياسر القاضي',
+    date: '2026-06-14',
+    startTime: '14:00',
+    endTime: '17:00',
+    notes: 'إنشاء الجداول والترميز والربط الأساسي والمفاتيح الخارجية.',
+    attendance: {
+      'st-1': { studentId: 'st-1', status: 'Present', note: 'مشارك بقوة واقترح تحسينات' },
+      'st-3': { studentId: 'st-3', status: 'Present', note: 'أنهى التطبيق العملي' },
+      'st-5': { studentId: 'st-5', status: 'Absent', note: 'تأخر ولم يدخل المحاضرة' }
+    }
+  }
+];
+
+export const DUMMY_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: 'ann-1',
+    title: 'اللقاء الارشادي السنوي وعرض المشاريع',
+    content: 'يرجى العلم بأنه تم تحديد موعد اللقاء التشاوري الأول لعرض مشاريع دبلوم هندسة البرمجيات غداً لمناقشة التقييمات والأكواد.',
+    targetType: 'diploma',
+    targetDiplomaId: 'dip-1',
+    date: '2026-06-14 10:00'
+  },
+  {
+    id: 'ann-2',
+    title: 'تنويه بضرورة مراجعة سجلات الحضور والغياب الأسبوعية',
+    content: 'يرجى من جميع منسوبي منصة الدبلومات مراجعة بياناتهم والتحقق من الحضور لتجنب نزول النسبة تحت 75% وبدء تنبيهات WhatsApp.',
+    targetType: 'all',
+    date: '2026-06-15 08:30'
+  }
+];
+
+export const DUMMY_TASKS: Task[] = [
+  {
+    id: 'tsk-1',
+    title: 'مراجعة طلبات الغياب وتنسيق الأعذار الطبية المقبولة',
+    dueDate: '2026-06-20',
+    priority: 'High',
+    status: 'Pending',
+    notes: 'التحقق من سجلات الطالب فيصل الثبيتي والتواصل مع ولي أمره.'
+  },
+  {
+    id: 'tsk-2',
+    title: 'تجهيز قوالب ونماذج شهادات التخرج للمؤهلين',
+    dueDate: '2026-06-28',
+    priority: 'Medium',
+    status: 'In Progress',
+    notes: 'حصر المؤهلين للدبلوم الأول وحساب النسبة لمعرفة الأهلية.'
+  }
+];
+
+export const DEFAULT_DIPLOMA_TEMPLATES: DiplomaTemplate[] = [
+  { id: 'dt-ai', name: 'دبلوم الذكاء الاصطناعي وهندسة البيانات (AI)', description: 'دراسة شاملة لتقنيات تعلم الآلة والشبكات العصبية وتطبيقات الذكاء الاصطناعي التوليدي وهندسة البيانات الضخمة.', estimatedDurationMonths: 6 },
+  { id: 'dt-da', name: 'دبلوم تحليل البيانات الاحترافي (Data Analysis)', description: 'تحليل وتفسير البيانات الإحصائية المعقدة باستخدام لغات الاستعلام وبايثون وتطبيقات ذكاء الأعمال الموزعة.', estimatedDurationMonths: 4 },
+  { id: 'dt-ds', name: 'دبلوم علم البيانات الإستراتيجي (Data Science)', description: 'استكشاف الأنماط المعقدة، التحليل التنبؤي المتطور، وبناء نماذج الاستدلال الرياضي والتعلم للتنبؤ بسلوك الأنظمة.', estimatedDurationMonths: 6 },
+  { id: 'dt-cyber', name: 'دبلوم الأمن السيبراني الشامل (Cyber Security)', description: 'حماية وتأمين البنية التحتية البرمجية، اختبار الاختراق الأخلاقي، وتحليل الثغرات للشبكات والخوادم السحابية.', estimatedDurationMonths: 5 },
+  { id: 'dt-fs', name: 'دبلوم تطوير الويب المتكامل (Full Stack)', description: 'إتقان بناء وتطوير الواجهات وتصميم قواعد البيانات وبناء واجهات التطبيقات البرمجية المستدامة والمستقلة بالكامل.', estimatedDurationMonths: 6 },
+  { id: 'dt-dm', name: 'دبلوم التسويق الرقمي وإدارة النمو (Digital Marketing)', description: 'التسويق بمحركات البحث، ابتكار المزيج الإعلاني الرقمي المتكامل، رصد وتحليل سلوك زوار المواقع والعملاء.', estimatedDurationMonths: 3 },
+  { id: 'dt-uiux', name: 'دبلوم تصميم واجهات وتجربة المستخدم (UI/UX)', description: 'تصميم وبناء رحلات مستخدمين سهلة ومشوقة، تخطيط النماذج السلكية والتفاعلية الاحترافية على فيجما Figma وموائمة الهويات البصرية للشركات.', estimatedDurationMonths: 4 }
+];
+
+export const DEFAULT_DIPLOMA_TYPES: DiplomaType[] = [
+  { id: 'dtype-ai', nameAr: 'دبلومة الذكاء الاصطناعي', nameEn: 'AI Diploma', description: 'دراسة شاملة لتقنيات تعلم الآلة والشبكات العصبية وتطبيقات الذكاء الاصطناعي التوليدي وهندسة البيانات الضخمة.', status: 'Active' },
+  { id: 'dtype-da', nameAr: 'دبلومة تحليل البيانات', nameEn: 'Data Analysis Diploma', description: 'تحليل وتفسير البيانات الإحصائية المعقدة باستخدام لغات الاستعلام وبايثون وتطبيقات ذكاء الأعمال الموزعة.', status: 'Active' },
+  { id: 'dtype-ds', nameAr: 'دبلومة علوم البيانات', nameEn: 'Data Science Diploma', description: 'استكشاف الأنماط المعقدة، التحليل التنبؤي المتطور، وبناء نماذج الاستدلال الرياضي والتعلم للتنبؤ بسلوك الأنظمة.', status: 'Active' },
+  { id: 'dtype-net', nameAr: 'دبلومة الشبكات', nameEn: 'Network Diploma', description: 'دراسة هندسة وتوجيه الشبكات وحمايتها وتأسيس الخوادم ونظم الاتصالات الحديثة.', status: 'Active' },
+  { id: 'dtype-cyber', nameAr: 'دبلومة الأمن السيبراني', nameEn: 'Cyber Security Diploma', description: 'حماية وتأمين البنية التحتية البرمجية، اختبار الاختراق الأخلاقي، وتحليل الثغرات للشبكات والخوادم السحابية.', status: 'Active' },
+  { id: 'dtype-dev', nameAr: 'دبلومة تطوير الويب', nameEn: 'Web Development Diploma', description: 'إتقان بناء وتطوير الواجهات وتصميم قواعد البيانات وبناء واجهات التطبيقات البرمجية المستدامة والمستقلة بالكامل.', status: 'Active' },
+  { id: 'dtype-mobile', nameAr: 'دبلومة تطوير تطبيقات الموبايل', nameEn: 'Mobile App Development Diploma', description: 'تطوير تطبيقات الموبايل الهجين والأصيل باستخدام Flutter و React Native و Swift / Kotlin.', status: 'Active' },
+  { id: 'dtype-uiux', nameAr: 'دبلومة واجهات وتجربة المستخدم', nameEn: 'UI/UX Diploma', description: 'تصميم وبناء رحلات مستخدمين سهلة ومشوقة، تخطيط النماذج السلكية والتفاعلية الاحترافية على فيجما Figma وموائمة الهويات البصرية للشركات.', status: 'Active' },
+  { id: 'dtype-cloud', nameAr: 'دبلومة الحوسبة السحابية', nameEn: 'Cloud Computing Diploma', description: 'إدارة وتطوير وإعداد الخوادم وتطوير خدمات سحابية بالاعتماد على AWS, GCP, Azure.', status: 'Active' },
+  { id: 'dtype-pm', nameAr: 'دبلومة إدارة المشاريع', nameEn: 'Project Management Diploma', description: 'إدارة وهندسة المشاريع التقنية والريادية وتطبيق منهجيات Agile و Scrum.', status: 'Active' },
+  { id: 'dtype-marketing', nameAr: 'دبلومة التسويق الرقمي', nameEn: 'Digital Marketing Diploma', description: 'التسويق بمحركات البحث، ابتكار المزيج الإعلاني الرقمي المتكامل، رصد وتحليل سلوك زوار المواقع والعملاء.', status: 'Active' }
+];
+
+export const DEFAULT_INSTRUCTORS: Instructor[] = [
+  { id: 'inst-1', name: 'د. عادل القحطاني', phone: '+966501111001', email: 'adel.q@platform.edu', status: 'Active' },
+  { id: 'inst-2', name: 'م. أحمد الشمري', phone: '+966501111002', email: 'ahmed.s@platform.edu', status: 'Active' },
+  { id: 'inst-3', name: 'م. ياسر القاضي', phone: '+966501111003', email: 'yasser.q@platform.edu', status: 'Active' }
+];
+
+export const DEFAULT_MENTORS: Mentor[] = [
+  { id: 'ment-1', name: 'م. ممدوح الشمري', phone: '+966502222001', email: 'mamdouh.s@platform.edu', status: 'Active' },
+  { id: 'ment-2', name: 'أ. سارة العتيبي', phone: '+966502222002', email: 'sara.o@platform.edu', status: 'Active' }
+];

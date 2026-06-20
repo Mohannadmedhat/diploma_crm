@@ -1,0 +1,6 @@
+{
+  "name": "لوحة تشغيل مسؤول الدبلومات",
+  "description": "لوحة تشغيل ومساعد شخصي متكامل لمنسق دبلومات التدريب لجدولة الحصص الدراسية تتبع مهام اليوم ورصد الغياب المتزامن من Google Sheets وإدارة وتوثيق سجلات تواصل الطلاب.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
