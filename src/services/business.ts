@@ -349,22 +349,23 @@ export interface StudyDaysPreset {
   labelEn: string;
   labelAr: string;
   value: string;
+  days: string[];
   isSingleDay: boolean;
 }
 
 export const STUDY_DAYS_PRESETS: StudyDaysPreset[] = [
-  { id: 'sat', labelEn: 'Saturday', labelAr: 'السبت', value: 'السبت', isSingleDay: true },
-  { id: 'fri', labelEn: 'Friday', labelAr: 'الجمعة', value: 'الجمعة', isSingleDay: true },
-  { id: 'sat-tue', labelEn: 'Saturday - Tuesday', labelAr: 'السبت - الثلاثاء', value: 'السبت - الثلاثاء', isSingleDay: false },
-  { id: 'sun-wed', labelEn: 'Sunday - Wednesday', labelAr: 'الأحد - الأربعاء', value: 'الأحد - الأربعاء', isSingleDay: false },
-  { id: 'mon-thu', labelEn: 'Monday - Thursday', labelAr: 'الاثنين - الخميس', value: 'الاثنين - الخميس', isSingleDay: false },
-  { id: 'fri-tue', labelEn: 'Friday - Tuesday', labelAr: 'الجمعة - الثلاثاء', value: 'الجمعة - الثلاثاء', isSingleDay: false },
-  { id: 'sat-wed', labelEn: 'Saturday - Wednesday', labelAr: 'السبت - الأربعاء', value: 'السبت - الأربعاء', isSingleDay: false },
-  { id: 'tue-wed', labelEn: 'Tuesday - Wednesday', labelAr: 'الثلاثاء - الأربعاء', value: 'الثلاثاء - الأربعاء', isSingleDay: false },
-  { id: 'tue-thu', labelEn: 'Tuesday - Thursday', labelAr: 'الثلاثاء - الخميس', value: 'الثلاثاء - الخميس', isSingleDay: false },
-  { id: 'sun-tue', labelEn: 'Sunday - Tuesday', labelAr: 'الأحد - الثلاثاء', value: 'الأحد - الثلاثاء', isSingleDay: false },
-  { id: 'sat-mon', labelEn: 'Saturday - Monday', labelAr: 'السبت - الاثنين', value: 'السبت - الاثنين', isSingleDay: false },
-  { id: 'fri-mon', labelEn: 'Friday - Monday', labelAr: 'الجمعة - الاثنين', value: 'الجمعة - الاثنين', isSingleDay: false }
+  { id: 'sat', labelEn: 'Saturday', labelAr: 'السبت', value: 'السبت', days: ['السبت'], isSingleDay: true },
+  { id: 'fri', labelEn: 'Friday', labelAr: 'الجمعة', value: 'الجمعة', days: ['الجمعة'], isSingleDay: true },
+  { id: 'sat-tue', labelEn: 'Saturday - Tuesday', labelAr: 'السبت - الثلاثاء', value: 'السبت - الثلاثاء', days: ['السبت', 'الثلاثاء'], isSingleDay: false },
+  { id: 'sun-wed', labelEn: 'Sunday - Wednesday', labelAr: 'الأحد - الأربعاء', value: 'الأحد - الأربعاء', days: ['الأحد', 'الأربعاء'], isSingleDay: false },
+  { id: 'mon-thu', labelEn: 'Monday - Thursday', labelAr: 'الاثنين - الخميس', value: 'الاثنين - الخميس', days: ['الاثنين', 'الخميس'], isSingleDay: false },
+  { id: 'fri-tue', labelEn: 'Friday - Tuesday', labelAr: 'الجمعة - الثلاثاء', value: 'الجمعة - الثلاثاء', days: ['الجمعة', 'الثلاثاء'], isSingleDay: false },
+  { id: 'sat-wed', labelEn: 'Saturday - Wednesday', labelAr: 'السبت - الأربعاء', value: 'السبت - الأربعاء', days: ['السبت', 'الأربعاء'], isSingleDay: false },
+  { id: 'tue-wed', labelEn: 'Tuesday - Wednesday', labelAr: 'الثلاثاء - الأربعاء', value: 'الثلاثاء - الأربعاء', days: ['الثلاثاء', 'الأربعاء'], isSingleDay: false },
+  { id: 'tue-thu', labelEn: 'Tuesday - Thursday', labelAr: 'الثلاثاء - الخميس', value: 'الثلاثاء - الخميس', days: ['الثلاثاء', 'الخميس'], isSingleDay: false },
+  { id: 'sun-tue', labelEn: 'Sunday - Tuesday', labelAr: 'الأحد - الثلاثاء', value: 'الأحد - الثلاثاء', days: ['الأحد', 'الثلاثاء'], isSingleDay: false },
+  { id: 'sat-mon', labelEn: 'Saturday - Monday', labelAr: 'السبت - الاثنين', value: 'السبت - الاثنين', days: ['السبت', 'الاثنين'], isSingleDay: false },
+  { id: 'fri-mon', labelEn: 'Friday - Monday', labelAr: 'الجمعة - الاثنين', value: 'الجمعة - الاثنين', days: ['الجمعة', 'الاثنين'], isSingleDay: false }
 ];
 
 export function isSingleDayCourse(studyDays: string | undefined): boolean {
