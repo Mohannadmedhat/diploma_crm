@@ -49,13 +49,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         loop
         muted
         playsInline
-        className="absolute inset-0 w-full h-full object-cover z-0 opacity-30 pointer-events-none"
+        className="absolute inset-0 w-full h-full object-cover z-0 opacity-50 pointer-events-none"
       >
         <source src="/login-bg.mp4" type="video/mp4" />
       </video>
 
       {/* Dark Overlay for Readability */}
-      <div className="absolute inset-0 bg-black/60 z-0 backdrop-blur-xs"></div>
+      <div className="absolute inset-0 bg-black/50 z-0"></div>
       
       {/* Animated Glowing Ambient Orbs */}
       <div className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full bg-indigo-600/10 blur-3xl animate-pulse duration-[8000ms]"></div>
