@@ -20,6 +20,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { parseSessionTimeTo24h, getSessionDurationHours, addHoursToTime } from '../services/business';
 
 interface WeeklyOpsBoardProps {
   diplomas: Diploma[];
@@ -162,14 +163,18 @@ export default function WeeklyOpsBoard({
     const dateStr = formatDateStr(date);
     const diplomaSessionsCount = sessions.filter(s => s.diplomaId === diploma.id).length;
     
+    const start24h = parseSessionTimeTo24h(diploma.sessionTime);
+    const durationHours = getSessionDurationHours(diploma.studyDays);
+    const end24h = addHoursToTime(start24h, durationHours);
+
     const newSession: Session = {
       id: `ses-${Date.now()}`,
       diplomaId: diploma.id,
       title: `المحاضرة رقم ${diplomaSessionsCount + 1}`,
       instructor: diploma.instructorName || 'غير معلم',
       date: dateStr,
-      startTime: diploma.sessionTime || '06:00',
-      endTime: '09:00',
+      startTime: start24h,
+      endTime: end24h,
       notes: 'تم إنشاؤها تلقائياً للمتابعة التشغيلية الأسبوعية',
       attendance: {}
     };

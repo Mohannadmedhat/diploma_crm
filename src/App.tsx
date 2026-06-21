@@ -32,6 +32,7 @@ import {
   saveDiplomaTypes,
   loadInstructors,
   saveInstructors,
+  mergeDefaultInstructors,
   loadMentors,
   saveMentors,
   getCurrentUser,
@@ -213,16 +214,28 @@ export default function App() {
 
           // --- Shared data from cloud ---
           if (sharedData) {
+            const cloudInstructors = sharedData.instructors || [];
+            const { merged: mergedInstructors, wasUpdated: instructorsUpdated } = mergeDefaultInstructors(cloudInstructors);
+
             setDiplomaTypes(sharedData.diplomaTypes || loadDiplomaTypes());
-            setInstructors(sharedData.instructors || loadInstructors());
+            setInstructors(mergedInstructors);
             setMentors(sharedData.mentors || loadMentors());
             setTemplates(sharedData.templates || loadTemplates());
 
             // Cache locally
             if (sharedData.diplomaTypes) saveDiplomaTypes(sharedData.diplomaTypes);
-            if (sharedData.instructors) saveInstructors(sharedData.instructors);
+            saveInstructors(mergedInstructors);
             if (sharedData.mentors) saveMentors(sharedData.mentors);
             if (sharedData.templates) saveTemplates(sharedData.templates);
+
+            if (instructorsUpdated) {
+              const updatedPayload = {
+                ...sharedData,
+                instructors: mergedInstructors,
+                updatedAt: new Date().toISOString()
+              };
+              await uploadSharedData(updatedPayload);
+            }
           } else {
             // First time: upload current shared data to cloud
             const sharedPayload = {

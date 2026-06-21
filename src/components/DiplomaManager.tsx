@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Diploma, DiplomaTemplate, DiplomaType, Student, Instructor, Mentor } from '../types';
+import { STUDY_DAYS_PRESETS } from '../services/business';
 import {
   BookOpen,
   Calendar,
@@ -80,6 +81,7 @@ export default function DiplomaManager({
   const [numberOfSessionsPlanned, setNumberOfSessionsPlanned] = useState<number>(12);
   const ALL_WEEK_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
   const [selectedDays, setSelectedDays] = useState<string[]>(['السبت', 'الاثنين', 'الأربعاء']);
+  const [presetId, setPresetId] = useState<string>('custom');
   const daysToString = (days: string[]) => ALL_WEEK_DAYS.filter(d => days.includes(d)).join('، ');
   const stringToDays = (str: string) => ALL_WEEK_DAYS.filter(d => str.includes(d));
   const toggleDay = (day: string) => setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -155,6 +157,7 @@ export default function DiplomaManager({
     // Reset run settings (Section 8)
     setNumberOfSessionsPlanned(12);
     setSelectedDays(['السبت', 'الاثنين', 'الأربعاء']);
+    setPresetId('custom');
     setSessionTime('٨:٠٠ مساءً');
     setStudyLocation('المنصة أونلاين / زووم');
     setRequiredAttendanceRateForm(75);
@@ -187,6 +190,8 @@ export default function DiplomaManager({
     // Load run settings
     setNumberOfSessionsPlanned(d.numberOfSessionsPlanned ?? 12);
     setSelectedDays(stringToDays(d.studyDays ?? 'السبت، الاثنين، الأربعاء'));
+    const matched = STUDY_DAYS_PRESETS.find(p => p.value === d.studyDays);
+    setPresetId(matched ? matched.id : (d.studyDays ? 'custom' : 'custom'));
     setSessionTime(d.sessionTime ?? '٨:٠٠ مساءً');
     setStudyLocation(d.studyLocation ?? 'المنصة أونلاين / زووم');
     setRequiredAttendanceRateForm(d.requiredAttendanceRate ?? 75);
@@ -230,7 +235,9 @@ export default function DiplomaManager({
       
       // Save run settings
       numberOfSessionsPlanned: Number(numberOfSessionsPlanned),
-      studyDays: daysToString(selectedDays),
+      studyDays: presetId !== 'custom' 
+        ? (STUDY_DAYS_PRESETS.find(p => p.id === presetId)?.value || daysToString(selectedDays))
+        : daysToString(selectedDays),
       sessionTime: sessionTime.trim(),
       studyLocation: studyLocation.trim(),
       requiredAttendanceRate: Number(requiredAttendanceRateForm),
@@ -694,30 +701,58 @@ export default function DiplomaManager({
                     className="w-full px-2.5 py-1.5 bg-[#0A0A0A] border border-[#262626] text-xs text-[#E2E8F0] rounded outline-hidden"
                   />
                 </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] text-zinc-400 mb-2">أيام الأسبوع الدراسية:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {ALL_WEEK_DAYS.map(day => (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => toggleDay(day)}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                          selectedDays.includes(day)
-                            ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                            : 'bg-[#0A0A0A] border-[#262626] text-zinc-500 hover:border-zinc-500 hover:text-zinc-200'
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    ))}
+                <div className="md:col-span-2 space-y-2">
+                  <div>
+                    <label className="block text-[10px] text-zinc-400 mb-1.5">نمط أيام الدراسة الأسبوعية:</label>
+                    <select
+                      value={presetId}
+                      onChange={(e) => {
+                        const pId = e.target.value;
+                        setPresetId(pId);
+                        if (pId !== 'custom') {
+                          const preset = STUDY_DAYS_PRESETS.find(p => p.id === pId);
+                          if (preset) {
+                            setSelectedDays(preset.days);
+                          }
+                        }
+                      }}
+                      className="w-full px-2.5 py-1.5 bg-[#0A0A0A] border border-[#262626] text-xs text-[#E2E8F0] rounded outline-hidden cursor-pointer"
+                    >
+                      {STUDY_DAYS_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.labelEn} ({p.labelAr})
+                        </option>
+                      ))}
+                      <option value="custom">أيام مخصصة (تحديد يدوي)...</option>
+                    </select>
                   </div>
+
+                  {presetId === 'custom' && (
+                    <div>
+                      <label className="block text-[10px] text-zinc-400 mb-1.5">اختر الأيام المخصصة:</label>
+                      <div className="flex flex-wrap gap-2">
+                        {ALL_WEEK_DAYS.map(day => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => toggleDay(day)}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                              selectedDays.includes(day)
+                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                : 'bg-[#0A0A0A] border-[#262626] text-zinc-500 hover:border-zinc-500 hover:text-zinc-200'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {selectedDays.length > 0 && (
                     <p className="text-[10px] text-indigo-400 mt-1.5 font-sans">✔ محدد: {daysToString(selectedDays)}</p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-[10px] text-zinc-400 mb-1.5">موعد توقيت المحاضرات:</label>
                   <input

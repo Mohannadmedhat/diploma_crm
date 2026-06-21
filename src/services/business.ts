@@ -343,3 +343,97 @@ export function generateArabicCSV(headers: string[], rows: string[][]): Blob {
     type: 'text/csv;charset=utf-8;'
   });
 }
+
+export interface StudyDaysPreset {
+  id: string;
+  labelEn: string;
+  labelAr: string;
+  value: string;
+  isSingleDay: boolean;
+}
+
+export const STUDY_DAYS_PRESETS: StudyDaysPreset[] = [
+  { id: 'sat', labelEn: 'Saturday', labelAr: 'السبت', value: 'السبت', isSingleDay: true },
+  { id: 'fri', labelEn: 'Friday', labelAr: 'الجمعة', value: 'الجمعة', isSingleDay: true },
+  { id: 'sat-tue', labelEn: 'Saturday - Tuesday', labelAr: 'السبت - الثلاثاء', value: 'السبت - الثلاثاء', isSingleDay: false },
+  { id: 'sun-wed', labelEn: 'Sunday - Wednesday', labelAr: 'الأحد - الأربعاء', value: 'الأحد - الأربعاء', isSingleDay: false },
+  { id: 'mon-thu', labelEn: 'Monday - Thursday', labelAr: 'الاثنين - الخميس', value: 'الاثنين - الخميس', isSingleDay: false },
+  { id: 'fri-tue', labelEn: 'Friday - Tuesday', labelAr: 'الجمعة - الثلاثاء', value: 'الجمعة - الثلاثاء', isSingleDay: false },
+  { id: 'sat-wed', labelEn: 'Saturday - Wednesday', labelAr: 'السبت - الأربعاء', value: 'السبت - الأربعاء', isSingleDay: false },
+  { id: 'tue-wed', labelEn: 'Tuesday - Wednesday', labelAr: 'الثلاثاء - الأربعاء', value: 'الثلاثاء - الأربعاء', isSingleDay: false },
+  { id: 'tue-thu', labelEn: 'Tuesday - Thursday', labelAr: 'الثلاثاء - الخميس', value: 'الثلاثاء - الخميس', isSingleDay: false },
+  { id: 'sun-tue', labelEn: 'Sunday - Tuesday', labelAr: 'الأحد - الثلاثاء', value: 'الأحد - الثلاثاء', isSingleDay: false },
+  { id: 'sat-mon', labelEn: 'Saturday - Monday', labelAr: 'السبت - الاثنين', value: 'السبت - الاثنين', isSingleDay: false },
+  { id: 'fri-mon', labelEn: 'Friday - Monday', labelAr: 'الجمعة - الاثنين', value: 'الجمعة - الاثنين', isSingleDay: false }
+];
+
+export function isSingleDayCourse(studyDays: string | undefined): boolean {
+  if (!studyDays) return false;
+  const clean = studyDays.trim();
+  if (clean === 'السبت' || clean === 'الجمعة' || clean === 'Saturday' || clean === 'Friday') {
+    return true;
+  }
+  const ALL_WEEK_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'الإثنين', 'الاربعاء'];
+  let dayCount = 0;
+  ALL_WEEK_DAYS.forEach(day => {
+    const normClean = clean.replace(/إ/g, 'ا');
+    const normDay = day.replace(/إ/g, 'ا');
+    if (normClean.includes(normDay)) {
+      dayCount++;
+    }
+  });
+  if (dayCount > 0) return dayCount === 1;
+
+  const ENGLISH_WEEK_DAYS = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  let engDayCount = 0;
+  ENGLISH_WEEK_DAYS.forEach(day => {
+    if (clean.toLowerCase().includes(day)) {
+      engDayCount++;
+    }
+  });
+  return engDayCount === 1;
+}
+
+export function parseSessionTimeTo24h(timeStr: string | undefined): string {
+  if (!timeStr) return '18:00';
+  const arToEn: Record<string, string> = {
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
+  };
+  let normalized = timeStr.replace(/[٠-٩]/g, (d) => arToEn[d] || d).trim().toLowerCase();
+  const match = normalized.match(/(\d{1,2})\s*:\s*(\d{2})/);
+  if (!match) {
+    const singleHourMatch = normalized.match(/^(\d{1,2})$/);
+    if (singleHourMatch) {
+      let hour = parseInt(singleHourMatch[1], 10);
+      const isPm = normalized.includes('مساء') || normalized.includes('pm') || normalized.includes('م');
+      if (isPm && hour < 12) hour += 12;
+      if (!isPm && hour === 12) hour = 0;
+      return `${String(hour).padStart(2, '0')}:00`;
+    }
+    return '18:00';
+  }
+  let hour = parseInt(match[1], 10);
+  const minute = match[2];
+  const isPm = normalized.includes('مساء') || normalized.includes('pm') || normalized.includes('م');
+  const isAm = normalized.includes('صباح') || normalized.includes('am') || normalized.includes('ص');
+  if (isPm && hour < 12) {
+    hour += 12;
+  } else if (isAm && hour === 12) {
+    hour = 0;
+  }
+  hour = Math.min(23, Math.max(0, hour));
+  return `${String(hour).padStart(2, '0')}:${minute}`;
+}
+
+export function getSessionDurationHours(studyDays: string | undefined): number {
+  return isSingleDayCourse(studyDays) ? 6 : 3;
+}
+
+export function addHoursToTime(timeStr: string, hoursToAdd: number): string {
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10) || 0;
+  const m = mStr || '00';
+  h = (h + hoursToAdd) % 24;
+  return `${String(h).padStart(2, '0')}:${m}`;
+}

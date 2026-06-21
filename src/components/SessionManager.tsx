@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Session, Student, Diploma, AttendanceStatus, AttendanceRecord } from '../types';
+import { parseSessionTimeTo24h, getSessionDurationHours, addHoursToTime } from '../services/business';
 import {
   CalendarDays,
   Clock,
@@ -74,10 +75,16 @@ export default function SessionManager({
   const handleStartAdd = () => {
     setEditingSessionId(null);
     setTitle('');
-    setInstructor('');
+    
+    const selectedDiploma = diplomas.find(d => d.id === selectedDiplomaId);
+    const start24h = selectedDiploma ? parseSessionTimeTo24h(selectedDiploma.sessionTime) : '18:00';
+    const durationHours = selectedDiploma ? getSessionDurationHours(selectedDiploma.studyDays) : 3;
+    const end24h = addHoursToTime(start24h, durationHours);
+
+    setInstructor(selectedDiploma?.instructorName || '');
     setDate(new Date().toISOString().split('T')[0]);
-    setStartTime('09:00');
-    setEndTime('12:00');
+    setStartTime(start24h);
+    setEndTime(end24h);
     setNotes('');
     setGoogleFormUrl('');
     setGoogleSheetUrl('');

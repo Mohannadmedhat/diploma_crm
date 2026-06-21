@@ -95,6 +95,23 @@ const KEY_TEMPLATES           = () => `${SHARED_PREFIX}msg_templates`;
 // INSTRUCTORS (Shared)
 // ============================================================
 
+export function mergeDefaultInstructors(currentList: Instructor[]): { merged: Instructor[]; wasUpdated: boolean } {
+  let wasUpdated = false;
+  const list = [...currentList];
+  const existingNames = new Set(list.map(inst => inst.name.trim().toLowerCase()));
+
+  DEFAULT_INSTRUCTORS.forEach(defaultInst => {
+    const cleanName = defaultInst.name.trim().toLowerCase();
+    if (!existingNames.has(cleanName)) {
+      list.push(defaultInst);
+      existingNames.add(cleanName);
+      wasUpdated = true;
+    }
+  });
+
+  return { merged: list, wasUpdated };
+}
+
 export function loadInstructors(): Instructor[] {
   try {
     const raw = localStorage.getItem(KEY_INSTRUCTORS());
@@ -102,7 +119,12 @@ export function loadInstructors(): Instructor[] {
       saveInstructors(DEFAULT_INSTRUCTORS);
       return DEFAULT_INSTRUCTORS;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw) as Instructor[];
+    const { merged, wasUpdated } = mergeDefaultInstructors(parsed);
+    if (wasUpdated) {
+      saveInstructors(merged);
+    }
+    return merged;
   } catch (e) {
     console.error('Error loading instructors', e);
     return DEFAULT_INSTRUCTORS;

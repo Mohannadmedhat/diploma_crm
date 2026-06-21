@@ -34,7 +34,7 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { bulkParseStudentCSV, generateArabicCSV } from '../services/business';
+import { bulkParseStudentCSV, generateArabicCSV, STUDY_DAYS_PRESETS, getSessionDurationHours, parseSessionTimeTo24h, addHoursToTime } from '../services/business';
 import StudentForm from './StudentForm';
 
 interface DiplomaWorkspaceProps {
@@ -474,6 +474,11 @@ export default function DiplomaWorkspace({
   };
   
   const [selectedDays, setSelectedDays] = useState(stringToDays(diploma?.studyDays ?? 'السبت، الإثنين، الأربعاء'));
+  const [presetId, setPresetId] = useState<string>(() => {
+    if (!diploma?.studyDays) return 'custom';
+    const matched = STUDY_DAYS_PRESETS.find(p => p.value === diploma.studyDays);
+    return matched ? matched.id : 'custom';
+  });
   const toggleDay = (day) => setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
 
   const [sessionTime, setSessionTime] = useState(diploma?.sessionTime ?? '08:00 مساءً');
@@ -505,7 +510,9 @@ export default function DiplomaWorkspace({
           googleDocUrl: linkDrive,
           googleClassroomUrl: linkClassroom,
           numberOfSessionsPlanned: Number(numberOfSessionsPlanned),
-          studyDays: daysToString(selectedDays),
+          studyDays: presetId !== 'custom' 
+            ? (STUDY_DAYS_PRESETS.find(p => p.id === presetId)?.value || daysToString(selectedDays))
+            : daysToString(selectedDays),
           sessionTime: sessionTime,
           studyLocation: studyLocation,
           requiredAttendanceRate: Number(requiredAttendanceRateForm),
@@ -540,10 +547,20 @@ export default function DiplomaWorkspace({
     setLinkClassroom(diploma.googleClassroomUrl || '');
     setNumberOfSessionsPlanned(diploma.numberOfSessionsPlanned ?? 12);
     setSelectedDays(stringToDays(diploma.studyDays ?? 'السبت، الإثنين، الأربعاء'));
+    const matched = STUDY_DAYS_PRESETS.find(p => p.value === diploma.studyDays);
+    setPresetId(matched ? matched.id : (diploma.studyDays ? 'custom' : 'custom'));
     setSessionTime(diploma.sessionTime ?? '08:00 مساءً');
     setStudyLocation(diploma.studyLocation ?? 'المنصة أونلاين / زووم');
     setRequiredAttendanceRateForm(diploma.requiredAttendanceRate ?? 75);
     setAllowedAbsencesForm(diploma.allowedAbsences ?? 3);
+
+    // Auto-calculate default times for new session form
+    const start24h = parseSessionTimeTo24h(diploma.sessionTime);
+    const durationHours = getSessionDurationHours(diploma.studyDays);
+    const end24h = addHoursToTime(start24h, durationHours);
+    setSessStart(start24h);
+    setSessEnd(end24h);
+    setSessInstructor(diploma.instructorName || '');
   }, [diploma]);
 
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -2134,24 +2151,53 @@ export default function DiplomaWorkspace({
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-2">أيام الدراسة الأسبوعية:</label>
-                      <div className="flex flex-wrap gap-1.5 justify-end">
-                        {ALL_WEEK_DAYS.map(day => (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => toggleDay(day)}
-                            className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
-                              selectedDays.includes(day)
-                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
-                                : 'bg-[#0A0A0A] border-zinc-900 text-zinc-500 hover:border-zinc-700 hover:text-zinc-350'
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        ))}
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] text-zinc-500 mb-1">نمط أيام الدراسة الأسبوعية:</label>
+                        <select
+                          value={presetId}
+                          onChange={(e) => {
+                            const pId = e.target.value;
+                            setPresetId(pId);
+                            if (pId !== 'custom') {
+                              const preset = STUDY_DAYS_PRESETS.find(p => p.id === pId);
+                              if (preset) {
+                                setSelectedDays(preset.days);
+                              }
+                            }
+                          }}
+                          className="w-full px-3 py-1.5 bg-[#0A0A0A] border border-zinc-900 text-zinc-205 rounded outline-hidden cursor-pointer text-right"
+                        >
+                          {STUDY_DAYS_PRESETS.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.labelEn} ({p.labelAr})
+                            </option>
+                          ))}
+                          <option value="custom">أيام مخصصة (تحديد يدوي)...</option>
+                        </select>
                       </div>
+
+                      {presetId === 'custom' && (
+                        <div>
+                          <label className="block text-[10px] text-zinc-500 mb-2">اختر الأيام المخصصة:</label>
+                          <div className="flex flex-wrap gap-1.5 justify-end">
+                            {ALL_WEEK_DAYS.map(day => (
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => toggleDay(day)}
+                                className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                  selectedDays.includes(day)
+                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
+                                    : 'bg-[#0A0A0A] border-zinc-900 text-zinc-500 hover:border-zinc-700 hover:text-zinc-350'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
