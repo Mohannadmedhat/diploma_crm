@@ -84,6 +84,11 @@ export default function WhatsAppAutomation({
   const [isAutoSending, setIsAutoSending] = useState(false);
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Workflow states
+  const [sendMode, setSendMode] = useState<'new-tab' | 'same-tab'>('new-tab');
+  const [copied, setCopied] = useState(false);
+  const [sentLogs, setSentLogs] = useState<Record<string, 'success' | 'skipped'>>({});
+
   // Sync selected diploma ID when it changes
   useEffect(() => {
     if (diplomas.length > 0 && !selectedDiplomaId) {
@@ -303,13 +308,18 @@ export default function WhatsAppAutomation({
 
     setQueue(queueItems);
     setQueueIndex(0);
+    setCopied(false);
     setIsQueueActive(true);
     setIsAutoSending(false); // Let the user control the start or start manually
   };
 
   const openWhatsAppLink = (item: QueueItem) => {
     const url = formatWhatsAppLink(item.phone, item.message);
-    window.open(url, '_blank');
+    if (sendMode === 'same-tab') {
+      window.open(url, 'whatsapp_dispatch_window');
+    } else {
+      window.open(url, '_blank');
+    }
   };
 
   const processCurrentQueueItem = () => {
@@ -329,6 +339,12 @@ export default function WhatsAppAutomation({
     // Trigger open
     const currentItem = queue[queueIndex];
     openWhatsAppLink(currentItem);
+
+    // Save status in logs
+    setSentLogs(prev => ({
+      ...prev,
+      [currentItem.student.id]: 'success'
+    }));
 
     // Update to success after short delay
     setTimeout(() => {
@@ -371,6 +387,14 @@ export default function WhatsAppAutomation({
   }, [isAutoSending]);
 
   const handleSkipCurrent = () => {
+    const currentItem = queue[queueIndex];
+    if (currentItem) {
+      setSentLogs(prev => ({
+        ...prev,
+        [currentItem.student.id]: 'skipped'
+      }));
+    }
+
     setQueue(prev => prev.map((item, idx) => {
       if (idx === queueIndex) {
         return { ...item, status: 'skipped' };
@@ -602,6 +626,15 @@ export default function WhatsAppAutomation({
                             <span className="text-[9px] text-zinc-500 font-mono">
                               الهاتف: {st.phone}
                             </span>
+                            {sentLogs[st.id] && (
+                              <span className={`text-[9px] px-2 py-0.5 rounded border ${
+                                sentLogs[st.id] === 'success'
+                                  ? 'bg-emerald-955 text-emerald-450 border-emerald-900/30'
+                                  : 'bg-amber-955 text-amber-500 border-amber-900/30'
+                              }`}>
+                                {sentLogs[st.id] === 'success' ? 'تم الفتح بنجاح ✅' : 'تم التخطي ⏩'}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[10px] text-zinc-400 bg-neutral-950 p-2 border border-zinc-900/40 rounded leading-relaxed">
                             {parsedMsg}
@@ -764,6 +797,15 @@ export default function WhatsAppAutomation({
                             <span className="text-[9px] text-zinc-555 font-mono">
                               هاتف: {st.phone}
                             </span>
+                            {sentLogs[st.id] && (
+                              <span className={`text-[9px] px-2 py-0.5 rounded border ${
+                                sentLogs[st.id] === 'success'
+                                  ? 'bg-emerald-955 text-emerald-450 border-emerald-900/30'
+                                  : 'bg-amber-955 text-amber-500 border-amber-900/30'
+                              }`}>
+                                {sentLogs[st.id] === 'success' ? 'تم الفتح بنجاح ✅' : 'تم التخطي ⏩'}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[10px] text-zinc-400 bg-neutral-950 p-2 border border-zinc-900/40 rounded leading-relaxed">
                             {parsedMsg}
@@ -932,6 +974,15 @@ export default function WhatsAppAutomation({
                             <span className="text-[9px] text-zinc-555 font-mono">
                               هاتف: {st.phone}
                             </span>
+                            {sentLogs[st.id] && (
+                              <span className={`text-[9px] px-2 py-0.5 rounded border ${
+                                sentLogs[st.id] === 'success'
+                                  ? 'bg-emerald-955 text-emerald-450 border-emerald-900/30'
+                                  : 'bg-amber-955 text-amber-500 border-amber-900/30'
+                              }`}>
+                                {sentLogs[st.id] === 'success' ? 'تم الفتح بنجاح ✅' : 'تم التخطي ⏩'}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[10px] text-zinc-400 bg-neutral-950 p-2 border border-zinc-900/40 rounded leading-relaxed">
                             {parsedMsg}
@@ -975,7 +1026,7 @@ export default function WhatsAppAutomation({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="bg-[#0B0B0E] border border-zinc-850 rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl"
+              className="bg-zinc-950/80 backdrop-blur-xl border border-white/5 rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.85)]"
             >
               
               {/* Header */}
@@ -1038,56 +1089,132 @@ export default function WhatsAppAutomation({
 
                 {/* Current Student Preview Card */}
                 {queueIndex < queue.length ? (
-                  <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-3">
-                    <div className="flex items-center justify-between border-b border-zinc-900/60 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                        <span className="text-xs font-bold text-white">تحضير مراسلة: {queue[queueIndex].student.name}</span>
+                  <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-4">
+                    
+                    {/* Student Business Card Header */}
+                    <div className="flex items-center justify-between border-b border-zinc-900/60 pb-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                          <User className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-white block">تحضير مراسلة: {queue[queueIndex].student.name}</span>
+                          <span className="text-[9px] text-zinc-500 block mt-0.5 font-sans">الجلسة المرصودة النشطة</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-mono text-zinc-500">{queue[queueIndex].phone}</span>
+                      <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-zinc-400">{queue[queueIndex].phone}</span>
                     </div>
 
-                    <p className="text-[11px] text-zinc-350 leading-relaxed text-right bg-[#050508] p-3 border border-zinc-900/50 rounded max-h-[120px] overflow-y-auto">
-                      {queue[queueIndex].message}
-                    </p>
+                    {/* WhatsApp Chat Bubble style editable text area */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] text-zinc-550 font-bold uppercase tracking-wider">مراجعة وتعديل نص الرسالة للمستلم:</label>
+                      <div className="relative">
+                        <textarea
+                          value={queue[queueIndex]?.message || ''}
+                          onChange={(e) => {
+                            const newMsg = e.target.value;
+                            setQueue(prev => prev.map((item, idx) => idx === queueIndex ? { ...item, message: newMsg } : item));
+                          }}
+                          rows={4}
+                          className="w-full p-3 bg-[#0d3c2e]/60 focus:bg-[#0d3c2e]/80 border border-emerald-900/30 focus:border-emerald-800/40 text-emerald-100 rounded-xl text-[11px] leading-relaxed resize-none font-sans text-right outline-none transition-all"
+                          placeholder="اكتب رسالتك المخصصة للطالب هنا..."
+                        />
+                        {/* WhatsApp Bubble Indicator ذيل الفقاعة */}
+                        <div className="absolute top-3 -left-1.5 w-3 h-3 bg-[#0d3c2e]/60 border-l border-b border-emerald-900/30 rotate-45 hidden sm:block" />
+                      </div>
+                    </div>
 
                     {/* Controller Triggers */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-zinc-900/50">
+                    <div className="flex flex-col gap-4 pt-1 border-t border-zinc-900/50">
                       
-                      {/* Left: Auto Send Switch */}
-                      <label className="flex items-center gap-2 text-xs font-semibold text-zinc-400 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={isAutoSending}
-                          onChange={(e) => setIsAutoSending(e.target.checked)}
-                          className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
-                        />
-                        <span>تشغيل الإرسال التلقائي المستمر (فاصل 1.8 ثانية)</span>
-                      </label>
+                      {/* Top Row: Auto Send Switch & Send Mode Selector */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-zinc-950/50 p-3 rounded-xl border border-zinc-900 font-sans">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-zinc-400 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isAutoSending}
+                            onChange={(e) => setIsAutoSending(e.target.checked)}
+                            className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
+                          />
+                          <span>تشغيل الإرسال التلقائي المستمر (فاصل 1.8 ثانية)</span>
+                        </label>
 
-                      {/* Right: Manual Actions */}
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="text-[10px] text-zinc-500">طريقة فتح الرابط:</span>
+                          <label className="flex items-center gap-1.5 text-zinc-400 cursor-pointer select-none text-[10px]">
+                            <input
+                              type="radio"
+                              name="sendMode"
+                              checked={sendMode === 'new-tab'}
+                              onChange={() => setSendMode('new-tab')}
+                              className="text-emerald-500 bg-[#07070A] border-zinc-800 focus:ring-0"
+                            />
+                            <span>علامات تبويب متعددة</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 text-zinc-400 cursor-pointer select-none text-[10px]">
+                            <input
+                              type="radio"
+                              name="sendMode"
+                              checked={sendMode === 'same-tab'}
+                              onChange={() => setSendMode('same-tab')}
+                              className="text-emerald-500 bg-[#07070A] border-zinc-800 focus:ring-0"
+                            />
+                            <span>تبويب موحد 🔄</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 font-sans">
                         <button
-                          onClick={handleSkipCurrent}
-                          className="flex-1 sm:flex-none px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                          onClick={() => {
+                            if (queue[queueIndex]) {
+                              navigator.clipboard.writeText(queue[queueIndex].message);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }
+                          }}
+                          className="flex-1 sm:flex-none px-3.5 py-2 bg-zinc-900 hover:bg-zinc-850 text-zinc-350 hover:text-zinc-250 border border-zinc-850 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          <SkipForward className="w-3.5 h-3.5" />
-                          تخطي
+                          {copied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+                              <span className="text-emerald-400 font-bold font-sans">تم النسخ بنجاح!</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                              <span>نسخ نص الرسالة 📋</span>
+                            </>
+                          )}
                         </button>
-                        
-                        <button
-                          onClick={processCurrentQueueItem}
-                          className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-700/10 flex items-center justify-center gap-1.5"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          افتح شات الطالب 📱
-                        </button>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={handleSkipCurrent}
+                            className="flex-1 sm:flex-none px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <SkipForward className="w-3.5 h-3.5" />
+                            تخطي
+                          </button>
+                          
+                          <button
+                            onClick={processCurrentQueueItem}
+                            className="relative flex-1 sm:flex-none px-5 py-2 bg-emerald-600 hover:bg-emerald-550 text-white rounded-lg text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-500/20 hover:shadow-emerald-550/40 flex items-center justify-center gap-1.5 overflow-hidden"
+                          >
+                            {isAutoSending && (
+                              <span className="absolute left-2 top-2.5 w-2 h-2 rounded-full bg-white animate-ping" />
+                            )}
+                            <Send className="w-3.5 h-3.5" />
+                            افتح شات الطالب 📱
+                          </button>
+                        </div>
                       </div>
 
                     </div>
 
                     {/* Popup Blocker Notice */}
-                    <div className="p-3 bg-amber-950/20 border border-amber-900/30 rounded-lg text-[10px] text-amber-400 leading-relaxed font-sans text-right">
+                    <div className="p-3 bg-amber-955/20 border border-amber-900/30 rounded-lg text-[10px] text-amber-400 leading-relaxed font-sans text-right">
                       ⚠️ <strong>ملاحظة للمتصفح:</strong> إذا توقف النظام عن فتح التابات تلقائياً، قم بالسماح بالنوافذ المنبثقة (Popups) من إعدادات المتصفح، أو استمر بالضغط على زر <strong>"افتح شات الطالب"</strong> الأخضر بشكل متتالي لمتابعة الإرسال بسرعة وسلاسة.
                     </div>
                   </div>
