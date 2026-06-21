@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Student, Session, Diploma, MessageTemplate } from '../types';
 import { parseTemplate, formatWhatsAppLink } from '../utils';
 import { calculateStudentDiplomaAttendance } from '../services/business';
@@ -14,7 +14,16 @@ import {
   HelpCircle,
   FileText,
   CheckCircle,
-  Search
+  Search,
+  Check,
+  X,
+  Users,
+  Play,
+  Pause,
+  SkipForward,
+  Sparkles,
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -25,296 +34,455 @@ interface WhatsAppAutomationProps {
   templates: MessageTemplate[];
 }
 
+interface QueueItem {
+  student: Student;
+  message: string;
+  phone: string;
+  status: 'pending' | 'opening' | 'success' | 'skipped';
+}
+
 export default function WhatsAppAutomation({
   students,
   sessions,
   diplomas,
   templates
 }: WhatsAppAutomationProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'absence' | 'low-attendance' | 'upcoming'>('absence');
+  // Tabs: 'absence' | 'class-reminder' | 'custom-message'
+  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message'>('absence');
 
-  // Search filter inside search boxes
+  // Search/Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDiplomaId, setSelectedDiplomaId] = useState(diplomas[0]?.id || '');
 
-  // 1. ABSENCE REMINDERS STATES
+  // 1️⃣ ABSENCE STATE
   const [selectedAbsenceSessionId, setSelectedAbsenceSessionId] = useState('');
-  const [selectedAbsenceStudentId, setSelectedAbsenceStudentId] = useState('');
   const [absenceTemplateId, setAbsenceTemplateId] = useState(templates[0]?.id || '');
   const [absenceCustomText, setAbsenceCustomText] = useState('');
+  const [selectedAbsenceStudents, setSelectedAbsenceStudents] = useState<Record<string, boolean>>({});
 
-  // 2. LOW ATTENDANCE STATES
-  const [selectedLowStudId, setSelectedLowStudId] = useState('');
-  const [selectedLowDipId, setSelectedLowDipId] = useState('');
-  const [lowTemplateId, setLowTemplateId] = useState(
-    templates.find((t) => t.id === 'ar-risk-alert')?.id || templates[2]?.id || ''
+  // 2️⃣ CLASS REMINDER STATE
+  const [reminderTemplateText, setReminderTemplateText] = useState(
+    'السلام عليكم {اسم_الطالب} 👋 نذكركم بمحاضرة دبلومة {اسم_الدبلومة} القادمة يوم {تاريخ_المحاضرة} الساعة {وقت_المحاضرة} ⏰. حضوركم واهتمامكم يسعدنا!'
   );
-  const [lowCustomText, setLowCustomText] = useState('');
+  const [selectedReminderSessionId, setSelectedReminderSessionId] = useState('');
+  const [selectedReminderStudents, setSelectedReminderStudents] = useState<Record<string, boolean>>({});
 
-  // 3. UPCOMING SESSION STATES
-  const [selectedUpcomingSessionId, setSelectedUpcomingSessionId] = useState('');
-  const [selectedUpcomingStudentId, setSelectedUpcomingStudentId] = useState('');
-  const [upcomingCustomText, setUpcomingCustomText] = useState('');
+  // 3️⃣ CUSTOM MESSAGE STATE
+  const [customMessageText, setCustomMessageText] = useState(
+    'السلام عليكم {اسم_الطالب}، نود إعلامكم بخصوص دبلومة {اسم_الدبلومة} أن...'
+  );
+  const [selectedCustomStudents, setSelectedCustomStudents] = useState<Record<string, boolean>>({});
 
-  // Past Sessions with registered Absences
-  const pastSessionsWithAbsence = useMemo(() => {
-    return sessions.filter((session) => {
-      return Object.values(session.attendance).some((record) => record.status === 'Absent');
-    });
+  // Cursor position tracker for Custom Message text area
+  const customTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+
+  // --- QUEUE MODAL STATES ---
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [queueIndex, setQueueIndex] = useState(0);
+  const [isQueueActive, setIsQueueActive] = useState(false);
+  const [isAutoSending, setIsAutoSending] = useState(false);
+  const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync selected diploma ID when it changes
+  useEffect(() => {
+    if (diplomas.length > 0 && !selectedDiplomaId) {
+      setSelectedDiplomaId(diplomas[0].id);
+    }
+  }, [diplomas, selectedDiplomaId]);
+
+  // ==========================================
+  // DATA FILTERING & COMPUTATIONS
+  // ==========================================
+
+  // Sessions that have at least one Absent student
+  const sessionsWithAbsences = useMemo(() => {
+    return sessions
+      .filter((session) => {
+        return Object.values(session.attendance || {}).some((record) => record.status === 'Absent');
+      })
+      .sort((a, b) => b.date.localeCompare(a.date)); // Newest first
   }, [sessions]);
 
-  // Set initial absence session on load
-  React.useEffect(() => {
-    if (pastSessionsWithAbsence.length > 0 && !selectedAbsenceSessionId) {
-      setSelectedAbsenceSessionId(pastSessionsWithAbsence[0].id);
+  // Set default absence session
+  useEffect(() => {
+    if (sessionsWithAbsences.length > 0 && !selectedAbsenceSessionId) {
+      setSelectedAbsenceSessionId(sessionsWithAbsences[0].id);
     }
-  }, [pastSessionsWithAbsence, selectedAbsenceSessionId]);
+  }, [sessionsWithAbsences, selectedAbsenceSessionId]);
 
-  // Students who were absent in selected session
-  const absentStudentsInSelectedSession = useMemo(() => {
+  // Students who were absent in the selected session
+  const absentStudents = useMemo(() => {
     if (!selectedAbsenceSessionId) return [];
-    const target = sessions.find((s) => s.id === selectedAbsenceSessionId);
-    if (!target) return [];
+    const targetSession = sessions.find((s) => s.id === selectedAbsenceSessionId);
+    if (!targetSession) return [];
 
     return students.filter((st) => {
-      const record = target.attendance[st.id];
+      const record = targetSession.attendance?.[st.id];
       return record && record.status === 'Absent';
     });
   }, [selectedAbsenceSessionId, sessions, students]);
 
-  // Reset student selection when session changes
-  React.useEffect(() => {
-    if (absentStudentsInSelectedSession.length > 0) {
-      setSelectedAbsenceStudentId(absentStudentsInSelectedSession[0].id);
-    } else {
-      setSelectedAbsenceStudentId('');
-    }
-  }, [absentStudentsInSelectedSession]);
-
-  // Compile parsed text for Absence Reminders
-  const computedAbsenceMessage = useMemo(() => {
-    if (!selectedAbsenceSessionId || !selectedAbsenceStudentId) return '';
-    const session = sessions.find((s) => s.id === selectedAbsenceSessionId);
-    const student = students.find((st) => st.id === selectedAbsenceStudentId);
-    const tpl = templates.find((t) => t.id === absenceTemplateId) || templates[0];
-    const diploma = diplomas.find((d) => d.id === session?.diplomaId);
-
-    if (!session || !student || !tpl) return '';
-
-    return parseTemplate(tpl.text, {
-      studentName: student.name,
-      parentName: student.parentName,
-      course: diploma?.name || 'برنامجنا الأكاديمي',
-      date: session.date
+  // Set all absent students to checked when session changes
+  useEffect(() => {
+    const nextChecked: Record<string, boolean> = {};
+    absentStudents.forEach((st) => {
+      nextChecked[st.id] = true;
     });
-  }, [selectedAbsenceSessionId, selectedAbsenceStudentId, absenceTemplateId, sessions, students, templates, diplomas]);
+    setSelectedAbsenceStudents(nextChecked);
+  }, [absentStudents]);
 
-  React.useEffect(() => {
-    if (computedAbsenceMessage) {
-      setAbsenceCustomText(computedAbsenceMessage);
+  // Selected absence template text pre-fill
+  useEffect(() => {
+    const selectedTpl = templates.find((t) => t.id === absenceTemplateId) || templates[0];
+    if (selectedTpl) {
+      setAbsenceCustomText(selectedTpl.text);
     }
-  }, [computedAbsenceMessage]);
+  }, [absenceTemplateId, templates]);
 
-  // 2. LOW ATTENDANCE RESOLVER
-  // Students at risk (attendance < 75%)
-  const atRiskStudentsList = useMemo(() => {
-    const list: { student: Student; diploma: Diploma; rate: number }[] = [];
+  // Upcoming scheduled sessions of the selected diploma
+  const upcomingSessions = useMemo(() => {
+    if (!selectedDiplomaId) return [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    return sessions
+      .filter((s) => s.diplomaId === selectedDiplomaId && s.date >= todayStr)
+      .sort((a, b) => a.date.localeCompare(b.date)); // Chronological order
+  }, [selectedDiplomaId, sessions]);
 
-    students.forEach((st) => {
-      st.diplomaIds.forEach((dipId) => {
-        const diploma = diplomas.find((d) => d.id === dipId);
-        if (diploma) {
-          const metrics = calculateStudentDiplomaAttendance(st, diploma, sessions);
-          if (metrics.isAtRisk && metrics.markedSessions > 0) {
-            list.push({
-              student: st,
-              diploma,
-              rate: metrics.rate
-            });
+  // Set default upcoming session
+  useEffect(() => {
+    if (upcomingSessions.length > 0) {
+      setSelectedReminderSessionId(upcomingSessions[0].id);
+    } else {
+      setSelectedReminderSessionId('');
+    }
+  }, [upcomingSessions]);
+
+  // Enrolled students in the selected diploma
+  const enrolledStudents = useMemo(() => {
+    if (!selectedDiplomaId) return [];
+    return students.filter((st) => st.diplomaIds.includes(selectedDiplomaId));
+  }, [selectedDiplomaId, students]);
+
+  // Set all enrolled students to checked when diploma changes (for reminder tab)
+  useEffect(() => {
+    const nextChecked: Record<string, boolean> = {};
+    enrolledStudents.forEach((st) => {
+      nextChecked[st.id] = true;
+    });
+    setSelectedReminderStudents(nextChecked);
+  }, [enrolledStudents]);
+
+  // Set all custom students list when active tab changes or query matches
+  const customFilteredStudents = useMemo(() => {
+    let list = enrolledStudents;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(st => st.name.toLowerCase().includes(q) || st.phone.includes(q));
+    }
+    return list;
+  }, [enrolledStudents, searchQuery]);
+
+  // Initialize checked custom students
+  useEffect(() => {
+    const nextChecked: Record<string, boolean> = {};
+    customFilteredStudents.forEach((st) => {
+      nextChecked[st.id] = true;
+    });
+    setSelectedCustomStudents(nextChecked);
+  }, [customFilteredStudents]);
+
+  // Calculate absence counts for students in this diploma
+  const studentAbsencesCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (!selectedDiplomaId) return map;
+
+    enrolledStudents.forEach((st) => {
+      let count = 0;
+      sessions.forEach((ses) => {
+        if (ses.diplomaId === selectedDiplomaId) {
+          const rec = ses.attendance?.[st.id];
+          if (rec && rec.status === 'Absent') {
+            count++;
           }
         }
       });
+      map[st.id] = count;
     });
+    return map;
+  }, [enrolledStudents, sessions, selectedDiplomaId]);
 
-    return list;
-  }, [students, diplomas, sessions]);
+  // Helper: compile individual message
+  const compileMessage = (templateText: string, student: Student, diploma?: Diploma, session?: Session) => {
+    const absenceCount = studentAbsencesCountMap[student.id] || 0;
+    
+    // Extrapolate date/time
+    const dateStr = session ? session.date : (upcomingSessions[0]?.date || new Date().toISOString().split('T')[0]);
+    const timeStr = session ? `${session.startTime} - ${session.endTime}` : (upcomingSessions[0] ? `${upcomingSessions[0].startTime} - ${upcomingSessions[0].endTime}` : '');
 
-  // Set initial selections for risk warning
-  React.useEffect(() => {
-    if (atRiskStudentsList.length > 0 && !selectedLowStudId) {
-      setSelectedLowStudId(atRiskStudentsList[0].student.id);
-      setSelectedLowDipId(atRiskStudentsList[0].diploma.id);
-    }
-  }, [atRiskStudentsList, selectedLowStudId]);
-
-  // Compile low attendance warn message
-  const computedLowMessage = useMemo(() => {
-    if (!selectedLowStudId || !selectedLowDipId) return '';
-    const student = students.find((st) => st.id === selectedLowStudId);
-    const diploma = diplomas.find((d) => d.id === selectedLowDipId);
-    const tpl = templates.find((t) => t.id === lowTemplateId) || templates[3] || templates[2];
-
-    if (!student || !diploma || !tpl) return '';
-
-    return parseTemplate(tpl.text, {
+    return parseTemplate(templateText, {
       studentName: student.name,
-      parentName: student.parentName,
-      course: diploma.name,
-      date: new Date().toISOString().split('T')[0]
+      parentName: student.parentName || 'ولي الأمر',
+      course: diploma?.name || 'الدبلومة الأكاديمية',
+      date: dateStr,
+      time: timeStr,
+      absenceCount: absenceCount
     });
-  }, [selectedLowStudId, selectedLowDipId, lowTemplateId, students, diplomas, templates]);
+  };
 
-  React.useEffect(() => {
-    if (computedLowMessage) {
-      setLowCustomText(computedLowMessage);
-    }
-  }, [computedLowMessage]);
+  // Clickable badge variable injection
+  const insertVariable = (tag: string) => {
+    const textArea = customTextAreaRef.current;
+    if (!textArea) return;
 
-  // 3. UPCOMING SESSIONS REMINDER
-  // Sessions with dates >= today (or upcoming list)
-  const upcomingSessionsList = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return sessions.filter((s) => s.date >= today);
-  }, [sessions]);
+    const start = selectionStart !== null ? selectionStart : textArea.selectionStart;
+    const end = textArea.selectionEnd;
+    const currentText = customMessageText;
 
-  React.useEffect(() => {
-    if (upcomingSessionsList.length > 0 && !selectedUpcomingSessionId) {
-      setSelectedUpcomingSessionId(upcomingSessionsList[0].id);
-    }
-  }, [upcomingSessionsList, selectedUpcomingSessionId]);
+    const before = currentText.substring(0, start);
+    const after = currentText.substring(end);
 
-  // Selected upcoming session students
-  const enrolledStudentsInUpcoming = useMemo(() => {
-    if (!selectedUpcomingSessionId) return [];
-    const ses = sessions.find((s) => s.id === selectedUpcomingSessionId);
-    if (!ses) return [];
+    const newText = before + tag + after;
+    setCustomMessageText(newText);
+    
+    // Focus back and set cursor position
+    setTimeout(() => {
+      textArea.focus();
+      const nextPos = start + tag.length;
+      textArea.setSelectionRange(nextPos, nextPos);
+      setSelectionStart(nextPos);
+    }, 50);
+  };
 
-    return students.filter((st) => st.diplomaIds.includes(ses.diplomaId));
-  }, [selectedUpcomingSessionId, sessions, students]);
+  // Track selection start in custom message textarea
+  const handleTextareaSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    setSelectionStart(e.currentTarget.selectionStart);
+  };
 
-  React.useEffect(() => {
-    if (enrolledStudentsInUpcoming.length > 0) {
-      setSelectedUpcomingStudentId(enrolledStudentsInUpcoming[0].id);
+  // ==========================================
+  // BULK SENDING QUEUE WORKFLOW
+  // ==========================================
+
+  const startBulkSend = (type: 'absence' | 'reminder' | 'custom') => {
+    let list: Student[] = [];
+    let templateText = '';
+    let diplomaObj = diplomas.find(d => d.id === selectedDiplomaId);
+    let sessionObj: Session | undefined = undefined;
+
+    if (type === 'absence') {
+      list = absentStudents.filter(st => selectedAbsenceStudents[st.id]);
+      templateText = absenceCustomText;
+      sessionObj = sessions.find(s => s.id === selectedAbsenceSessionId);
+      if (sessionObj) {
+        diplomaObj = diplomas.find(d => d.id === sessionObj?.diplomaId);
+      }
+    } else if (type === 'reminder') {
+      list = enrolledStudents.filter(st => selectedReminderStudents[st.id]);
+      templateText = reminderTemplateText;
+      sessionObj = sessions.find(s => s.id === selectedReminderSessionId);
     } else {
-      setSelectedUpcomingStudentId('');
+      list = customFilteredStudents.filter(st => selectedCustomStudents[st.id]);
+      templateText = customMessageText;
     }
-  }, [enrolledStudentsInUpcoming]);
 
-  // Compile Reminder text
-  const computedUpcomingMessage = useMemo(() => {
-    if (!selectedUpcomingSessionId || !selectedUpcomingStudentId) return '';
-    const session = sessions.find((s) => s.id === selectedUpcomingSessionId);
-    const student = students.find((st) => st.id === selectedUpcomingStudentId);
-    const diploma = diplomas.find((d) => d.id === session?.diplomaId);
-
-    if (!session || !student || !diploma) return '';
-
-    return `السلام عليكم سعادة ${student.parentName}، نود تذكيركم بموعد المحاضرة القادمة المسندة للطالب ${student.name} في مسار: ${diploma.name}.
-الموضوع: "${session.title}"
-المحاضر: ${session.instructor}
-التاريخ: ${session.date}
-الوقت: من الساعة ${session.startTime} حتى الساعة ${session.endTime}
-شاكرين ومقدرين اهتمامكم بحضور الطالب والمواظبة على الساعات التدريسية الأكاديمية!`;
-  }, [selectedUpcomingSessionId, selectedUpcomingStudentId, sessions, students, diplomas]);
-
-  React.useEffect(() => {
-    if (computedUpcomingMessage) {
-      setUpcomingCustomText(computedUpcomingMessage);
+    if (list.length === 0) {
+      alert('الرجاء اختيار طالب واحد على الأقل لإرسال الرسائل.');
+      return;
     }
-  }, [computedUpcomingMessage]);
+
+    // Build the queue
+    const queueItems: QueueItem[] = list.map(student => {
+      const finalMsg = compileMessage(templateText, student, diplomaObj, sessionObj);
+      return {
+        student,
+        message: finalMsg,
+        phone: student.phone,
+        status: 'pending'
+      };
+    });
+
+    setQueue(queueItems);
+    setQueueIndex(0);
+    setIsQueueActive(true);
+    setIsAutoSending(false); // Let the user control the start or start manually
+  };
+
+  const openWhatsAppLink = (item: QueueItem) => {
+    const url = formatWhatsAppLink(item.phone, item.message);
+    window.open(url, '_blank');
+  };
+
+  const processCurrentQueueItem = () => {
+    if (queueIndex >= queue.length) {
+      setIsAutoSending(false);
+      return;
+    }
+
+    // Update status
+    setQueue(prev => prev.map((item, idx) => {
+      if (idx === queueIndex) {
+        return { ...item, status: 'opening' };
+      }
+      return item;
+    }));
+
+    // Trigger open
+    const currentItem = queue[queueIndex];
+    openWhatsAppLink(currentItem);
+
+    // Update to success after short delay
+    setTimeout(() => {
+      setQueue(prev => prev.map((item, idx) => {
+        if (idx === queueIndex) {
+          return { ...item, status: 'success' };
+        }
+        return item;
+      }));
+
+      // Go to next item
+      const nextIdx = queueIndex + 1;
+      setQueueIndex(nextIdx);
+
+      if (nextIdx < queue.length && isAutoSending) {
+        // Schedule next automatic send
+        autoSendTimerRef.current = setTimeout(() => {
+          processCurrentQueueItem();
+        }, 1800); // 1.8 seconds delay
+      } else if (nextIdx >= queue.length) {
+        setIsAutoSending(false);
+      }
+    }, 600);
+  };
+
+  // Toggle Auto-Send Timer
+  useEffect(() => {
+    if (isAutoSending) {
+      processCurrentQueueItem();
+    } else {
+      if (autoSendTimerRef.current) {
+        clearTimeout(autoSendTimerRef.current);
+      }
+    }
+    return () => {
+      if (autoSendTimerRef.current) {
+        clearTimeout(autoSendTimerRef.current);
+      }
+    };
+  }, [isAutoSending]);
+
+  const handleSkipCurrent = () => {
+    setQueue(prev => prev.map((item, idx) => {
+      if (idx === queueIndex) {
+        return { ...item, status: 'skipped' };
+      }
+      return item;
+    }));
+    const nextIdx = queueIndex + 1;
+    setQueueIndex(nextIdx);
+    if (nextIdx >= queue.length) {
+      setIsAutoSending(false);
+    }
+  };
+
+  const closeQueueModal = () => {
+    setIsAutoSending(false);
+    setIsQueueActive(false);
+    if (autoSendTimerRef.current) {
+      clearTimeout(autoSendTimerRef.current);
+    }
+  };
 
   return (
-    <div className="space-y-4 text-right" id="whatsapp-automation-module" dir="rtl">
+    <div className="space-y-6 text-right select-text relative" id="whatsapp-automation-control-center" dir="rtl">
       
-      {/* Module Title Banner */}
-      <div className="border-b border-[#262626] pb-4">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-emerald-500" />
-          منظومة الأتمتة المتقدمة ومراسلات واتساب الأكاديمية (WhatsApp Automation Tools)
-        </h3>
-        <p className="text-xs text-zinc-400 font-sans mt-0.5">
-          صياغة وإطلاق التنبيهات وإشعارات حضور ومواظبة الطلاب لغرف الواتساب الخاصة بأولياء الأمور
-        </p>
+      {/* Upper Module Banner */}
+      <div className="bg-gradient-to-l from-emerald-950/20 via-zinc-950 to-zinc-950 p-5 rounded-2xl border border-zinc-900 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-base font-black text-white flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-emerald-400" />
+            أتمتة مراسلات الواتساب الذكية (WhatsApp Dispatcher)
+          </h2>
+          <p className="text-xs text-zinc-400 leading-relaxed font-sans">
+            أداة تسريع التواصل مع أولياء الأمور وتذكير الطلاب بالغياب أو الحضور بضغطة زر واحدة. تدعم الإرسال التلقائي واليدوي المتسلسل.
+          </p>
+        </div>
+
+        {/* Global Diploma Select Switch */}
+        <div className="flex items-center gap-2 bg-[#101010] border border-zinc-800 rounded-lg px-3 py-1.5 shrink-0 self-start md:self-center font-sans">
+          <span className="text-[11px] font-bold text-zinc-400">الدبلومة المستهدفة:</span>
+          <select
+            value={selectedDiplomaId}
+            onChange={(e) => setSelectedDiplomaId(e.target.value)}
+            className="bg-transparent text-xs text-indigo-400 font-black cursor-pointer focus:ring-0 outline-hidden"
+          >
+            {diplomas.map(d => (
+              <option key={d.id} value={d.id} className="bg-neutral-950 text-white">{d.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[#1F1F1F] text-xs font-semibold gap-2 select-none overflow-x-auto pb-px">
-        <button
-          onClick={() => {
-            setActiveSubTab('absence');
-            setSearchQuery('');
-          }}
-          className={`px-4 py-2.5 cursor-pointer border-b-2 transition-all shrink-0 flex items-center gap-2 ${
-            activeSubTab === 'absence'
-              ? 'border-emerald-500 text-emerald-400 bg-emerald-950/5'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          <Search className="w-3.5 h-3.5 text-rose-500" />
-          تذكيرات غياب الجلسات الفائتة
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveSubTab('low-attendance');
-            setSearchQuery('');
-          }}
-          className={`px-4 py-2.5 cursor-pointer border-b-2 transition-all shrink-0 flex items-center gap-2 ${
-            activeSubTab === 'low-attendance'
-              ? 'border-emerald-500 text-emerald-400 bg-emerald-950/5'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-          تنبيهات تدني نسبة الحضور (دون 75%)
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveSubTab('upcoming');
-            setSearchQuery('');
-          }}
-          className={`px-4 py-2.5 cursor-pointer border-b-2 transition-all shrink-0 flex items-center gap-2 ${
-            activeSubTab === 'upcoming'
-              ? 'border-emerald-500 text-emerald-400 bg-emerald-950/5'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5 text-indigo-500" />
-          إشعارات وتذكيرات اللقاءات القادمة
-        </button>
+      {/* Main Tabs Selection Row */}
+      <div className="flex border-b border-zinc-900 select-none overflow-x-auto gap-2 pb-px font-sans">
+        {[
+          { id: 'absence', label: 'متابعة الغائبين (Absence Tracking)', icon: Search, color: 'text-rose-500 bg-rose-500/5' },
+          { id: 'class-reminder', label: 'تذكير المحاضرة (Class Reminder)', icon: Clock, color: 'text-indigo-400 bg-indigo-500/5' },
+          { id: 'custom-message', label: 'رسالة خاصة (Custom Message)', icon: FileText, color: 'text-emerald-400 bg-emerald-500/5' }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isSelected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                setSearchQuery('');
+              }}
+              className={`px-4 py-3 cursor-pointer border-b-2 transition-all text-xs font-bold shrink-0 flex items-center gap-2 ${
+                isSelected
+                  ? 'border-emerald-500 text-emerald-400 ' + tab.color
+                  : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40'
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main Container Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1.5Packed font-sans">
+      {/* Main Screen Layout Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Control Panel Form (Width: 5 Cols) */}
-        <div className="lg:col-span-5 bg-[#0F0F0F] border border-[#232323] rounded-xl p-5 space-y-4 h-fit">
-          
-          {/* TAB 1: ABSENCE REMINDERS CONTROL */}
-          {activeSubTab === 'absence' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                  رصد غيابات المحاضرات المسجلة
-                </h4>
-                <p className="text-[11px] text-zinc-400 font-sans">
-                  فرز وتتبع الطلاب الذين غابوا عن أي محاضرة وإشعار ذويهم فوراً.
-                </p>
+        {/* ==========================================
+            TAB 1: ABSENCE TRACKING
+            ========================================== */}
+        {activeTab === 'absence' && (
+          <>
+            {/* Left controller: choose session & template */}
+            <div className="lg:col-span-5 bg-zinc-950/40 border border-zinc-900 rounded-xl p-5 space-y-5 h-fit">
+              <div className="border-b border-zinc-900 pb-3">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+                  رصد ومراسلة الغائبين
+                </span>
+                <span className="text-[10px] text-zinc-550 block mt-1 font-sans">
+                  اختر الجلسة لرؤية الطلاب الذين تغيبوا عنها وتجهيز خطابات أولياء الأمور تلقائياً.
+                </span>
               </div>
 
-              {/* Select Session */}
-              <div>
-                <label className="block text-xs text-zinc-400 font-semibold mb-1.5">اختر الجلسة المستهدفة بالغياب:</label>
+              {/* Session Picker */}
+              <div className="space-y-1.5 font-sans">
+                <label className="block text-xs text-zinc-400 font-semibold">المحاضرة / الجلسة المرصودة:</label>
                 <select
                   value={selectedAbsenceSessionId}
                   onChange={(e) => setSelectedAbsenceSessionId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] text-xs text-zinc-200 rounded outline-hidden cursor-pointer"
+                  className="w-full px-3 py-2.5 bg-[#07070A] border border-zinc-800 text-xs text-zinc-200 rounded-lg outline-hidden cursor-pointer"
                 >
-                  {pastSessionsWithAbsence.length === 0 ? (
-                    <option value="">-- لا توجد جلسات بها غيابات مرصودة --</option>
+                  {sessionsWithAbsences.length === 0 ? (
+                    <option value="">-- لا توجد محاضرات بها غيابات مسجلة --</option>
                   ) : (
-                    pastSessionsWithAbsence.map((ses) => (
+                    sessionsWithAbsences.map(ses => (
                       <option key={ses.id} value={ses.id}>
                         {ses.title} ({ses.date})
                       </option>
@@ -323,125 +491,177 @@ export default function WhatsAppAutomation({
                 </select>
               </div>
 
-              {/* Select Student of that session */}
-              <div>
-                <label className="block text-xs text-zinc-400 font-semibold mb-1.5">اختر الطالب المتغيب عن هذا اللقاء:</label>
-                <select
-                  value={selectedAbsenceStudentId}
-                  onChange={(e) => setSelectedAbsenceStudentId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] text-xs text-zinc-200 rounded outline-hidden cursor-pointer"
-                  disabled={absentStudentsInSelectedSession.length === 0}
-                >
-                  {absentStudentsInSelectedSession.length === 0 ? (
-                    <option value="">-- لا يوجد طلاب متغيبين في هذه الجلسة --</option>
-                  ) : (
-                    absentStudentsInSelectedSession.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name} (ولي الأمر: {st.parentName})
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              {/* Choose message template */}
-              <div>
-                <label className="block text-xs text-zinc-400 font-semibold mb-1.5">تحديد قالب الخطاب الودي لـ WhatsApp:</label>
+              {/* Template Picker */}
+              <div className="space-y-1.5 font-sans">
+                <label className="block text-xs text-zinc-400 font-semibold">قالب رسالة الغياب المقترح:</label>
                 <select
                   value={absenceTemplateId}
                   onChange={(e) => setAbsenceTemplateId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] text-xs text-zinc-200 rounded outline-hidden cursor-pointer"
+                  className="w-full px-3 py-2.5 bg-[#07070A] border border-zinc-800 text-xs text-zinc-200 rounded-lg outline-hidden cursor-pointer"
                 >
-                  {templates.slice(0, 3).map((tpl) => (
-                    <option key={tpl.id} value={tpl.id}>
-                      {tpl.name}
-                    </option>
+                  {templates.map(tpl => (
+                    <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
                   ))}
                 </select>
               </div>
-            </div>
-          )}
 
-          {/* TAB 2: LOW ATTENDANCE CONTROL */}
-          {activeSubTab === 'low-attendance' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  رصد الطلاب مهددي المسار (دون 75%)
-                </h4>
-                <p className="text-[11px] text-zinc-400 font-sans">
-                  الطلاب الذين تقل نسبة حضورهم الفعلي عن خط الأمان المعتمد.
-                </p>
-              </div>
-
-              {/* List of at risk students */}
-              <div>
-                <label className="block text-xs text-zinc-400 font-semibold mb-1.5">اختر الطالب في منطقة الخطر:</label>
-                <select
-                  value={`${selectedLowStudId}|${selectedLowDipId}`}
-                  onChange={(e) => {
-                    const [stId, dipId] = e.target.value.split('|');
-                    setSelectedLowStudId(stId);
-                    setSelectedLowDipId(dipId);
-                  }}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] text-xs text-zinc-200 rounded outline-hidden cursor-pointer"
-                >
-                  {atRiskStudentsList.length === 0 ? (
-                    <option value="">-- لا يوجد طلاب مؤهلين للمخاطر حالياً (الكل آمن 👍) --</option>
-                  ) : (
-                    atRiskStudentsList.map((item) => (
-                      <option key={`${item.student.id}-${item.diploma.id}`} value={`${item.student.id}|${item.diploma.id}`}>
-                        {item.student.name} ({item.diploma.name}) - نسبة: {item.rate}%
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              {/* Filter warning template */}
-              <div>
-                <label className="block text-xs text-zinc-400 font-semibold mb-1.5">قالب الإنذار الأكاديمي الحرج مسبقاً:</label>
-                <select
-                  value={lowTemplateId}
-                  onChange={(e) => setLowTemplateId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] text-xs text-zinc-200 rounded outline-hidden cursor-pointer"
-                >
-                  {templates.slice(2, 5).map((tpl) => (
-                    <option key={tpl.id} value={tpl.id}>
-                      {tpl.name}
-                    </option>
-                  ))}
-                </select>
+              {/* Custom message text box editor */}
+              <div className="space-y-1.5 font-sans">
+                <label className="block text-xs text-zinc-400 font-semibold">نص قالب الخطاب الودي الحالي:</label>
+                <textarea
+                  value={absenceCustomText}
+                  onChange={(e) => setAbsenceCustomText(e.target.value)}
+                  rows={6}
+                  className="w-full p-3 bg-[#07070A] border border-zinc-850 text-xs text-zinc-300 rounded-lg outline-hidden focus:border-indigo-500 leading-relaxed resize-none"
+                  placeholder="اكتب قالب رسالة الغياب هنا..."
+                />
+                <span className="text-[9px] text-zinc-500 leading-relaxed block">
+                  يمكنك استخدام المتغيرات مثل `{`{اسم_الطالب}`}` و `{`{اسم_الدبلومة}`}` و `{`{تاريخ_المحاضرة}`}` و `{`{عدد_الغياب}`}` ليتم استبدالها آلياً لكل طالب.
+                </span>
               </div>
             </div>
-          )}
 
-          {/* TAB 3: UPCOMING SESSIONS REMINDERS */}
-          {activeSubTab === 'upcoming' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  إرسال تذكيرات الجلسات المجدولة القادمة
-                </h4>
-                <p className="text-[11px] text-zinc-400 font-sans">
-                  توجيه تذكير ذكي وتفصيلي بالموعد، وموضوع الإلقاء، والمحاضر المسؤول.
-                </p>
+            {/* Right List: Absent students with preview */}
+            <div className="lg:col-span-7 bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                <div className="space-y-0.5">
+                  <h3 className="text-xs font-bold text-zinc-200">الطلاب الغائبون في المحاضرة المحددة</h3>
+                  <span className="text-[10px] text-zinc-500 font-sans block">
+                    عدد الطلاب: {absentStudents.length} طلاب غائبين
+                  </span>
+                </div>
+
+                {absentStudents.length > 0 && (
+                  <button
+                    onClick={() => startBulkSend('absence')}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 hover:text-white text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:shadow-emerald-600/10"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    فتح واتساب للغائبين المحددين ({Object.values(selectedAbsenceStudents).filter(Boolean).length})
+                  </button>
+                )}
               </div>
 
-              {/* Upcoming sessions */}
-              <div>
-                <label className="block text-xs text-zinc-400 font-semibold mb-1.5">اختر الجلسة القادمة:</label>
+              {/* Selection controller */}
+              {absentStudents.length > 0 && (
+                <div className="flex items-center gap-3 text-[10px] text-zinc-450 font-sans select-none border-b border-zinc-950 pb-2">
+                  <button
+                    onClick={() => {
+                      const checked: Record<string, boolean> = {};
+                      absentStudents.forEach(s => checked[s.id] = true);
+                      setSelectedAbsenceStudents(checked);
+                    }}
+                    className="hover:text-indigo-400 cursor-pointer"
+                  >
+                    تحديد الكل
+                  </button>
+                  <span className="text-zinc-700">|</span>
+                  <button
+                    onClick={() => setSelectedAbsenceStudents({})}
+                    className="hover:text-rose-400 cursor-pointer"
+                  >
+                    إلغاء التحديد
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {absentStudents.map((st) => {
+                  const isChecked = !!selectedAbsenceStudents[st.id];
+                  const parsedMsg = compileMessage(
+                    absenceCustomText,
+                    st,
+                    diplomas.find(d => d.id === selectedDiplomaId),
+                    sessions.find(s => s.id === selectedAbsenceSessionId)
+                  );
+                  return (
+                    <div
+                      key={`abs-st-${st.id}`}
+                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${
+                        isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            setSelectedAbsenceStudents(prev => ({
+                              ...prev,
+                              [st.id]: e.target.checked
+                            }));
+                          }}
+                          className="mt-1 w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 focus:ring-offset-0 cursor-pointer shrink-0"
+                        />
+                        <div className="space-y-1.5 flex-1 font-sans">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">{st.name}</span>
+                            <span className="text-[9px] bg-rose-955 text-rose-400 border border-rose-900/30 px-2 py-0.5 rounded">
+                              غائب 🔴
+                            </span>
+                            <span className="text-[9px] text-zinc-500 font-mono">
+                              الهاتف: {st.phone}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 bg-neutral-950 p-2 border border-zinc-900/40 rounded leading-relaxed">
+                            {parsedMsg}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const url = formatWhatsAppLink(st.phone, parsedMsg);
+                          window.open(url, '_blank');
+                        }}
+                        className="px-3 py-2 bg-zinc-900 hover:bg-emerald-950/20 border border-zinc-800 hover:border-emerald-900/30 text-zinc-300 hover:text-emerald-400 transition-colors rounded-lg text-[10px] font-bold cursor-pointer shrink-0 self-end sm:self-center flex items-center gap-1"
+                      >
+                        <Send className="w-3 h-3" />
+                        إرسال مفرد
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {absentStudents.length === 0 && (
+                  <div className="p-12 text-center text-zinc-650 bg-neutral-950/20 border border-dashed border-zinc-900 rounded-xl font-sans text-xs">
+                    لم يتم العثور على طلاب غائبين في الجلسة المحددة، أو لا توجد جلسات بها غيابات مرصودة حالياً.
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ==========================================
+            TAB 2: CLASS REMINDER
+            ========================================== */}
+        {activeTab === 'class-reminder' && (
+          <>
+            {/* Left side: upcoming session selection and message text */}
+            <div className="lg:col-span-5 bg-zinc-950/40 border border-zinc-900 rounded-xl p-5 space-y-5 h-fit">
+              <div className="border-b border-zinc-900 pb-3">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0 animate-pulse" />
+                  جدولة تذكيرات المحاضرات القادمة
+                </span>
+                <span className="text-[10px] text-zinc-550 block mt-1 font-sans">
+                  إرسال تذكير للطلاب بالموعد والوقت المخطط للمحاضرات المستقبلية.
+                </span>
+              </div>
+
+              {/* Upcoming Session Selector */}
+              <div className="space-y-1.5 font-sans">
+                <label className="block text-xs text-zinc-400 font-semibold">المحاضرة القادمة المرتقبة:</label>
                 <select
-                  value={selectedUpcomingSessionId}
-                  onChange={(e) => setSelectedUpcomingSessionId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] text-xs text-zinc-200 rounded outline-hidden cursor-pointer"
+                  value={selectedReminderSessionId}
+                  onChange={(e) => setSelectedReminderSessionId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-[#07070A] border border-zinc-800 text-xs text-zinc-200 rounded-lg outline-hidden cursor-pointer"
                 >
-                  {upcomingSessionsList.length === 0 ? (
-                    <option value="">-- لا توجد جلسات مستقبلية مضافة حالياً --</option>
+                  {upcomingSessions.length === 0 ? (
+                    <option value="">-- لا توجد محاضرات قادمة مجدولة --</option>
                   ) : (
-                    upcomingSessionsList.map((ses) => (
+                    upcomingSessions.map(ses => (
                       <option key={ses.id} value={ses.id}>
                         {ses.title} ({ses.date})
                       </option>
@@ -450,128 +670,453 @@ export default function WhatsAppAutomation({
                 </select>
               </div>
 
-              {/* Student picker enrolled in that tomorrow session */}
-              <div>
-                <label className="block text-xs text-zinc-400 font-semibold mb-1.5">اختر الطالب المستحق للإبلاغ:</label>
-                <select
-                  value={selectedUpcomingStudentId}
-                  onChange={(e) => setSelectedUpcomingStudentId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] text-xs text-zinc-200 rounded outline-hidden cursor-pointer"
-                  disabled={enrolledStudentsInUpcoming.length === 0}
-                >
-                  {enrolledStudentsInUpcoming.length === 0 ? (
-                    <option value="">-- لا يوجد طلاب مسجلون بالبرنامج لموازاة هذا اللقاء --</option>
-                  ) : (
-                    enrolledStudentsInUpcoming.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name} (رقم الهاتف: {st.phone})
-                      </option>
-                    ))
-                  )}
-                </select>
+              {/* Custom message text box editor */}
+              <div className="space-y-1.5 font-sans">
+                <label className="block text-xs text-zinc-400 font-semibold">قالب التذكير الذكي للمحاضرة:</label>
+                <textarea
+                  value={reminderTemplateText}
+                  onChange={(e) => setReminderTemplateText(e.target.value)}
+                  rows={6}
+                  className="w-full p-3 bg-[#07070A] border border-zinc-850 text-xs text-zinc-300 rounded-lg outline-hidden focus:border-indigo-500 leading-relaxed"
+                  placeholder="اكتب قالب التذكير هنا..."
+                />
+                <span className="text-[9px] text-zinc-500 leading-relaxed block">
+                  يدعم المتغيرات: `{`{اسم_الطالب}`}`، `{`{اسم_الدبلومة}`}`، `{`{تاريخ_المحاضرة}`}`، `{`{وقت_المحاضرة}`}`.
+                </span>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Right Preview Output Console (Width: 7 Cols) */}
-        <div className="lg:col-span-7 bg-[#0F0F0F] border border-[#232323] rounded-xl p-5 flex flex-col justify-between space-y-4">
-          
-          <div className="space-y-4 h-full flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest block font-mono bg-emerald-950/25 border border-emerald-900/30 px-3 py-1.5 rounded h-fit">
-                معاينة الخطاب التدريجي التلقائي وتفريغ المتغيرات:
-              </span>
+            {/* Right side: Enrolled students list */}
+            <div className="lg:col-span-7 bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                <div className="space-y-0.5">
+                  <h3 className="text-xs font-bold text-zinc-200">الطلاب المسجلين بالدبلومة</h3>
+                  <span className="text-[10px] text-zinc-500 font-sans block">
+                    سيتم إرسال تذكير باللقاء القادم إلى {enrolledStudents.length} طلاب مسجلين.
+                  </span>
+                </div>
 
-              {/* Preview Content Area */}
-              <div className="space-y-3">
+                {enrolledStudents.length > 0 && (
+                  <button
+                    onClick={() => startBulkSend('reminder')}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 hover:text-white text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:shadow-emerald-600/10"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    إرسال التذكيرات للمحددين ({Object.values(selectedReminderStudents).filter(Boolean).length})
+                  </button>
+                )}
+              </div>
+
+              {/* Selection togglers */}
+              {enrolledStudents.length > 0 && (
+                <div className="flex items-center gap-3 text-[10px] text-zinc-450 font-sans select-none border-b border-zinc-950 pb-2">
+                  <button
+                    onClick={() => {
+                      const checked: Record<string, boolean> = {};
+                      enrolledStudents.forEach(s => checked[s.id] = true);
+                      setSelectedReminderStudents(checked);
+                    }}
+                    className="hover:text-indigo-400 cursor-pointer"
+                  >
+                    تحديد الكل
+                  </button>
+                  <span className="text-zinc-700">|</span>
+                  <button
+                    onClick={() => setSelectedReminderStudents({})}
+                    className="hover:text-rose-400 cursor-pointer"
+                  >
+                    إلغاء التحديد
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {enrolledStudents.map((st) => {
+                  const isChecked = !!selectedReminderStudents[st.id];
+                  const parsedMsg = compileMessage(
+                    reminderTemplateText,
+                    st,
+                    diplomas.find(d => d.id === selectedDiplomaId),
+                    sessions.find(s => s.id === selectedReminderSessionId)
+                  );
+                  return (
+                    <div
+                      key={`rem-st-${st.id}`}
+                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${
+                        isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            setSelectedReminderStudents(prev => ({
+                              ...prev,
+                              [st.id]: e.target.checked
+                            }));
+                          }}
+                          className="mt-1 w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 focus:ring-offset-0 cursor-pointer shrink-0"
+                        />
+                        <div className="space-y-1.5 flex-1 font-sans">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">{st.name}</span>
+                            <span className="text-[9px] text-zinc-555 font-mono">
+                              هاتف: {st.phone}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 bg-neutral-950 p-2 border border-zinc-900/40 rounded leading-relaxed">
+                            {parsedMsg}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const url = formatWhatsAppLink(st.phone, parsedMsg);
+                          window.open(url, '_blank');
+                        }}
+                        className="px-3 py-2 bg-zinc-900 hover:bg-emerald-950/20 border border-zinc-800 hover:border-emerald-900/30 text-zinc-300 hover:text-emerald-400 transition-colors rounded-lg text-[10px] font-bold cursor-pointer shrink-0 self-end sm:self-center flex items-center gap-1"
+                      >
+                        <Send className="w-3 h-3" />
+                        إرسال مفرد
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {enrolledStudents.length === 0 && (
+                  <div className="p-12 text-center text-zinc-650 bg-neutral-950/20 border border-dashed border-zinc-900 rounded-xl font-sans text-xs">
+                    لا يوجد طلاب مسجلون بهذه الدبلومة لإشعارهم.
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ==========================================
+            TAB 3: CUSTOM MESSAGES
+            ========================================== */}
+        {activeTab === 'custom-message' && (
+          <>
+            {/* Left side: Custom Message Text Area with smart variables */}
+            <div className="lg:col-span-5 bg-zinc-950/40 border border-zinc-900 rounded-xl p-5 space-y-5 h-fit">
+              <div className="border-b border-zinc-900 pb-3">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                  مراسلة خاصة مخصّصة للطلاب
+                </span>
+                <span className="text-[10px] text-zinc-550 block mt-1 font-sans">
+                  اكتب رسالتك الخاصة للطلاب المحددّين. اضغط على المتغيرات الذكية بالأسفل لإضافتها في الرسالة.
+                </span>
+              </div>
+
+              {/* Textarea for typing */}
+              <div className="space-y-2 font-sans">
+                <label className="block text-xs text-zinc-400 font-semibold">نص الرسالة الخاصة:</label>
                 <textarea
-                  value={
-                    activeSubTab === 'absence'
-                      ? absenceCustomText
-                      : activeSubTab === 'low-attendance'
-                      ? lowCustomText
-                      : upcomingCustomText
-                  }
-                  onChange={(e) => {
-                    if (activeSubTab === 'absence') setAbsenceCustomText(e.target.value);
-                    else if (activeSubTab === 'low-attendance') setLowCustomText(e.target.value);
-                    else setUpcomingCustomText(e.target.value);
-                  }}
+                  ref={customTextAreaRef}
+                  value={customMessageText}
+                  onChange={(e) => setCustomMessageText(e.target.value)}
+                  onSelect={handleTextareaSelect}
                   rows={8}
-                  className="w-full p-4 bg-[#0A0A0A] border border-[#1f1f1f] text-xs font-sans text-zinc-100 rounded-lg outline-hidden focus:border-emerald-500 leading-relaxed text-right resize-none placeholder-zinc-850"
-                  placeholder="اختر طالباً وجلسة في القائمة الجانبية لتفريغ وإنشاء المحتوى تلقائياً هنا في لوحة المعاينة..."
+                  className="w-full p-3 bg-[#07070A] border border-zinc-850 text-xs text-zinc-300 rounded-lg outline-hidden focus:border-emerald-500 leading-relaxed"
+                  placeholder="اكتب رسالتك هنا..."
                 />
               </div>
-            </div>
 
-            {/* Recipient Details & Dispatch Actions */}
-            <div className="border-t border-[#1F1F1F] pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 select-none">
-              
-              <div className="text-[11px] text-zinc-400 space-y-0.5 font-sans">
-                {activeSubTab === 'absence' && selectedAbsenceStudentId && (
-                  <>
-                    <span className="block">المستفيد: <strong className="text-zinc-200">{students.find(s => s.id === selectedAbsenceStudentId)?.name}</strong></span>
-                    <span className="block">هاتف الواتساب: <strong className="text-zinc-300 font-mono">{students.find(s => s.id === selectedAbsenceStudentId)?.phone}</strong></span>
-                  </>
-                )}
-
-                {activeSubTab === 'low-attendance' && selectedLowStudId && (
-                  <>
-                    <span className="block">المستفيد: <strong className="text-zinc-200">{students.find(s => s.id === selectedLowStudId)?.name}</strong></span>
-                    <span className="block">هاتف الواتساب: <strong className="text-zinc-300 font-mono">{students.find(s => s.id === selectedLowStudId)?.phone}</strong></span>
-                  </>
-                )}
-
-                {activeSubTab === 'upcoming' && selectedUpcomingStudentId && (
-                  <>
-                    <span className="block">المستفيد: <strong className="text-zinc-200">{students.find(s => s.id === selectedUpcomingStudentId)?.name}</strong></span>
-                    <span className="block">هاتف الواتساب: <strong className="text-zinc-300 font-mono">{students.find(s => s.id === selectedUpcomingStudentId)?.phone}</strong></span>
-                  </>
-                )}
-              </div>
-
-              {/* Launcher anchor */}
-              <div>
-                {((activeSubTab === 'absence' && selectedAbsenceStudentId) ||
-                  (activeSubTab === 'low-attendance' && selectedLowStudId) ||
-                  (activeSubTab === 'upcoming' && selectedUpcomingStudentId)) ? (
-                    <a
-                      href={formatWhatsAppLink(
-                        activeSubTab === 'absence'
-                          ? students.find(s => s.id === selectedAbsenceStudentId)?.phone || ''
-                          : activeSubTab === 'low-attendance'
-                          ? students.find(s => s.id === selectedLowStudId)?.phone || ''
-                          : students.find(s => s.id === selectedUpcomingStudentId)?.phone || '',
-                        activeSubTab === 'absence'
-                          ? absenceCustomText
-                          : activeSubTab === 'low-attendance'
-                          ? lowCustomText
-                          : upcomingCustomText
-                      )}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 hover:text-white text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0 shadow-lg active:scale-95"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      إرسال وتوجيه عبر WhatsApp Web/App
-                      <ExternalLink className="w-3 h-3 text-emerald-250" />
-                    </a>
-                  ) : (
+              {/* Interactive Smart Tags */}
+              <div className="space-y-2 font-sans">
+                <label className="block text-[10px] text-zinc-500 font-bold uppercase tracking-wider">اضغط لإضافة متغير ذكي:</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { tag: '{اسم_الطالب}', label: 'اسم الطالب 👤' },
+                    { tag: '{اسم_الدبلومة}', label: 'اسم الدبلوم 📘' },
+                    { tag: '{تاريخ_المحاضرة}', label: 'تاريخ المحاضرة 📅' },
+                    { tag: '{وقت_المحاضرة}', label: 'وقت المحاضرة ⏰' },
+                    { tag: '{عدد_الغياب}', label: 'عدد الغيابات 🔴' }
+                  ].map(v => (
                     <button
-                      disabled
-                      className="px-4 py-2 bg-zinc-800 text-zinc-500 text-xs font-bold rounded-lg cursor-not-allowed"
+                      key={v.tag}
+                      onClick={() => insertVariable(v.tag)}
+                      className="px-2.5 py-1 bg-zinc-900 hover:bg-[#1a1a24] border border-zinc-800 hover:border-indigo-900/40 text-indigo-300 hover:text-indigo-250 transition-all rounded text-[10px] font-bold cursor-pointer font-sans"
                     >
-                      الرجاء ملء المتغيرات للتصدير
+                      {v.label}
                     </button>
-                  )}
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right list: Checkbox selection of students */}
+            <div className="lg:col-span-7 bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-900 pb-3">
+                <div className="space-y-1 w-full max-w-xs relative font-sans">
+                  {/* Search box */}
+                  <Search className="w-3.5 h-3.5 text-zinc-500 absolute right-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="ابحث عن طالب بالاسم أو الهاتف..."
+                    className="w-full pl-3 pr-8 py-1.5 bg-[#07070A] border border-zinc-850 text-xs text-zinc-300 rounded-lg outline-hidden focus:border-zinc-700"
+                  />
+                </div>
+
+                {customFilteredStudents.length > 0 && (
+                  <button
+                    onClick={() => startBulkSend('custom')}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 hover:text-white text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:shadow-emerald-600/10 shrink-0"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    إرسال الرسالة الخاصة للمحددين ({Object.values(selectedCustomStudents).filter(Boolean).length})
+                  </button>
+                )}
               </div>
 
-            </div>
-          </div>
-        </div>
+              {/* Selection actions */}
+              {customFilteredStudents.length > 0 && (
+                <div className="flex items-center gap-3 text-[10px] text-zinc-450 font-sans select-none border-b border-zinc-950 pb-2">
+                  <button
+                    onClick={() => {
+                      const checked: Record<string, boolean> = {};
+                      customFilteredStudents.forEach(s => checked[s.id] = true);
+                      setSelectedCustomStudents(checked);
+                    }}
+                    className="hover:text-indigo-400 cursor-pointer"
+                  >
+                    تحديد الكل
+                  </button>
+                  <span className="text-zinc-700">|</span>
+                  <button
+                    onClick={() => setSelectedCustomStudents({})}
+                    className="hover:text-rose-400 cursor-pointer"
+                  >
+                    إلغاء التحديد
+                  </button>
+                </div>
+              )}
 
+              {/* Student list */}
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {customFilteredStudents.map((st) => {
+                  const isChecked = !!selectedCustomStudents[st.id];
+                  const parsedMsg = compileMessage(
+                    customMessageText,
+                    st,
+                    diplomas.find(d => d.id === selectedDiplomaId)
+                  );
+                  return (
+                    <div
+                      key={`cust-st-${st.id}`}
+                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${
+                        isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            setSelectedCustomStudents(prev => ({
+                              ...prev,
+                              [st.id]: e.target.checked
+                            }));
+                          }}
+                          className="mt-1 w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 focus:ring-offset-0 cursor-pointer shrink-0"
+                        />
+                        <div className="space-y-1.5 flex-1 font-sans">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">{st.name}</span>
+                            <span className="text-[9px] text-zinc-555 font-mono">
+                              هاتف: {st.phone}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 bg-neutral-950 p-2 border border-zinc-900/40 rounded leading-relaxed">
+                            {parsedMsg}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const url = formatWhatsAppLink(st.phone, parsedMsg);
+                          window.open(url, '_blank');
+                        }}
+                        className="px-3 py-2 bg-zinc-900 hover:bg-emerald-950/20 border border-zinc-800 hover:border-emerald-900/30 text-zinc-300 hover:text-emerald-400 transition-colors rounded-lg text-[10px] font-bold cursor-pointer shrink-0 self-end sm:self-center flex items-center gap-1"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        إرسال مفرد
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {customFilteredStudents.length === 0 && (
+                  <div className="p-12 text-center text-zinc-650 bg-neutral-950/20 border border-dashed border-zinc-900 rounded-xl font-sans text-xs">
+                    لا يوجد طلاب يطابقون شروط البحث أو مسجلين بهذه الدبلومة.
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* ==========================================
+          MODAL: BULK DISPATCH QUEUE SYSTEM
+          ========================================== */}
+      <AnimatePresence>
+        {isQueueActive && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs text-right" dir="rtl">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="bg-[#0B0B0E] border border-zinc-850 rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl"
+            >
+              
+              {/* Header */}
+              <div className="p-5 border-b border-zinc-900 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <RefreshCw className={`w-4 h-4 text-emerald-450 ${isAutoSending ? 'animate-spin' : ''}`} />
+                    مُعالج الإرسال الجماعي النشط
+                  </h3>
+                  <p className="text-[10px] text-zinc-400 mt-0.5 font-sans">
+                    يتم تحضير وفتح محادثات الطلاب متتالياً. يرجى تفعيل السماح بالنوافذ المنبثقة (Popups).
+                  </p>
+                </div>
+                <button
+                  onClick={closeQueueModal}
+                  className="p-1 text-zinc-500 hover:text-zinc-350 hover:bg-zinc-900 rounded transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Progress Panel */}
+              <div className="p-6 space-y-6 font-sans">
+                
+                {/* Stats Bar */}
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 bg-zinc-950/40 border border-zinc-900 rounded-xl">
+                    <span className="block text-[10px] text-zinc-500">تم الفتح بنجاح:</span>
+                    <span className="text-lg font-black text-emerald-400 font-mono block mt-0.5">
+                      {queue.filter(q => q.status === 'success').length} / {queue.length}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-zinc-950/40 border border-zinc-900 rounded-xl">
+                    <span className="block text-[10px] text-zinc-500">مستبعد (تخطي):</span>
+                    <span className="text-lg font-black text-amber-500 font-mono block mt-0.5">
+                      {queue.filter(q => q.status === 'skipped').length}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-zinc-950/40 border border-zinc-900 rounded-xl">
+                    <span className="block text-[10px] text-zinc-500">متبقي بالصف:</span>
+                    <span className="text-lg font-black text-indigo-400 font-mono block mt-0.5">
+                      {queue.filter(q => q.status === 'pending').length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Main Progress Bar */}
+                <div className="space-y-2">
+                  <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300"
+                      style={{ width: `${(queue.filter(q => q.status === 'success' || q.status === 'skipped').length / queue.length) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                    <span>نسبة المنجز: {Math.round((queue.filter(q => q.status === 'success' || q.status === 'skipped').length / queue.length) * 100)}%</span>
+                    <span>الخطوة الحالية: {queueIndex + 1} من {queue.length}</span>
+                  </div>
+                </div>
+
+                {/* Current Student Preview Card */}
+                {queueIndex < queue.length ? (
+                  <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between border-b border-zinc-900/60 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-xs font-bold text-white">تحضير مراسلة: {queue[queueIndex].student.name}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">{queue[queueIndex].phone}</span>
+                    </div>
+
+                    <p className="text-[11px] text-zinc-350 leading-relaxed text-right bg-[#050508] p-3 border border-zinc-900/50 rounded max-h-[120px] overflow-y-auto">
+                      {queue[queueIndex].message}
+                    </p>
+
+                    {/* Controller Triggers */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-zinc-900/50">
+                      
+                      {/* Left: Auto Send Switch */}
+                      <label className="flex items-center gap-2 text-xs font-semibold text-zinc-400 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isAutoSending}
+                          onChange={(e) => setIsAutoSending(e.target.checked)}
+                          className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
+                        />
+                        <span>تشغيل الإرسال التلقائي المستمر (فاصل 1.8 ثانية)</span>
+                      </label>
+
+                      {/* Right: Manual Actions */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button
+                          onClick={handleSkipCurrent}
+                          className="flex-1 sm:flex-none px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <SkipForward className="w-3.5 h-3.5" />
+                          تخطي
+                        </button>
+                        
+                        <button
+                          onClick={processCurrentQueueItem}
+                          className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-700/10 flex items-center justify-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          افتح شات الطالب 📱
+                        </button>
+                      </div>
+
+                    </div>
+
+                    {/* Popup Blocker Notice */}
+                    <div className="p-3 bg-amber-950/20 border border-amber-900/30 rounded-lg text-[10px] text-amber-400 leading-relaxed font-sans text-right">
+                      ⚠️ <strong>ملاحظة للمتصفح:</strong> إذا توقف النظام عن فتح التابات تلقائياً، قم بالسماح بالنوافذ المنبثقة (Popups) من إعدادات المتصفح، أو استمر بالضغط على زر <strong>"افتح شات الطالب"</strong> الأخضر بشكل متتالي لمتابعة الإرسال بسرعة وسلاسة.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center bg-emerald-950/10 border border-emerald-900/20 rounded-xl space-y-2">
+                    <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto" />
+                    <h4 className="text-xs font-bold text-white">اكتمل إرسال جميع الرسائل بنجاح!</h4>
+                    <p className="text-[10px] text-zinc-400 font-sans">
+                      تم المرور على جميع الطلاب وتوجيههم لغرف الواتساب الخاصة بهم.
+                    </p>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-zinc-900 flex items-center justify-end bg-zinc-950/25">
+                <button
+                  onClick={closeQueueModal}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-lg text-xs cursor-pointer transition-colors"
+                >
+                  إغلاق نافذة العمليات
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

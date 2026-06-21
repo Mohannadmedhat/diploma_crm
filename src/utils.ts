@@ -107,21 +107,35 @@ export function formatHumanDate(dateStr: string): string {
 }
 
 // Replace placeholders in a message template
-interface ReplacementParams {
+export interface ReplacementParams {
   studentName: string;
   parentName: string;
   course: string;
   date: string;
+  time?: string;
+  absenceCount?: number;
 }
 
 export function parseTemplate(templateText: string, params: ReplacementParams): string {
   let text = templateText;
+  const formattedDate = params.date ? formatHumanDate(params.date) : '';
   
-  // Clean substitution
-  text = text.replace(/{studentName}/g, params.studentName || 'the student');
-  text = text.replace(/{parentName}/g, params.parentName || 'Guardian');
-  text = text.replace(/{course}/g, params.course || 'the registered course');
-  text = text.replace(/{date}/g, formatHumanDate(params.date));
+  // English keys
+  text = text.replace(/{studentName}/g, params.studentName || '');
+  text = text.replace(/{parentName}/g, params.parentName || '');
+  text = text.replace(/{course}/g, params.course || '');
+  text = text.replace(/{date}/g, formattedDate);
+  
+  // Arabic keys (from approved plan)
+  text = text.replace(/{اسم_الطالب}/g, params.studentName || '');
+  text = text.replace(/{اسم}/g, params.studentName || '');
+  text = text.replace(/{اسم_الدبلومة}/g, params.course || '');
+  text = text.replace(/{دبلومة}/g, params.course || '');
+  text = text.replace(/{تاريخ_المحاضرة}/g, formattedDate);
+  text = text.replace(/{تاريخ}/g, formattedDate);
+  text = text.replace(/{وقت_المحاضرة}/g, params.time || '');
+  text = text.replace(/{الوقت}/g, params.time || '');
+  text = text.replace(/{عدد_الغياب}/g, String(params.absenceCount ?? 0));
   
   return text;
 }

@@ -20,7 +20,8 @@ import {
   RefreshCw,
   FileSpreadsheet,
   Link2,
-  Play
+  Play,
+  MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -417,6 +418,28 @@ export default function SessionManager({
     };
 
     onSaveSession(updatedSession);
+  };
+
+  const handleQuickAttendanceWhatsApp = (st: Student, status: AttendanceStatus, sessionDate: string, diplomaId: string) => {
+    const diploma = diplomas.find(d => d.id === diplomaId);
+    if (!diploma) return;
+
+    let msg = '';
+    const parent = st.parentName || 'ولي الأمر';
+    if (status === 'Absent') {
+      msg = `السلام عليكم سعادة ${parent}، نود إحاطتكم بغياب الطالب ${st.name} عن المحاضرة التعليمية لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نأمل حث الطالب على المواظبة ومراجعة التسجيل لتعويض ما فاته. شاكرين تعاونكم!`;
+    } else if (status === 'Excused') {
+      msg = `السلام عليكم سعادة ${parent}، تم تسجيل غياب الطالب ${st.name} بعذر عن المحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نتمنى له السلامة والتوفيق!`;
+    } else {
+      msg = `السلام عليكم سعادة ${parent}، نشكركم على مواظبة وحضور الطالب ${st.name} للمحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. تقديرنا لاهتمامكم!`;
+    }
+    
+    let cleanedPhone = st.phone.replace(/[\s\+\-]/g, '');
+    if (cleanedPhone.startsWith('0')) {
+      cleanedPhone = '966' + cleanedPhone.substring(1);
+    }
+    const apiLink = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodeURIComponent(msg)}`;
+    window.open(apiLink, '_blank');
   };
 
   const handleDelete = (id: string, label: string) => {
@@ -889,8 +912,18 @@ export default function SessionManager({
                                 >
                                   {/* Student Name */}
                                   <div>
-                                    <span className="text-xs font-semibold text-zinc-150 block">{st.name}</span>
-                                    <span className="text-[10px] text-zinc-500 block">ولي الأمر: {st.parentName} | {st.phone}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-zinc-150 block">{st.name}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuickAttendanceWhatsApp(st, record.status, session.date, session.diplomaId)}
+                                        className="p-1 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-950/30 rounded-lg transition-colors cursor-pointer select-none"
+                                        title="تواصل سريع بخصوص المحاضرة"
+                                      >
+                                        <MessageCircle className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                    <span className="text-[10px] text-zinc-500 block font-sans">ولي الأمر: {st.parentName} | {st.phone}</span>
                                   </div>
 
                                   {/* Right side controls */}

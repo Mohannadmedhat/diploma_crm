@@ -234,6 +234,30 @@ export default function DiplomaWorkspace({
     window.open(apiLink, '_blank');
   };
 
+  const handleQuickAttendanceWhatsApp = (st: Student, status: string, sessionDate: string) => {
+    let msg = '';
+    const parent = st.parentName || 'ولي الأمر';
+    if (status === 'Absent') {
+      msg = `السلام عليكم سعادة ${parent}، نود إحاطتكم بغياب الطالب ${st.name} عن المحاضرة التعليمية لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نأمل حث الطالب على المواظبة ومراجعة التسجيل لتعويض ما فاته. شاكرين تعاونكم!`;
+    } else if (status === 'Excused') {
+      msg = `السلام عليكم سعادة ${parent}، تم تسجيل غياب الطالب ${st.name} بعذر عن المحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نتمنى له السلامة والتوفيق!`;
+    } else {
+      msg = `السلام عليكم سعادة ${parent}، نشكركم على مواظبة وحضور الطالب ${st.name} للمحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. تقديرنا لاهتمامكم!`;
+    }
+    
+    let cleanedPhone = st.phone.replace(/[\s\+\-]/g, '');
+    if (cleanedPhone.startsWith('0')) {
+      cleanedPhone = '966' + cleanedPhone.substring(1);
+    }
+    const apiLink = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodeURIComponent(msg)}`;
+    
+    setSendLogs(prev => [
+      { name: st.name, status: `تحضير سريع (${status === 'Absent' ? 'غياب' : 'حضور'})`, time: new Date().toLocaleTimeString('ar-SA') },
+      ...prev
+    ]);
+    window.open(apiLink, '_blank');
+  };
+
   // 4. STUDENTS MANAGER inside Workspace
   const [candidateStudentId, setCandidateStudentId] = useState('');
   const [newStudentName, setNewStudentName] = useState('');
@@ -1474,7 +1498,16 @@ export default function DiplomaWorkspace({
                                     className="p-3 bg-zinc-950/80 border border-zinc-900 rounded-lg flex items-center justify-between gap-3 text-xs font-sans"
                                   >
                                     <div className="space-y-1">
-                                      <div className="font-bold text-white capitalize">{st.name}</div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-white capitalize">{st.name}</span>
+                                        <button
+                                          onClick={() => handleQuickAttendanceWhatsApp(st, status, ses.date)}
+                                          className="p-1 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-950/30 rounded-lg transition-colors cursor-pointer select-none"
+                                          title="تواصل سريع بخصوص المحاضرة"
+                                        >
+                                          <MessageCircle className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                       <input
                                         type="text"
                                         placeholder="تدوين ملاحظة عذر أو غياب..."

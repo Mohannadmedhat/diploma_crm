@@ -55,6 +55,7 @@ import TemplateManager from './components/TemplateManager';
 import DataBackupRestore from './components/DataBackupRestore';
 import Login from './components/Login';
 import AdminPanel from './components/AdminPanel';
+import WhatsAppAutomation from './components/WhatsAppAutomation';
 import {
   isCloudConfigured,
   downloadCloudData,
@@ -87,6 +88,7 @@ import { motion, AnimatePresence } from 'motion/react';
 type MainTab =
   | 'dashboard'
   | 'workspace'
+  | 'whatsapp'
   | 'diplomas'
   | 'announcements'
   | 'tasks'
@@ -577,6 +579,7 @@ export default function App() {
 
             {[
               { id: 'workspace', label: 'مساحة عمل الدبلومة الحالية', icon: GraduationCap },
+              { id: 'whatsapp', label: 'أتمتة ومراسلات الواتساب', icon: MessageSquare },
               { id: 'dashboard', label: 'العمليات واللوحة الرئيسية', icon: Sparkles },
               { id: 'diplomas', label: 'إدارة وتصنيف الدبلومات', icon: BookOpen },
               { id: 'announcements', label: 'مركز التنويهات والأخبار', icon: Megaphone },
@@ -640,6 +643,15 @@ export default function App() {
                     onSaveSessions={handleSaveSessions}
                     onSaveInstructors={handleSaveInstructors}
                     onSaveMentors={handleSaveMentors}
+                  />
+                )}
+
+                {activeTab === 'whatsapp' && (
+                  <WhatsAppAutomation
+                    students={students}
+                    sessions={sessions}
+                    diplomas={diplomas}
+                    templates={templates}
                   />
                 )}
 
