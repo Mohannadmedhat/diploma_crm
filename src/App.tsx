@@ -36,6 +36,7 @@ import {
   loadMentors,
   saveMentors,
   getCurrentUser,
+  setCurrentUser as setStorageCurrentUser,
   logoutUser,
   clearPersonalData,
   setImpersonatedUser as setStorageImpersonatedUser
@@ -260,6 +261,7 @@ export default function App() {
   }, [reloadKey, currentUser]);
 
   const handleLoginSuccess = (username: string) => {
+    setStorageCurrentUser(username);
     setCurrentUser(username);
     setReloadKey((prev) => prev + 1);
     setActiveTab('workspace');
