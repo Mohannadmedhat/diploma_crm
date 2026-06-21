@@ -78,7 +78,8 @@ export function getImpersonatedUserId(): string | null {
 export async function downloadCloudData(): Promise<any | null> {
   if (!supabase) return null;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
     if (!user) return null;
 
     const targetId = impersonatedUserId || user.id;
@@ -103,8 +104,12 @@ export async function downloadCloudData(): Promise<any | null> {
 export async function uploadCloudData(payload: any): Promise<boolean> {
   if (!supabase) return false;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+    if (!user) {
+      console.error('uploadCloudData: no active session found');
+      return false;
+    }
 
     const targetId = impersonatedUserId || user.id;
     const { error } = await supabase
@@ -113,7 +118,7 @@ export async function uploadCloudData(payload: any): Promise<boolean> {
         user_id: targetId,
         data: payload,
         updated_at: new Date().toISOString()
-      });
+      }, { onConflict: 'user_id' });
 
     if (error) {
       console.error('Error uploading user cloud data', error);
@@ -121,7 +126,7 @@ export async function uploadCloudData(payload: any): Promise<boolean> {
     }
 
     return true;
-  } catch (e) {
+  } catch (e: any) {
     console.error('Exception in uploadCloudData', e);
     return false;
   }
@@ -229,8 +234,8 @@ export async function deleteUserData(userId: string): Promise<boolean> {
 export async function getCurrentUserId(): Promise<string | null> {
   if (!supabase) return null;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id || null;
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData?.session?.user?.id || null;
   } catch {
     return null;
   }
@@ -239,8 +244,8 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function getCurrentUserEmail(): Promise<string | null> {
   if (!supabase) return null;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.email || null;
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData?.session?.user?.email || null;
   } catch {
     return null;
   }
