@@ -88,6 +88,9 @@ export default function WhatsAppAutomation({
   const [sendMode, setSendMode] = useState<'new-tab' | 'same-tab'>('new-tab');
   const [copied, setCopied] = useState(false);
   const [sentLogs, setSentLogs] = useState<Record<string, 'success' | 'skipped'>>({});
+  const [delaySeconds, setDelaySeconds] = useState<number>(10);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync selected diploma ID when it changes
   useEffect(() => {
@@ -322,9 +325,29 @@ export default function WhatsAppAutomation({
     }
   };
 
+  const scheduleNextAutoSend = (nextIdx: number) => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+    }
+    setCountdown(delaySeconds);
+    let currentCountdown = delaySeconds;
+    countdownTimerRef.current = setInterval(() => {
+      currentCountdown -= 1;
+      setCountdown(currentCountdown);
+      if (currentCountdown <= 0) {
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+        }
+        setCountdown(null);
+        processCurrentQueueItem();
+      }
+    }, 1000);
+  };
+
   const processCurrentQueueItem = () => {
     if (queueIndex >= queue.length) {
       setIsAutoSending(false);
+      setCountdown(null);
       return;
     }
 
@@ -360,12 +383,10 @@ export default function WhatsAppAutomation({
       setQueueIndex(nextIdx);
 
       if (nextIdx < queue.length && isAutoSending) {
-        // Schedule next automatic send
-        autoSendTimerRef.current = setTimeout(() => {
-          processCurrentQueueItem();
-        }, 1800); // 1.8 seconds delay
+        scheduleNextAutoSend(nextIdx);
       } else if (nextIdx >= queue.length) {
         setIsAutoSending(false);
+        setCountdown(null);
       }
     }, 600);
   };
@@ -375,14 +396,13 @@ export default function WhatsAppAutomation({
     if (isAutoSending) {
       processCurrentQueueItem();
     } else {
-      if (autoSendTimerRef.current) {
-        clearTimeout(autoSendTimerRef.current);
-      }
+      setCountdown(null);
+      if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     }
     return () => {
-      if (autoSendTimerRef.current) {
-        clearTimeout(autoSendTimerRef.current);
-      }
+      if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     };
   }, [isAutoSending]);
 
@@ -403,17 +423,20 @@ export default function WhatsAppAutomation({
     }));
     const nextIdx = queueIndex + 1;
     setQueueIndex(nextIdx);
-    if (nextIdx >= queue.length) {
+    if (nextIdx < queue.length && isAutoSending) {
+      scheduleNextAutoSend(nextIdx);
+    } else {
       setIsAutoSending(false);
+      setCountdown(null);
     }
   };
 
   const closeQueueModal = () => {
     setIsAutoSending(false);
     setIsQueueActive(false);
-    if (autoSendTimerRef.current) {
-      clearTimeout(autoSendTimerRef.current);
-    }
+    setCountdown(null);
+    if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
   };
 
   return (
@@ -1073,20 +1096,6 @@ export default function WhatsAppAutomation({
                   </div>
                 </div>
 
-                {/* Main Progress Bar */}
-                <div className="space-y-2">
-                  <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300"
-                      style={{ width: `${(queue.filter(q => q.status === 'success' || q.status === 'skipped').length / queue.length) * 100}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                    <span>نسبة المنجز: {Math.round((queue.filter(q => q.status === 'success' || q.status === 'skipped').length / queue.length) * 100)}%</span>
-                    <span>الخطوة الحالية: {queueIndex + 1} من {queue.length}</span>
-                  </div>
-                </div>
-
                 {/* Current Student Preview Card */}
                 {queueIndex < queue.length ? (
                   <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-4">
@@ -1105,9 +1114,17 @@ export default function WhatsAppAutomation({
                       <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-zinc-400">{queue[queueIndex].phone}</span>
                     </div>
 
+                    {/* Countdown Progress Indicator */}
+                    {countdown !== null && (
+                      <div className="p-3 bg-indigo-950/20 border border-indigo-900/30 rounded-xl text-center text-xs text-indigo-400 font-bold font-sans animate-pulse flex items-center justify-center gap-2">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>سيتم فتح شات الطالب التالي تلقائياً خلال {countdown} ثوانٍ...</span>
+                      </div>
+                    )}
+
                     {/* WhatsApp Chat Bubble style editable text area */}
                     <div className="space-y-1">
-                      <label className="block text-[10px] text-zinc-550 font-bold uppercase tracking-wider">مراجعة وتعديل نص الرسالة للمستلم:</label>
+                      <label className="block text-[10px] text-zinc-555 font-bold uppercase tracking-wider">مراجعة وتعديل نص الرسالة للمستلم:</label>
                       <div className="relative">
                         <textarea
                           value={queue[queueIndex]?.message || ''}
@@ -1129,15 +1146,32 @@ export default function WhatsAppAutomation({
                       
                       {/* Top Row: Auto Send Switch & Send Mode Selector */}
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-zinc-950/50 p-3 rounded-xl border border-zinc-900 font-sans">
-                        <label className="flex items-center gap-2 text-xs font-semibold text-zinc-400 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={isAutoSending}
-                            onChange={(e) => setIsAutoSending(e.target.checked)}
-                            className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
-                          />
-                          <span>تشغيل الإرسال التلقائي المستمر (فاصل 1.8 ثانية)</span>
-                        </label>
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-2 text-xs font-semibold text-zinc-400 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isAutoSending}
+                              onChange={(e) => setIsAutoSending(e.target.checked)}
+                              className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
+                            />
+                            <span>تشغيل الإرسال التلقائي المستمر</span>
+                          </label>
+                          <span className="text-zinc-850">|</span>
+                          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                            <span>الفاصل:</span>
+                            <select
+                              value={delaySeconds}
+                              onChange={(e) => setDelaySeconds(Number(e.target.value))}
+                              disabled={isAutoSending}
+                              className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-xs text-indigo-400 font-bold cursor-pointer outline-none focus:ring-0"
+                            >
+                              <option value={3}>3 ثوانٍ</option>
+                              <option value={5}>5 ثوانٍ</option>
+                              <option value={10}>10 ثوانٍ</option>
+                              <option value={15}>15 ثانية</option>
+                            </select>
+                          </div>
+                        </div>
 
                         <div className="flex items-center gap-3 text-xs">
                           <span className="text-[10px] text-zinc-500">طريقة فتح الرابط:</span>
