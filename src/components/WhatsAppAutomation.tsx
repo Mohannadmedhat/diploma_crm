@@ -92,6 +92,16 @@ export default function WhatsAppAutomation({
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Latest refs to avoid stale closures in setTimeout/setInterval callbacks
+  const queueIndexRef = useRef(queueIndex);
+  queueIndexRef.current = queueIndex;
+
+  const queueRef = useRef(queue);
+  queueRef.current = queue;
+
+  const isAutoSendingRef = useRef(isAutoSending);
+  isAutoSendingRef.current = isAutoSending;
+
   // Sync selected diploma ID when it changes
   useEffect(() => {
     if (diplomas.length > 0 && !selectedDiplomaId) {
@@ -345,7 +355,10 @@ export default function WhatsAppAutomation({
   };
 
   const processCurrentQueueItem = () => {
-    if (queueIndex >= queue.length) {
+    const currentIndex = queueIndexRef.current;
+    const currentQueue = queueRef.current;
+
+    if (currentIndex >= currentQueue.length) {
       setIsAutoSending(false);
       setCountdown(null);
       return;
@@ -353,14 +366,14 @@ export default function WhatsAppAutomation({
 
     // Update status
     setQueue(prev => prev.map((item, idx) => {
-      if (idx === queueIndex) {
+      if (idx === currentIndex) {
         return { ...item, status: 'opening' };
       }
       return item;
     }));
 
     // Trigger open
-    const currentItem = queue[queueIndex];
+    const currentItem = currentQueue[currentIndex];
     openWhatsAppLink(currentItem);
 
     // Save status in logs
@@ -372,19 +385,19 @@ export default function WhatsAppAutomation({
     // Update to success after short delay
     setTimeout(() => {
       setQueue(prev => prev.map((item, idx) => {
-        if (idx === queueIndex) {
+        if (idx === currentIndex) {
           return { ...item, status: 'success' };
         }
         return item;
       }));
 
       // Go to next item
-      const nextIdx = queueIndex + 1;
+      const nextIdx = currentIndex + 1;
       setQueueIndex(nextIdx);
 
-      if (nextIdx < queue.length && isAutoSending) {
+      if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
         scheduleNextAutoSend(nextIdx);
-      } else if (nextIdx >= queue.length) {
+      } else if (nextIdx >= currentQueue.length) {
         setIsAutoSending(false);
         setCountdown(null);
       }
