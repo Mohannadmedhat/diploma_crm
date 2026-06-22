@@ -121,6 +121,10 @@ export default function WhatsAppAutomation({
   const isAutoSendingRef = useRef(isAutoSending);
   isAutoSendingRef.current = isAutoSending;
 
+  // Stores reference to the opened WhatsApp window so we can navigate it
+  // without popup blocker (navigating existing window = always allowed)
+  const whatsappWindowRef = useRef<Window | null>(null);
+
   // Sync selected diploma ID when it changes
   useEffect(() => {
     if (diplomas.length > 0 && !selectedDiplomaId) {
@@ -360,18 +364,80 @@ export default function WhatsAppAutomation({
 
   const openWhatsAppLink = (item: QueueItem) => {
     const url = getWhatsAppLink(item.phone, item.message);
+    
     if (whatsappPlatform === 'desktop') {
-      window.location.href = url;
-    } else {
-      if (sendMode === 'same-tab') {
-        window.open(url, 'whatsapp_dispatch_window');
+      // Desktop App: Use helper window reference to navigate to whatsapp:// protocol.
+      // This bypasses the browser's block on launching external applications automatically without a user gesture.
+      if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
+        whatsappWindowRef.current.location.href = url;
       } else {
-        window.open(url, '_blank');
+        // First time or if closed: open helper window
+        const newWin = window.open('about:blank', 'whatsapp_desktop_helper', 'width=450,height=300');
+        whatsappWindowRef.current = newWin;
+        if (newWin) {
+          try {
+            newWin.document.write(`
+              <html>
+                <head>
+                  <title>WhatsApp automation helper</title>
+                  <style>
+                    body {
+                      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                      background: #09090b;
+                      color: #a1a1aa;
+                      text-align: center;
+                      padding: 40px 20px;
+                      margin: 0;
+                      direction: rtl;
+                    }
+                    .title {
+                      font-size: 16px;
+                      font-weight: bold;
+                      color: #10b981;
+                      margin-bottom: 12px;
+                    }
+                    .desc {
+                      font-size: 12px;
+                      line-height: 1.6;
+                    }
+                    .hint {
+                      font-size: 10px;
+                      color: #71717a;
+                      margin-top: 20px;
+                    }
+                  </style>
+                </head>
+                <body>
+                  <div class="title">مساعد إرسال واتساب تلقائي 💻</div>
+                  <div class="desc">يرجى إبقاء هذه النافذة مفتوحة وعدم إغلاقها لتسهيل التنقل التلقائي بين شات الطلاب في تطبيق WhatsApp Desktop.</div>
+                  <div class="hint">يمكنك تصغير هذه النافذة أو نقلها جانباً.</div>
+                </body>
+              </html>
+            `);
+          } catch (e) {
+            console.error('Failed to write to helper window:', e);
+          }
+          newWin.location.href = url;
+        }
+      }
+    } else {
+      // Web/Standard: Use stored window reference to navigate existing tab
+      // KEY TRICK: navigating an EXISTING window.location.href is NEVER blocked by popup blockers!
+      // Only opening NEW windows gets blocked. So we open once, then navigate on every subsequent student.
+      if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
+        // Navigate the already-open WhatsApp tab to the next student (no popup blocker!)
+        whatsappWindowRef.current.location.href = url;
+        try { whatsappWindowRef.current.focus(); } catch (_) {}
+      } else {
+        // First time: open a new window and save the reference
+        const newWin = window.open(url, 'whatsapp_auto_dispatch');
+        whatsappWindowRef.current = newWin;
       }
     }
   };
 
   const scheduleNextAutoSend = (nextIdx: number) => {
+    console.log('[DEBUG] scheduleNextAutoSend called with nextIdx:', nextIdx);
     if (countdownTimerRef.current) {
       clearInterval(countdownTimerRef.current);
     }
@@ -385,6 +451,7 @@ export default function WhatsAppAutomation({
           clearInterval(countdownTimerRef.current);
         }
         setCountdown(null);
+        console.log('[DEBUG] Countdown finished. Invoking processCurrentQueueItem. queueIndexRef.current is:', queueIndexRef.current);
         processCurrentQueueItem();
       }
     }, 1000);
@@ -393,8 +460,10 @@ export default function WhatsAppAutomation({
   const processCurrentQueueItem = () => {
     const currentIndex = queueIndexRef.current;
     const currentQueue = queueRef.current;
+    console.log('[DEBUG] processCurrentQueueItem executing. currentIndex:', currentIndex, 'queue length:', currentQueue?.length, 'student:', currentQueue?.[currentIndex]?.student?.name);
 
     if (currentIndex >= currentQueue.length) {
+      console.log('[DEBUG] currentIndex out of bounds, stopping.');
       setIsAutoSending(false);
       setCountdown(null);
       return;
@@ -420,6 +489,7 @@ export default function WhatsAppAutomation({
 
     // Update to success after short delay
     setTimeout(() => {
+      console.log('[DEBUG] setTimeout firing for currentIndex:', currentIndex);
       setQueue(prev => prev.map((item, idx) => {
         if (idx === currentIndex) {
           return { ...item, status: 'success' };
@@ -429,11 +499,13 @@ export default function WhatsAppAutomation({
 
       // Go to next item
       const nextIdx = currentIndex + 1;
+      console.log('[DEBUG] Advancing queue. nextIdx:', nextIdx, 'isAutoSendingRef.current:', isAutoSendingRef.current);
       setQueueIndex(nextIdx);
 
       if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
         scheduleNextAutoSend(nextIdx);
       } else if (nextIdx >= currentQueue.length) {
+        console.log('[DEBUG] Queue fully processed.');
         setIsAutoSending(false);
         setCountdown(null);
       }
@@ -486,6 +558,7 @@ export default function WhatsAppAutomation({
     setCountdown(null);
     if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    whatsappWindowRef.current = null; // Reset so next session opens a fresh window
   };
 
   return (
@@ -717,11 +790,12 @@ export default function WhatsAppAutomation({
                       <button
                         onClick={() => {
                           const url = getWhatsAppLink(st.phone, parsedMsg);
-                          if (whatsappPlatform === 'desktop') {
-                            window.location.href = url;
-                          } else {
-                            window.open(url, '_blank');
-                          }
+                          const a = document.createElement('a');
+                          a.href = url;
+                          if (whatsappPlatform !== 'desktop') a.target = '_blank';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
                         }}
                         className="px-3 py-2 bg-zinc-900 hover:bg-emerald-950/20 border border-zinc-800 hover:border-emerald-900/30 text-zinc-300 hover:text-emerald-400 transition-colors rounded-lg text-[10px] font-bold cursor-pointer shrink-0 self-end sm:self-center flex items-center gap-1"
                       >
@@ -892,11 +966,12 @@ export default function WhatsAppAutomation({
                       <button
                         onClick={() => {
                           const url = getWhatsAppLink(st.phone, parsedMsg);
-                          if (whatsappPlatform === 'desktop') {
-                            window.location.href = url;
-                          } else {
-                            window.open(url, '_blank');
-                          }
+                          const a = document.createElement('a');
+                          a.href = url;
+                          if (whatsappPlatform !== 'desktop') a.target = '_blank';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
                         }}
                         className="px-3 py-2 bg-zinc-900 hover:bg-emerald-955/20 border border-zinc-800 hover:border-emerald-900/30 text-zinc-300 hover:text-emerald-400 transition-colors rounded-lg text-[10px] font-bold cursor-pointer shrink-0 self-end sm:self-center flex items-center gap-1"
                       >
@@ -1073,11 +1148,12 @@ export default function WhatsAppAutomation({
                       <button
                         onClick={() => {
                           const url = getWhatsAppLink(st.phone, parsedMsg);
-                          if (whatsappPlatform === 'desktop') {
-                            window.location.href = url;
-                          } else {
-                            window.open(url, '_blank');
-                          }
+                          const a = document.createElement('a');
+                          a.href = url;
+                          if (whatsappPlatform !== 'desktop') a.target = '_blank';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
                         }}
                         className="px-3 py-2 bg-zinc-900 hover:bg-emerald-955/20 border border-zinc-800 hover:border-emerald-900/30 text-zinc-300 hover:text-emerald-400 transition-colors rounded-lg text-[10px] font-bold cursor-pointer shrink-0 self-end sm:self-center flex items-center gap-1"
                       >
@@ -1212,7 +1288,68 @@ export default function WhatsAppAutomation({
                             <input
                               type="checkbox"
                               checked={isAutoSending}
-                              onChange={(e) => setIsAutoSending(e.target.checked)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                if (checked) {
+                                  // Pre-emptively open the helper window on user gesture to avoid popup blocker!
+                                  if (!whatsappWindowRef.current || whatsappWindowRef.current.closed) {
+                                    const currentItem = queue[queueIndex];
+                                    if (currentItem) {
+                                      const url = getWhatsAppLink(currentItem.phone, currentItem.message);
+                                      if (whatsappPlatform === 'desktop') {
+                                        const newWin = window.open('about:blank', 'whatsapp_desktop_helper', 'width=450,height=300');
+                                        whatsappWindowRef.current = newWin;
+                                        if (newWin) {
+                                          try {
+                                            newWin.document.write(`
+                                              <html>
+                                                <head>
+                                                  <title>WhatsApp automation helper</title>
+                                                  <style>
+                                                    body {
+                                                      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                                                      background: #09090b;
+                                                      color: #a1a1aa;
+                                                      text-align: center;
+                                                      padding: 40px 20px;
+                                                      margin: 0;
+                                                      direction: rtl;
+                                                    }
+                                                    .title {
+                                                      font-size: 16px;
+                                                      font-weight: bold;
+                                                      color: #10b981;
+                                                      margin-bottom: 12px;
+                                                    }
+                                                    .desc {
+                                                      font-size: 12px;
+                                                      line-height: 1.6;
+                                                    }
+                                                    .hint {
+                                                      font-size: 10px;
+                                                      color: #71717a;
+                                                      margin-top: 20px;
+                                                    }
+                                                  </style>
+                                                </head>
+                                                <body>
+                                                  <div class="title">مساعد إرسال واتساب تلقائي 💻</div>
+                                                  <div class="desc">يرجى إبقاء هذه النافذة مفتوحة وعدم إغلاقها لتسهيل التنقل التلقائي بين شات الطلاب في تطبيق WhatsApp Desktop.</div>
+                                                  <div class="hint">يمكنك تصغير هذه النافذة أو نقلها جانباً.</div>
+                                                </body>
+                                              </html>
+                                            `);
+                                          } catch (_) {}
+                                        }
+                                      } else {
+                                        const newWin = window.open(url, 'whatsapp_auto_dispatch');
+                                        whatsappWindowRef.current = newWin;
+                                      }
+                                    }
+                                  }
+                                }
+                                setIsAutoSending(checked);
+                              }}
                               className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
                             />
                             <span>تشغيل الإرسال التلقائي المستمر</span>
@@ -1313,7 +1450,65 @@ export default function WhatsAppAutomation({
                           </button>
                           
                           <button
-                            onClick={processCurrentQueueItem}
+                            onClick={() => {
+                              // Pre-emptively open helper window on user gesture if not open yet
+                              if (!whatsappWindowRef.current || whatsappWindowRef.current.closed) {
+                                const currentItem = queue[queueIndex];
+                                if (currentItem) {
+                                  const url = getWhatsAppLink(currentItem.phone, currentItem.message);
+                                  if (whatsappPlatform === 'desktop') {
+                                    const newWin = window.open('about:blank', 'whatsapp_desktop_helper', 'width=450,height=300');
+                                    whatsappWindowRef.current = newWin;
+                                    if (newWin) {
+                                      try {
+                                        newWin.document.write(`
+                                          <html>
+                                            <head>
+                                              <title>WhatsApp automation helper</title>
+                                              <style>
+                                                body {
+                                                  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                                                  background: #09090b;
+                                                  color: #a1a1aa;
+                                                  text-align: center;
+                                                  padding: 40px 20px;
+                                                  margin: 0;
+                                                  direction: rtl;
+                                                }
+                                                .title {
+                                                  font-size: 16px;
+                                                  font-weight: bold;
+                                                  color: #10b981;
+                                                  margin-bottom: 12px;
+                                                }
+                                                .desc {
+                                                  font-size: 12px;
+                                                  line-height: 1.6;
+                                                }
+                                                .hint {
+                                                  font-size: 10px;
+                                                  color: #71717a;
+                                                  margin-top: 20px;
+                                                }
+                                              </style>
+                                            </head>
+                                            <body>
+                                              <div class="title">مساعد إرسال واتساب تلقائي 💻</div>
+                                              <div class="desc">يرجى إبقاء هذه النافذة مفتوحة وعدم إغلاقها لتسهيل التنقل التلقائي بين شات الطلاب في تطبيق WhatsApp Desktop.</div>
+                                              <div class="hint">يمكنك تصغير هذه النافذة أو نقلها جانباً.</div>
+                                            </body>
+                                          </html>
+                                        `);
+                                      } catch (_) {}
+                                    }
+                                  } else {
+                                    const newWin = window.open(url, 'whatsapp_auto_dispatch');
+                                    whatsappWindowRef.current = newWin;
+                                  }
+                                }
+                              }
+                              processCurrentQueueItem();
+                            }}
                             className="relative flex-1 sm:flex-none px-5 py-2 bg-emerald-600 hover:bg-emerald-550 text-white rounded-lg text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-500/20 hover:shadow-emerald-550/40 flex items-center justify-center gap-1.5 overflow-hidden"
                           >
                             {isAutoSending && (

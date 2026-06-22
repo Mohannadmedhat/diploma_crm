@@ -30,7 +30,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           setError(res.message);
         }
       } else {
-        setError('النظام يعمل في وضع محلي — يرجى التواصل مع المسؤول لتفعيل الاتصال السحابي.');
+        // Local dev mode: allow admin/admin
+        if (userClean === 'admin' && password === 'admin') {
+          onLoginSuccess(userClean);
+        } else {
+          setError('في وضع العمل المحلي، استخدم: admin / admin');
+        }
       }
     } catch (err: any) {
       console.error(err);
