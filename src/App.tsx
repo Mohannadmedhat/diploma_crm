@@ -49,7 +49,7 @@ import DiplomaTypesManager from './components/DiplomaTypesManager';
 import InstructorsManager from './components/InstructorsManager';
 import MentorsManager from './components/MentorsManager';
 import DiplomaWorkspace from './components/DiplomaWorkspace';
-import AnnouncementsCenter from './components/AnnouncementsCenter';
+
 import WeeklyOpsBoard from './components/WeeklyOpsBoard';
 import TemplateManager from './components/TemplateManager';
 import DataBackupRestore from './components/DataBackupRestore';
@@ -70,7 +70,6 @@ import {
   Sparkles,
   BookOpen,
   CalendarCheck2,
-  Megaphone,
   ClipboardList,
   Sliders,
   GraduationCap,
@@ -90,7 +89,6 @@ type MainTab =
   | 'workspace'
   | 'whatsapp'
   | 'diplomas'
-  | 'announcements'
   | 'tasks'
   | 'settings';
 
@@ -582,7 +580,6 @@ export default function App() {
               { id: 'whatsapp', label: 'أتمتة ومراسلات الواتساب', icon: MessageSquare },
               { id: 'dashboard', label: 'العمليات واللوحة الرئيسية', icon: Sparkles },
               { id: 'diplomas', label: 'إدارة وتصنيف الدبلومات', icon: BookOpen },
-              { id: 'announcements', label: 'مركز التنويهات والأخبار', icon: Megaphone },
               { id: 'tasks', label: 'لوحة العمليات الأسبوعية', icon: ClipboardList },
               { id: 'settings', label: 'صيانة وقوالب النظام', icon: Sliders }
             ].map((tab) => {
@@ -710,14 +707,7 @@ export default function App() {
                   </div>
                 )}
 
-                {activeTab === 'announcements' && (
-                  <AnnouncementsCenter
-                    announcements={announcements}
-                    students={students}
-                    diplomas={diplomas}
-                    onSaveAnnouncement={handleSaveAnnouncements}
-                  />
-                )}
+
 
                 {activeTab === 'tasks' && (
                   <WeeklyOpsBoard
