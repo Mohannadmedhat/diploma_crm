@@ -149,16 +149,18 @@ body.light [class*="bg-[#0a0a0a]" i] {
 
 /* Translucent Main Panels (Acrylic glassmorphism) */
 body.light [class*="bg-[#121212]/30" i] {
-  background-color: rgba(255, 255, 255, 0.45) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-color: rgba(226, 232, 240, 0.8) !important;
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.04), 0 0 20px rgba(99, 102, 241, 0.02) !important;
 }
 body.light [class*="bg-[#121212]/50" i] {
-  background-color: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-color: rgba(226, 232, 240, 0.8) !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.04), 0 0 20px rgba(99, 102, 241, 0.02) !important;
 }
 body.light [class*="bg-[#121212]/60" i] {
   background-color: rgba(255, 255, 255, 0.7) !important;
@@ -228,8 +230,8 @@ body.light [class*="bg-[#1c1c1c]" i] {
   background-color: rgba(255, 255, 255, 0.75) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(99, 102, 241, 0.15) !important; /* Soft indigo neon border by default */
-  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.05), 0 0 12px 1px rgba(99, 102, 241, 0.02) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important; /* Soft indigo neon border by default */
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.05), 0 0 12px rgba(99, 102, 241, 0.03) !important;
   border-radius: 16px !important;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
               box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
@@ -246,8 +248,8 @@ body.light [class*="bg-[#0f0f0f]" i]:hover,
 body.light [class*="bg-[#0f0f12]" i]:hover,
 body.light [class*="bg-[#0c0c0f]" i]:hover {
   transform: translateY(-4px) !important;
-  border-color: rgba(99, 102, 241, 0.45) !important; /* Muted neon border focus */
-  box-shadow: 0 20px 35px -10px rgba(99, 102, 241, 0.15), 0 0 20px 4px rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important; /* Indigo neon border focus */
+  box-shadow: 0 15px 35px rgba(99, 102, 241, 0.15), 0 0 25px rgba(99, 102, 241, 0.1) !important;
 }
 
 /* -------------------------------------------------------------
@@ -257,55 +259,67 @@ body.light [class*="bg-[#0c0c0f]" i]:hover {
 /* Rose/Danger/Absence Sections */
 body.light [class*="border-rose-" i],
 body.light [class*="bg-rose-500/10" i],
-body.light [class*="bg-red-500/10" i] {
-  border-color: rgba(244, 63, 94, 0.2) !important;
-  box-shadow: 0 10px 25px -5px rgba(244, 63, 94, 0.05), 0 0 12px 1px rgba(244, 63, 94, 0.02) !important;
+body.light [class*="bg-red-500/10" i],
+body.light .border-rose-500,
+body.light .border-red-500 {
+  border-color: rgba(244, 63, 94, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(244, 63, 94, 0.08), 0 0 12px rgba(244, 63, 94, 0.05) !important;
 }
 body.light [class*="border-rose-" i]:hover,
 body.light [class*="bg-rose-500/10" i]:hover,
-body.light [class*="bg-red-500/10" i]:hover {
+body.light [class*="bg-red-500/10" i]:hover,
+body.light .border-rose-500:hover,
+body.light .border-red-500:hover {
   transform: translateY(-4px) !important;
-  border-color: rgba(244, 63, 94, 0.5) !important;
-  box-shadow: 0 20px 35px -10px rgba(244, 63, 94, 0.15), 0 0 20px 4px rgba(244, 63, 94, 0.08) !important;
+  border-color: rgba(244, 63, 94, 0.55) !important;
+  box-shadow: 0 16px 35px rgba(244, 63, 94, 0.18), 0 0 20px rgba(244, 63, 94, 0.12) !important;
 }
 
 /* Emerald/WhatsApp/Success Sections */
 body.light [class*="border-emerald-" i],
-body.light [class*="bg-emerald-500/10" i] {
-  border-color: rgba(16, 185, 129, 0.2) !important;
-  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.05), 0 0 12px 1px rgba(16, 185, 129, 0.02) !important;
+body.light [class*="bg-emerald-500/10" i],
+body.light .border-emerald-500 {
+  border-color: rgba(16, 185, 129, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08), 0 0 12px rgba(16, 185, 129, 0.05) !important;
 }
 body.light [class*="border-emerald-" i]:hover,
-body.light [class*="bg-emerald-500/10" i]:hover {
+body.light [class*="bg-emerald-500/10" i]:hover,
+body.light .border-emerald-500:hover {
   transform: translateY(-4px) !important;
-  border-color: rgba(16, 185, 129, 0.5) !important;
-  box-shadow: 0 20px 35px -10px rgba(16, 185, 129, 0.15), 0 0 20px 4px rgba(16, 185, 129, 0.08) !important;
+  border-color: rgba(16, 185, 129, 0.55) !important;
+  box-shadow: 0 16px 35px rgba(16, 185, 129, 0.18), 0 0 20px rgba(16, 185, 129, 0.12) !important;
 }
 
 /* Indigo/Blue/Upcoming Sections */
 body.light [class*="border-indigo-" i],
-body.light [class*="border-blue-" i] {
-  border-color: rgba(99, 102, 241, 0.2) !important;
-  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.05), 0 0 12px 1px rgba(99, 102, 241, 0.02) !important;
+body.light [class*="border-blue-" i],
+body.light .border-indigo-500,
+body.light .border-blue-500 {
+  border-color: rgba(99, 102, 241, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08), 0 0 12px rgba(99, 102, 241, 0.05) !important;
 }
 body.light [class*="border-indigo-" i]:hover,
-body.light [class*="border-blue-" i]:hover {
+body.light [class*="border-blue-" i]:hover,
+body.light .border-indigo-500:hover,
+body.light .border-blue-500:hover {
   transform: translateY(-4px) !important;
-  border-color: rgba(99, 102, 241, 0.5) !important;
-  box-shadow: 0 20px 35px -10px rgba(99, 102, 241, 0.15), 0 0 20px 4px rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.55) !important;
+  box-shadow: 0 16px 35px rgba(99, 102, 241, 0.18), 0 0 20px rgba(99, 102, 241, 0.12) !important;
 }
 
 /* Amber/Settings/Warning Sections */
 body.light [class*="border-amber-" i],
-body.light [class*="bg-amber-500/10" i] {
-  border-color: rgba(245, 158, 11, 0.2) !important;
-  box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.05), 0 0 12px 1px rgba(245, 158, 11, 0.02) !important;
+body.light [class*="bg-amber-500/10" i],
+body.light .border-amber-500 {
+  border-color: rgba(245, 158, 11, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.08), 0 0 12px rgba(245, 158, 11, 0.05) !important;
 }
 body.light [class*="border-amber-" i]:hover,
-body.light [class*="bg-amber-500/10" i]:hover {
+body.light [class*="bg-amber-500/10" i]:hover,
+body.light .border-amber-500:hover {
   transform: translateY(-4px) !important;
-  border-color: rgba(245, 158, 11, 0.5) !important;
-  box-shadow: 0 20px 35px -10px rgba(245, 158, 11, 0.15), 0 0 20px 4px rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+  box-shadow: 0 16px 35px rgba(245, 158, 11, 0.18), 0 0 20px rgba(245, 158, 11, 0.12) !important;
 }
 
 /* Escape matching for border classes in Light Mode */
@@ -452,19 +466,15 @@ body.light h4,
 body.light h5,
 body.light h6,
 body.light label,
-body.light th,
-body.light select,
-body.light input,
+body.light th {
+  color: #0f172a !important; /* Slate 900 base default for headings and labels */
+}
+
 body.light textarea,
 body.light span,
 body.light p,
 body.light div {
   color: #0f172a; /* Slate 900 base default for all texts inside cards */
-}
-
-body.light option {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
 }
 
 body.light option {
@@ -529,9 +539,6 @@ body.light textarea:focus {
 /* -------------------------------------------------------------
    CONTRAST RESTORER FOR NESTED BTN TEXT (SAFETY)
    ------------------------------------------------------------- */
-/* -------------------------------------------------------------
-   CONTRAST RESTORER FOR NESTED BTN TEXT (SAFETY)
-   ------------------------------------------------------------- */
 body.light button.bg-emerald-600,
 body.light button.bg-emerald-600 *,
 body.light button.bg-rose-600,
@@ -567,7 +574,7 @@ body.light [class*="bg-gradient-"] * {
    These target the exact Tailwind classes and also the custom developer typos/classes. */
 body.light .text-white,
 body.light [class*="text-white" i] {
-  color: #0f172a !important; /* Slate 900 */
+  color: #0f172a !important; /* Slate 900 base default for text-white */
 }
 body.light .text-zinc-100,
 body.light [class*="text-zinc-100" i] {
@@ -621,52 +628,156 @@ body.light [class*="text-[#E5E5E5]" i] {
 }
 
 /* Solid and translucent neon backgrounds get solid white text for all descendants in Light Mode */
+body.light .bg-indigo-600,
+body.light .bg-indigo-600 *,
+body.light .bg-indigo-600:hover,
+body.light .bg-indigo-600:hover *,
+body.light .bg-indigo-700,
+body.light .bg-indigo-700 *,
+body.light .bg-indigo-700:hover,
+body.light .bg-indigo-700:hover *,
+body.light .bg-emerald-600,
+body.light .bg-emerald-600 *,
+body.light .bg-emerald-600:hover,
+body.light .bg-emerald-600:hover *,
+body.light .bg-emerald-500,
+body.light .bg-emerald-500 *,
+body.light .bg-emerald-500:hover,
+body.light .bg-emerald-500:hover *,
+body.light .bg-rose-600,
+body.light .bg-rose-600 *,
+body.light .bg-rose-600:hover,
+body.light .bg-rose-600:hover *,
+body.light .bg-rose-700,
+body.light .bg-rose-700 *,
+body.light .bg-rose-700:hover,
+body.light .bg-rose-700:hover *,
+body.light .bg-blue-600,
+body.light .bg-blue-600 *,
+body.light .bg-blue-600:hover,
+body.light .bg-blue-600:hover *,
+body.light .bg-red-600,
+body.light .bg-red-600 *,
+body.light .bg-red-600:hover,
+body.light .bg-red-600:hover *,
+body.light .bg-amber-600,
+body.light .bg-amber-600 *,
+body.light .bg-amber-600:hover,
+body.light .bg-amber-600:hover *,
+body.light .bg-black,
+body.light .bg-black *,
+body.light .bg-black:hover,
+body.light .bg-black:hover *,
 body.light [class*="bg-indigo-600" i],
 body.light [class*="bg-indigo-600" i] *,
+body.light [class*="bg-indigo-600" i]:hover,
+body.light [class*="bg-indigo-600" i]:hover *,
 body.light [class*="bg-indigo-700" i],
 body.light [class*="bg-indigo-700" i] *,
+body.light [class*="bg-indigo-700" i]:hover,
+body.light [class*="bg-indigo-700" i]:hover *,
 body.light [class*="bg-emerald-600" i],
 body.light [class*="bg-emerald-600" i] *,
+body.light [class*="bg-emerald-600" i]:hover,
+body.light [class*="bg-emerald-600" i]:hover *,
+body.light [class*="bg-emerald-500" i],
+body.light [class*="bg-emerald-500" i] *,
+body.light [class*="bg-emerald-500" i]:hover,
+body.light [class*="bg-emerald-500" i]:hover *,
 body.light [class*="bg-rose-600" i],
 body.light [class*="bg-rose-600" i] *,
+body.light [class*="bg-rose-600" i]:hover,
+body.light [class*="bg-rose-600" i]:hover *,
 body.light [class*="bg-rose-700" i],
 body.light [class*="bg-rose-700" i] *,
+body.light [class*="bg-rose-700" i]:hover,
+body.light [class*="bg-rose-700" i]:hover *,
 body.light [class*="bg-blue-600" i],
 body.light [class*="bg-blue-600" i] *,
+body.light [class*="bg-blue-600" i]:hover,
+body.light [class*="bg-blue-600" i]:hover *,
 body.light [class*="bg-red-600" i],
 body.light [class*="bg-red-600" i] *,
-body.light [class*="bg-black" i],
-body.light [class*="bg-black" i] *,
+body.light [class*="bg-red-600" i]:hover,
+body.light [class*="bg-red-600" i]:hover *,
 body.light [class*="bg-amber-600" i],
 body.light [class*="bg-amber-600" i] *,
+body.light [class*="bg-amber-600" i]:hover,
+body.light [class*="bg-amber-600" i]:hover *,
+body.light [class*="bg-rose-600/10" i],
+body.light [class*="bg-rose-600/10" i] *,
+body.light [class*="bg-rose-600/10" i]:hover,
+body.light [class*="bg-rose-600/10" i]:hover *,
+body.light [class*="bg-amber-600/10" i],
+body.light [class*="bg-amber-600/10" i] *,
+body.light [class*="bg-amber-600/10" i]:hover,
+body.light [class*="bg-amber-600/10" i]:hover *,
+body.light [class*="bg-emerald-600/10" i],
+body.light [class*="bg-emerald-600/10" i] *,
+body.light [class*="bg-emerald-600/10" i]:hover,
+body.light [class*="bg-emerald-600/10" i]:hover *,
+body.light [class*="bg-emerald-550" i],
+body.light [class*="bg-emerald-550" i] *,
+body.light [class*="bg-rose-550" i],
+body.light [class*="bg-rose-550" i] *,
+body.light [class*="bg-indigo-550" i],
+body.light [class*="bg-indigo-550" i] *,
+body.light [class*="bg-[#3B82F6]" i],
+body.light [class*="bg-[#3B82F6]" i] *,
+body.light [class*="bg-[#3B82F6]" i]:hover,
+body.light [class*="bg-[#3B82F6]" i]:hover *,
+body.light [class*="bg-[#3b82f6]" i],
+body.light [class*="bg-[#3b82f6]" i] *,
+body.light [class*="bg-[#3b82f6]" i]:hover,
+body.light [class*="bg-[#3b82f6]" i]:hover *,
 body.light [class*="bg-gradient-to-l" i],
 body.light [class*="bg-gradient-to-l" i] *,
 body.light [class*="bg-gradient-to-br" i],
-body.light [class*="bg-gradient-to-br" i] * {
+body.light [class*="bg-gradient-to-br" i] *,
+body.light .bg-rose-600\/10,
+body.light .bg-rose-600\/10 *,
+body.light .bg-rose-600\/10:hover,
+body.light .bg-rose-600\/10:hover *,
+body.light .bg-amber-600\/10,
+body.light .bg-amber-600\/10 *,
+body.light .bg-amber-600\/10:hover,
+body.light .bg-amber-600\/10:hover *,
+body.light .bg-\[\#3B82F6\],
+body.light .bg-\[\#3B82F6\] *,
+body.light .bg-\[\#3B82F6\]:hover,
+body.light .bg-\[\#3B82F6\]:hover *,
+body.light .bg-\[\#3b82f6\],
+body.light .bg-\[\#3b82f6\] *,
+body.light .bg-\[\#3b82f6\]:hover,
+body.light .bg-\[\#3b82f6\]:hover * {
   color: #ffffff !important;
 }
 
 /* Force solid neon background styles for buttons that are translucent in dark mode */
 body.light [class*="bg-rose-600/10" i],
-body.light [class*="bg-rose-600" i] {
+body.light [class*="bg-rose-600" i],
+body.light .bg-rose-600\/10 {
   background: linear-gradient(135deg, #f43f5e, #e11d48) !important;
   border-color: #e11d48 !important;
   box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
 }
 body.light [class*="bg-rose-600/10" i]:hover,
-body.light [class*="bg-rose-600" i]:hover {
+body.light [class*="bg-rose-600" i]:hover,
+body.light .bg-rose-600\/10:hover {
   background: #e11d48 !important;
   box-shadow: 0 6px 20px rgba(244, 63, 94, 0.45) !important;
 }
 
 body.light [class*="bg-amber-600/10" i],
-body.light [class*="bg-amber-600" i] {
+body.light [class*="bg-amber-600" i],
+body.light .bg-amber-600\/10 {
   background: linear-gradient(135deg, #f59e0b, #d97706) !important;
   border-color: #d97706 !important;
   box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
 }
 body.light [class*="bg-amber-600/10" i]:hover,
-body.light [class*="bg-amber-600" i]:hover {
+body.light [class*="bg-amber-600" i]:hover,
+body.light .bg-amber-600\/10:hover {
   background: #d97706 !important;
   box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45) !important;
 }
@@ -679,6 +790,30 @@ body.light [class*="bg-emerald-600" i] {
 body.light [class*="bg-emerald-600" i]:hover {
   background: #059669 !important;
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* Sidebar active and hovered buttons */
+body.light [class*="bg-indigo-600/15" i],
+body.light .bg-indigo-600\/15 {
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25) !important;
+}
+body.light [class*="bg-indigo-600/15" i] *,
+body.light .bg-indigo-600\/15 * {
+  color: #ffffff !important;
+}
+
+body.light [class*="hover:bg-[#1C1C1C]" i]:hover,
+body.light [class*="hover:bg-[#1c1c1c]" i]:hover,
+body.light [class*="hover:bg-[#1C1C1C]" i]:hover *,
+body.light [class*="hover:bg-[#1c1c1c]" i]:hover * {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+  color: #4f46e5 !important;
+}
+body.light [class*="hover:text-zinc-100" i]:hover,
+body.light [class*="hover:text-zinc-100" i]:hover * {
+  color: #4f46e5 !important;
 }
 
 /* Light mode specific status and active accent text colors (placed last to override white where needed) */
