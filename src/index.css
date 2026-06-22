@@ -114,9 +114,60 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Specific selector overrides to force light theme on hardcoded bg/border classes using case-insensitive modifier 'i' */
+/* -------------------------------------------------------------
+   LIGHT MODE RULES
+   ------------------------------------------------------------- */
 
-/* General Backgrounds */
+/* Direct class selector overrides for compiled Tailwind classes in production */
+body.light .bg-\[\#050505\],
+body.light .bg-\[\#070707\],
+body.light .bg-\[\#07070a\],
+body.light .bg-\[\#09090b\],
+body.light .bg-\[\#0a0a0a\] {
+  background-color: var(--brand-bg-main) !important;
+}
+
+body.light .bg-\[\#121212\],
+body.light .bg-\[\#0b0b0e\],
+body.light .bg-\[\#0f0f0f\],
+body.light .bg-\[\#101010\],
+body.light .bg-\[\#111\],
+body.light .bg-\[\#111111\],
+body.light .bg-\[\#1a1a1a\],
+body.light .bg-\[\#171717\],
+body.light .bg-\[\#0d0d0d\],
+body.light .bg-\[\#1c1c1e\],
+body.light .bg-\[\#0a0a10\],
+body.light .bg-\[\#060608\],
+body.light .bg-\[\#0d0d11\],
+body.light .bg-\[\#1e1e1e\],
+body.light .bg-\[\#0f0f12\],
+body.light .bg-\[\#0e0e0e\],
+body.light .bg-\[\#0c0c0c\],
+body.light .bg-\[\#09090c\],
+body.light .bg-\[\#080808\],
+body.light .bg-\[\#0c0c0f\],
+body.light .bg-\[\#0c0c12\],
+body.light .bg-\[\#15151a\],
+body.light .bg-\[\#151515\],
+body.light .bg-\[\#1c1c1c\] {
+  background-color: var(--brand-bg-card) !important;
+}
+
+/* Escape matching for border classes */
+body.light .border-\[\#1f1f1f\],
+body.light .border-\[\#262626\],
+body.light .border-\[\#2a2a2a\],
+body.light .border-\[\#2d2d2d\],
+body.light .border-\[\#23232c\],
+body.light .border-\[\#222\],
+body.light .border-\[\#252525\],
+body.light .border-\[\#333\],
+body.light .border-\[\#1f1f27\] {
+  border-color: var(--brand-border) !important;
+}
+
+/* General Wildcard Backgrounds Selector (Failsafe) */
 body.light [class*="bg-[#050505]" i],
 body.light [class*="bg-[#070707]" i],
 body.light [class*="bg-[#07070a]" i],
@@ -138,7 +189,17 @@ body.light [class*="bg-[#1c1c1e]" i],
 body.light [class*="bg-[#0a0a10]" i],
 body.light [class*="bg-[#060608]" i],
 body.light [class*="bg-[#0d0d11]" i],
-body.light [class*="bg-[#1e1e1e]" i] {
+body.light [class*="bg-[#1e1e1e]" i],
+body.light [class*="bg-[#0f0f12]" i],
+body.light [class*="bg-[#0e0e0e]" i],
+body.light [class*="bg-[#0c0c0c]" i],
+body.light [class*="bg-[#09090c]" i],
+body.light [class*="bg-[#080808]" i],
+body.light [class*="bg-[#0c0c0f]" i],
+body.light [class*="bg-[#0c0c12]" i],
+body.light [class*="bg-[#15151a]" i],
+body.light [class*="bg-[#151515]" i],
+body.light [class*="bg-[#1c1c1c]" i] {
   background-color: var(--brand-bg-card) !important;
 }
 
@@ -194,7 +255,7 @@ body.light [class*="bg-[#0a0a0a]/60" i] {
   background-color: rgba(255, 255, 255, 0.6) !important;
 }
 
-/* Borders */
+/* Wildcard Borders Selector (Failsafe) */
 body.light [class*="border-[#1f1f1f]" i],
 body.light [class*="border-[#262626]" i],
 body.light [class*="border-[#2a2a2a]" i],
@@ -203,11 +264,15 @@ body.light [class*="border-[#23232c]" i],
 body.light [class*="border-[#222]" i],
 body.light [class*="border-[#252525]" i],
 body.light [class*="border-[#333]" i],
+body.light [class*="border-[#1f1f27]" i],
 body.light [class*="border-zinc-800" i],
 body.light [class*="border-zinc-900" i],
 body.light [class*="border-zinc-850" i],
+body.light [class*="border-zinc-950" i],
 body.light [class*="border-white/5" i],
-body.light [class*="border-white/10" i] {
+body.light [class*="border-white/10" i],
+body.light [class*="border-white/20" i],
+body.light [class*="border-white/30" i] {
   border-color: var(--brand-border) !important;
 }
 
@@ -217,6 +282,33 @@ body.light [class*="hover:bg-[#1C1C1C]" i]:hover,
 body.light [class*="hover:bg-zinc-900" i]:hover,
 body.light [class*="hover:bg-zinc-800" i]:hover {
   background-color: var(--bg-zinc-850) !important;
+}
+
+/* Handle Tailwind gradient stops dynamically for Light Mode */
+body.light [class*="from-indigo-950" i] {
+  --tw-gradient-from: rgba(99, 102, 241, 0.08) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(99, 102, 241, 0)) !important;
+  background-image: linear-gradient(to left, var(--tw-gradient-stops)) !important;
+}
+body.light [class*="from-emerald-950" i] {
+  --tw-gradient-from: rgba(16, 185, 129, 0.08) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(16, 185, 129, 0)) !important;
+  background-image: linear-gradient(to left, var(--tw-gradient-stops)) !important;
+}
+body.light [class*="via-zinc-950" i] {
+  --tw-gradient-via: #ffffff !important;
+}
+body.light [class*="to-zinc-950" i],
+body.light [class*="to-neutral-950" i] {
+  --tw-gradient-to: #ffffff !important;
+}
+
+/* Specific soft indigo & emerald border replacements for gradient headers */
+body.light [class*="border-indigo-900/30" i] {
+  border-color: rgba(99, 102, 241, 0.18) !important;
+}
+body.light [class*="border-emerald-900/30" i] {
+  border-color: rgba(16, 185, 129, 0.18) !important;
 }
 
 /* WhatsApp Message Bubbles */
@@ -301,6 +393,32 @@ body.light textarea {
 body.light option {
   background-color: #ffffff !important;
   color: #0f172a !important;
+}
+
+/* Failsafe Contrast Restorer: Forces white text inside buttons or active colored elements to remain white in Light Mode */
+body.light button,
+body.light button *,
+body.light a,
+body.light a *,
+body.light [class*="bg-indigo-"] *,
+body.light [class*="bg-emerald-"] *,
+body.light [class*="bg-rose-"] *,
+body.light [class*="bg-amber-"] *,
+body.light [class*="bg-blue-"] *,
+body.light [class*="bg-red-"] *,
+body.light [class*="bg-gradient-"] *,
+body.light [class*="bg-indigo-"],
+body.light [class*="bg-emerald-"],
+body.light [class*="bg-rose-"],
+body.light [class*="bg-amber-"],
+body.light [class*="bg-blue-"],
+body.light [class*="bg-red-"],
+body.light [class*="bg-gradient-"] {
+  --text-zinc-100: #ffffff;
+  --text-zinc-200: #ffffff;
+  --text-zinc-300: #f4f4f5;
+  --text-zinc-400: #e4e4e7;
+  --text-zinc-500: #d4d4d8;
 }
 
 /* Precision text overrides that switch dark-mode text classes to Slate colors.
