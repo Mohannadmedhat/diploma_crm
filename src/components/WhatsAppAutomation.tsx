@@ -92,7 +92,8 @@ export default function WhatsAppAutomation({
   const [polishingCustom, setPolishingCustom] = useState(false);
 
   const handlePolishMessage = async (type: 'absence' | 'custom', tone: 'friendly' | 'warning' | 'formal') => {
-    if (!config?.groqApiKey) {
+    const activeApiKey = config?.groqApiKey || (import.meta as any).env.VITE_GROQ_API_KEY || '';
+    if (!activeApiKey) {
       alert('الرجاء تهيئة مفتاح Groq API في الإعدادات أولاً لتفعيل تحسين الرسائل بالذكاء الاصطناعي.');
       return;
     }
@@ -106,8 +107,8 @@ export default function WhatsAppAutomation({
 
     try {
       const improved = await improveWhatsAppMessage(
-        config.groqApiKey,
-        config.groqModel || 'llama-3.3-70b-versatile',
+        activeApiKey,
+        config?.groqModel || 'llama-3.3-70b-versatile',
         currentText,
         tone
       );

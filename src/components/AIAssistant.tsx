@@ -90,7 +90,8 @@ export default function AIAssistant({
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  const hasApiKey = !!config?.groqApiKey && config.groqApiKey.trim().length > 0;
+  const activeApiKey = config?.groqApiKey || (import.meta as any).env.VITE_GROQ_API_KEY || '';
+  const hasApiKey = !!activeApiKey.trim();
   const activeModel = config?.groqModel || 'llama-3.3-70b-versatile';
 
   const SUGGESTED_PROMPTS = [
@@ -293,7 +294,7 @@ ${crmContext}
       const systemPrompt = buildSystemPrompt();
       
       const aiResponse = await callGroqChatCompletion(
-        config!.groqApiKey!,
+        activeApiKey,
         activeModel,
         systemPrompt,
         textToSend.trim()
