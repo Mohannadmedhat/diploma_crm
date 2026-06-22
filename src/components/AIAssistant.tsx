@@ -275,7 +275,7 @@ ${crmContext}
     "note": "سبب العذر أو الملاحظة إن وجد"
 
     // لـ GENERATE_CERTIFICATE:
-    "studentNameForCert": "الاسم الكامل للطالب الذي ستصدر الشهادة باسمه (مثلاً: Salma Samir Mohamed)",
+    "studentNameForCert": "الاسم الكامل للطالب باللغة الإنجليزية حصراً (حتى لو كتبه المستخدم بالعربية، قم بترجمته/تهجئته بالإنجليزية، مثل: 'مهند مدحت فتوح' -> 'Mohand Medhat Fatouh')",
     "diplomaNameForCert": "اسم الدبلومة (مثل: الأمن السيبراني أو الذكاء الاصطناعي)",
     "dateForCert": "التاريخ المطبوع على الشهادة YYYY-MM-DD"
   }
