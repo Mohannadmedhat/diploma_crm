@@ -363,76 +363,34 @@ export default function WhatsAppAutomation({
   };
 
   const openWhatsAppLink = (item: QueueItem) => {
-    const url = getWhatsAppLink(item.phone, item.message);
+    let cleanPhone = item.phone.replace(/[^\d+]/g, '');
+    const encodedText = encodeURIComponent(item.message);
     
-    if (whatsappPlatform === 'desktop') {
-      // Desktop App: Use helper window reference to navigate to whatsapp:// protocol.
-      // This bypasses the browser's block on launching external applications automatically without a user gesture.
-      if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
-        whatsappWindowRef.current.location.href = url;
-      } else {
-        // First time or if closed: open helper window
-        const newWin = window.open('about:blank', 'whatsapp_desktop_helper', 'width=450,height=300');
-        whatsappWindowRef.current = newWin;
-        if (newWin) {
-          try {
-            newWin.document.write(`
-              <html>
-                <head>
-                  <title>WhatsApp automation helper</title>
-                  <style>
-                    body {
-                      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                      background: #09090b;
-                      color: #a1a1aa;
-                      text-align: center;
-                      padding: 40px 20px;
-                      margin: 0;
-                      direction: rtl;
-                    }
-                    .title {
-                      font-size: 16px;
-                      font-weight: bold;
-                      color: #10b981;
-                      margin-bottom: 12px;
-                    }
-                    .desc {
-                      font-size: 12px;
-                      line-height: 1.6;
-                    }
-                    .hint {
-                      font-size: 10px;
-                      color: #71717a;
-                      margin-top: 20px;
-                    }
-                  </style>
-                </head>
-                <body>
-                  <div class="title">مساعد إرسال واتساب تلقائي 💻</div>
-                  <div class="desc">يرجى إبقاء هذه النافذة مفتوحة وعدم إغلاقها لتسهيل التنقل التلقائي بين شات الطلاب في تطبيق WhatsApp Desktop.</div>
-                  <div class="hint">يمكنك تصغير هذه النافذة أو نقلها جانباً.</div>
-                </body>
-              </html>
-            `);
-          } catch (e) {
-            console.error('Failed to write to helper window:', e);
-          }
-          newWin.location.href = url;
-        }
-      }
+    // For bulk send (both auto and manual step-by-step), if the user selected 'desktop',
+    // we MUST navigate the helper window using the HTTPS link (api.whatsapp.com) rather than the direct whatsapp:// protocol.
+    // This is because modern browsers strictly block launching custom protocols (whatsapp://) programmatically without a user gesture.
+    // The HTTPS link loads a lightweight web page that triggers the desktop app automatically (if allowed by the user),
+    // which bypasses this browser security block completely.
+    let url = '';
+    if (whatsappPlatform === 'web') {
+      url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
     } else {
-      // Web/Standard: Use stored window reference to navigate existing tab
-      // KEY TRICK: navigating an EXISTING window.location.href is NEVER blocked by popup blockers!
-      // Only opening NEW windows gets blocked. So we open once, then navigate on every subsequent student.
-      if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
-        // Navigate the already-open WhatsApp tab to the next student (no popup blocker!)
-        whatsappWindowRef.current.location.href = url;
-        try { whatsappWindowRef.current.focus(); } catch (_) {}
-      } else {
-        // First time: open a new window and save the reference
-        const newWin = window.open(url, 'whatsapp_auto_dispatch');
-        whatsappWindowRef.current = newWin;
-      }
+      // Both 'standard' and 'desktop' will use the api.whatsapp.com link for bulk dispatch
+      url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+    }
+
+    if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
+      // Navigate the already-open WhatsApp tab/helper to the next student (no popup blocker!)
+      whatsappWindowRef.current.location.href = url;
+      try { whatsappWindowRef.current.focus(); } catch (_) {}
+    } else {
+      // First time: open a new window and save the reference
+      const newWin = window.open(
+        url, 
+        'whatsapp_auto_dispatch', 
+        whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
+      );
+      whatsappWindowRef.current = newWin;
     }
   };
 
@@ -1295,56 +1253,21 @@ export default function WhatsAppAutomation({
                                   if (!whatsappWindowRef.current || whatsappWindowRef.current.closed) {
                                     const currentItem = queue[queueIndex];
                                     if (currentItem) {
-                                      const url = getWhatsAppLink(currentItem.phone, currentItem.message);
-                                      if (whatsappPlatform === 'desktop') {
-                                        const newWin = window.open('about:blank', 'whatsapp_desktop_helper', 'width=450,height=300');
-                                        whatsappWindowRef.current = newWin;
-                                        if (newWin) {
-                                          try {
-                                            newWin.document.write(`
-                                              <html>
-                                                <head>
-                                                  <title>WhatsApp automation helper</title>
-                                                  <style>
-                                                    body {
-                                                      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                                                      background: #09090b;
-                                                      color: #a1a1aa;
-                                                      text-align: center;
-                                                      padding: 40px 20px;
-                                                      margin: 0;
-                                                      direction: rtl;
-                                                    }
-                                                    .title {
-                                                      font-size: 16px;
-                                                      font-weight: bold;
-                                                      color: #10b981;
-                                                      margin-bottom: 12px;
-                                                    }
-                                                    .desc {
-                                                      font-size: 12px;
-                                                      line-height: 1.6;
-                                                    }
-                                                    .hint {
-                                                      font-size: 10px;
-                                                      color: #71717a;
-                                                      margin-top: 20px;
-                                                    }
-                                                  </style>
-                                                </head>
-                                                <body>
-                                                  <div class="title">مساعد إرسال واتساب تلقائي 💻</div>
-                                                  <div class="desc">يرجى إبقاء هذه النافذة مفتوحة وعدم إغلاقها لتسهيل التنقل التلقائي بين شات الطلاب في تطبيق WhatsApp Desktop.</div>
-                                                  <div class="hint">يمكنك تصغير هذه النافذة أو نقلها جانباً.</div>
-                                                </body>
-                                              </html>
-                                            `);
-                                          } catch (_) {}
-                                        }
+                                      let cleanPhone = currentItem.phone.replace(/[^\d+]/g, '');
+                                      const encodedText = encodeURIComponent(currentItem.message);
+                                      let url = '';
+                                      if (whatsappPlatform === 'web') {
+                                        url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
                                       } else {
-                                        const newWin = window.open(url, 'whatsapp_auto_dispatch');
-                                        whatsappWindowRef.current = newWin;
+                                        url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
                                       }
+                                      
+                                      const newWin = window.open(
+                                        url, 
+                                        'whatsapp_auto_dispatch', 
+                                        whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
+                                      );
+                                      whatsappWindowRef.current = newWin;
                                     }
                                   }
                                 }
@@ -1455,56 +1378,21 @@ export default function WhatsAppAutomation({
                               if (!whatsappWindowRef.current || whatsappWindowRef.current.closed) {
                                 const currentItem = queue[queueIndex];
                                 if (currentItem) {
-                                  const url = getWhatsAppLink(currentItem.phone, currentItem.message);
-                                  if (whatsappPlatform === 'desktop') {
-                                    const newWin = window.open('about:blank', 'whatsapp_desktop_helper', 'width=450,height=300');
-                                    whatsappWindowRef.current = newWin;
-                                    if (newWin) {
-                                      try {
-                                        newWin.document.write(`
-                                          <html>
-                                            <head>
-                                              <title>WhatsApp automation helper</title>
-                                              <style>
-                                                body {
-                                                  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                                                  background: #09090b;
-                                                  color: #a1a1aa;
-                                                  text-align: center;
-                                                  padding: 40px 20px;
-                                                  margin: 0;
-                                                  direction: rtl;
-                                                }
-                                                .title {
-                                                  font-size: 16px;
-                                                  font-weight: bold;
-                                                  color: #10b981;
-                                                  margin-bottom: 12px;
-                                                }
-                                                .desc {
-                                                  font-size: 12px;
-                                                  line-height: 1.6;
-                                                }
-                                                .hint {
-                                                  font-size: 10px;
-                                                  color: #71717a;
-                                                  margin-top: 20px;
-                                                }
-                                              </style>
-                                            </head>
-                                            <body>
-                                              <div class="title">مساعد إرسال واتساب تلقائي 💻</div>
-                                              <div class="desc">يرجى إبقاء هذه النافذة مفتوحة وعدم إغلاقها لتسهيل التنقل التلقائي بين شات الطلاب في تطبيق WhatsApp Desktop.</div>
-                                              <div class="hint">يمكنك تصغير هذه النافذة أو نقلها جانباً.</div>
-                                            </body>
-                                          </html>
-                                        `);
-                                      } catch (_) {}
-                                    }
+                                  let cleanPhone = currentItem.phone.replace(/[^\d+]/g, '');
+                                  const encodedText = encodeURIComponent(currentItem.message);
+                                  let url = '';
+                                  if (whatsappPlatform === 'web') {
+                                    url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
                                   } else {
-                                    const newWin = window.open(url, 'whatsapp_auto_dispatch');
-                                    whatsappWindowRef.current = newWin;
+                                    url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
                                   }
+                                  
+                                  const newWin = window.open(
+                                    url, 
+                                    'whatsapp_auto_dispatch', 
+                                    whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
+                                  );
+                                  whatsappWindowRef.current = newWin;
                                 }
                               }
                               processCurrentQueueItem();
