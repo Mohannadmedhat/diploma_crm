@@ -93,6 +93,12 @@ export default function AIAssistant({
   // AI Actions State
   const [pendingAction, setPendingAction] = useState<AIAction | null>(null);
 
+  // Certificate edit states
+  const [editCertName, setEditCertName] = useState('');
+  const [editCertDiploma, setEditCertDiploma] = useState('');
+  const [editCertHours, setEditCertHours] = useState('');
+  const [editCertDate, setEditCertDate] = useState('');
+
   // Speech Recognition States
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -382,6 +388,18 @@ ${crmContext}
 
   // Helper: translate Arabic diploma name to English and map hours for the certificate
   const getDiplomaEnglishNameAndHours = (diplomaNameAr: string) => {
+    // If already English, return it
+    if (/[a-zA-Z]/.test(diplomaNameAr)) {
+      let hours = '150';
+      const lower = diplomaNameAr.toLowerCase();
+      if (lower.includes('cyber') || lower.includes('security')) hours = '150';
+      else if (lower.includes('ai') || lower.includes('intelligence') || lower.includes('artificial')) hours = '170';
+      else if (lower.includes('data') || lower.includes('analysis')) hours = '120';
+      else if (lower.includes('full') || lower.includes('stack') || lower.includes('web') || lower.includes('dev')) hours = '180';
+      else if (lower.includes('ui') || lower.includes('ux')) hours = '100';
+      return { nameEn: diplomaNameAr, hours };
+    }
+
     const nameLower = diplomaNameAr.trim().toLowerCase();
     
     // Find matching type
@@ -399,7 +417,7 @@ ${crmContext}
         nameEn = 'Cyber Security';
         hours = '150';
       } else if (typeIdLower.includes('ai') || typeIdLower.includes('ذكاء') || typeIdLower.includes('artificial')) {
-        nameEn = 'Ai';
+        nameEn = 'AI';
         hours = '170';
       } else if (typeIdLower.includes('da') || typeIdLower.includes('data') || typeIdLower.includes('تحليل')) {
         nameEn = 'Data Analysis';
@@ -420,22 +438,33 @@ ${crmContext}
         nameEn = 'Cyber Security';
         hours = '150';
       } else if (nameLower.includes('ذكاء') || nameLower.includes('ai') || nameLower.includes('artificial')) {
-        nameEn = 'Ai';
+        nameEn = 'AI';
         hours = '170';
       }
     }
     return { nameEn, hours };
   };
 
+  useEffect(() => {
+    if (pendingAction && pendingAction.type === 'GENERATE_CERTIFICATE') {
+      setEditCertName(pendingAction.params.studentNameForCert || '');
+      
+      const dipNameAr = pendingAction.params.diplomaNameForCert || '';
+      const { nameEn, hours } = getDiplomaEnglishNameAndHours(dipNameAr);
+      setEditCertDiploma(nameEn);
+      setEditCertHours(hours);
+      
+      setEditCertDate(pendingAction.params.dateForCert || new Date().toISOString().split('T')[0]);
+    }
+  }, [pendingAction, diplomaTypes]);
+
   // Generate & print PDF using browser print engine on a hidden popup window
-  const handleDownloadCertificate = (studentName: string, diplomaNameAr: string, dateStr: string) => {
+  const handleDownloadCertificate = (studentName: string, diplomaNameEn: string, hours: string, dateStr: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       alert('الرجاء السماح بالنوافذ المنبثقة (Popups) لتحميل وطباعة الشهادة.');
       return;
     }
-
-    const { nameEn, hours } = getDiplomaEnglishNameAndHours(diplomaNameAr);
 
     // Format date beautifully if possible
     let formattedDate = dateStr;
@@ -470,11 +499,11 @@ ${crmContext}
           }
           
           .certificate-container {
-            width: 1000px;
-            height: 1000px; /* square to match generated template */
-            background-image: url('/certificate_template.png');
-            background-size: cover;
-            background-position: center;
+            width: 1024px;
+            height: 723px;
+            background-image: url('/certificate_original.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
             position: relative;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
@@ -482,48 +511,57 @@ ${crmContext}
           
           .student-name {
             position: absolute;
-            top: 57%; /* exactly overlays on blank space */
+            top: 52%;
             left: 5%;
             right: 5%;
             text-align: center;
             font-size: 38px;
             font-weight: 800;
             color: #213A78;
+            z-index: 2;
+            line-height: 52px;
           }
           
           .diploma-text {
             position: absolute;
-            top: 66%;
+            top: 64.5%;
             left: 5%;
             right: 5%;
             text-align: center;
             font-size: 16px;
             font-weight: 600;
             color: #0E172C;
+            z-index: 2;
+            line-height: 30px;
           }
           
           .certificate-date {
             position: absolute;
             bottom: 12.8%;
-            left: 9.8%;
-            width: 10.2%;
+            left: 9.5%;
+            width: 10.8%;
             text-align: center;
             font-size: 16px;
             font-weight: 600;
             color: #213A78;
-            padding-bottom: 2px;
+            z-index: 2;
+            line-height: 25px;
           }
           
           @media print {
             body {
               background-color: transparent;
+              margin: 0;
+              padding: 0;
             }
             .certificate-container {
               box-shadow: none;
               page-break-inside: avoid;
+              width: 1024px;
+              height: 723px;
             }
             @page {
-              size: portrait; /* square fits well on portrait page */
+              size: landscape;
               margin: 0;
             }
           }
@@ -531,8 +569,13 @@ ${crmContext}
       </head>
       <body>
         <div class="certificate-container">
+          <!-- Masks to cover original texts in the certificate screenshot -->
+          <div class="mask-name" style="position: absolute; top: 52%; left: 10%; width: 80%; height: 52px; background: #ffffff; z-index: 1;"></div>
+          <div class="mask-diploma" style="position: absolute; top: 64.5%; left: 10%; width: 80%; height: 30px; background: #ffffff; z-index: 1;"></div>
+          <div class="mask-date" style="position: absolute; bottom: 12.8%; left: 9.5%; width: 10.8%; height: 25px; background: #ffffff; z-index: 1;"></div>
+
           <div class="student-name">${studentName}</div>
-          <div class="diploma-text">Has Successfully Completed The ${nameEn} Diploma (${hours} Hours)</div>
+          <div class="diploma-text">Has Successfully Completed The ${diplomaNameEn} Diploma (${hours} Hours)</div>
           <div class="certificate-date">${formattedDate}</div>
         </div>
         <script>
@@ -738,13 +781,14 @@ ${crmContext}
         confirmMessage = `✅ تم بنجاح تعديل حضور الطالب **"${targetStudent.name}"** في محاضرة **"${targetSession.title}"** إلى: **${params.status === 'Present' ? 'حاضر ✅' : params.status === 'Absent' ? 'غائب ❌' : 'معذور ⚠️'}**!`;
 
       } else if (type === 'GENERATE_CERTIFICATE') {
-        // Trigger print/download
+        // Trigger print/download with edited details
         handleDownloadCertificate(
-          params.studentNameForCert || '',
-          params.diplomaNameForCert || '',
-          params.dateForCert || new Date().toISOString().split('T')[0]
+          editCertName,
+          editCertDiploma,
+          editCertHours,
+          editCertDate
         );
-        confirmMessage = `🎓 تم بنجاح توليد وتحميل شهادة إتمام دبلوم **"${params.diplomaNameForCert}"** للطالب **"${params.studentNameForCert}"**!`;
+        confirmMessage = `🎓 تم بنجاح توليد وتحميل شهادة إتمام دبلوم **"${editCertDiploma}"** للطالب **"${editCertName}"**!`;
       }
 
       const systemSuccessMsg: ChatMessage = {
@@ -946,11 +990,44 @@ ${crmContext}
                   )}
                   {pendingAction.type === 'GENERATE_CERTIFICATE' && (
                     <>
-                      <div className="text-xs text-zinc-300 font-bold mb-1 border-b border-[#23232C] pb-1">توليد شهادة التخرج للطلاب:</div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-zinc-400">
-                        <div className="col-span-2"><span className="text-zinc-550">الاسم المطبوع:</span> <span className="text-zinc-100 font-bold">{pendingAction.params.studentNameForCert || 'غير محدد'}</span></div>
-                        <div className="col-span-2"><span className="text-zinc-550">الدبلومة:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.diplomaNameForCert || 'غير محدد'}</span></div>
-                        <div><span className="text-zinc-550">تاريخ الإصدار:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.dateForCert || 'غير محدد'}</span></div>
+                      <div className="text-xs text-zinc-300 font-bold mb-2 border-b border-[#23232C] pb-1">توليد شهادة التخرج للطلاب (يمكنك تعديل البيانات أدناه):</div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[11px] text-zinc-400">
+                        <div className="col-span-2">
+                          <label className="text-zinc-550 text-[10px] block font-bold">الاسم بالإنجليزية:</label>
+                          <input
+                            type="text"
+                            value={editCertName}
+                            onChange={(e) => setEditCertName(e.target.value)}
+                            className="w-full bg-[#121216] border border-[#23232C] rounded-lg px-3 py-1.5 text-xs text-white outline-hidden focus:border-indigo-500 font-bold mt-1"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-zinc-550 text-[10px] block font-bold">اسم الدبلومة (بالإنجليزية):</label>
+                          <input
+                            type="text"
+                            value={editCertDiploma}
+                            onChange={(e) => setEditCertDiploma(e.target.value)}
+                            className="w-full bg-[#121216] border border-[#23232C] rounded-lg px-3 py-1.5 text-xs text-white outline-hidden focus:border-indigo-500 font-semibold mt-1"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-zinc-550 text-[10px] block font-bold">عدد الساعات:</label>
+                          <input
+                            type="text"
+                            value={editCertHours}
+                            onChange={(e) => setEditCertHours(e.target.value)}
+                            className="w-full bg-[#121216] border border-[#23232C] rounded-lg px-3 py-1.5 text-xs text-white outline-hidden focus:border-indigo-500 font-semibold mt-1"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-zinc-550 text-[10px] block font-bold">تاريخ الإصدار:</label>
+                          <input
+                            type="text"
+                            value={editCertDate}
+                            onChange={(e) => setEditCertDate(e.target.value)}
+                            className="w-full bg-[#121216] border border-[#23232C] rounded-lg px-3 py-1.5 text-xs text-white outline-hidden focus:border-indigo-500 font-semibold mt-1"
+                          />
+                        </div>
                       </div>
                     </>
                   )}
