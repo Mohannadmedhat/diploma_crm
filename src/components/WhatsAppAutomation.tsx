@@ -110,6 +110,7 @@ export default function WhatsAppAutomation({
   }, [whatsappPlatform]);
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [popupBlockerTriggered, setPopupBlockerTriggered] = useState(false);
 
   // Latest refs to avoid stale closures in setTimeout/setInterval callbacks
   const queueIndexRef = useRef(queueIndex);
@@ -362,15 +363,10 @@ export default function WhatsAppAutomation({
     }
   };
 
-  const openWhatsAppLink = (item: QueueItem) => {
+  const openWhatsAppLink = (item: QueueItem): boolean => {
     let cleanPhone = item.phone.replace(/[^\d+]/g, '');
     const encodedText = encodeURIComponent(item.message);
     
-    // For bulk send (both auto and manual step-by-step), if the user selected 'desktop',
-    // we MUST navigate the helper window using the HTTPS link (api.whatsapp.com) rather than the direct whatsapp:// protocol.
-    // This is because modern browsers strictly block launching custom protocols (whatsapp://) programmatically without a user gesture.
-    // The HTTPS link loads a lightweight web page that triggers the desktop app automatically (if allowed by the user),
-    // which bypasses this browser security block completely.
     let url = '';
     if (whatsappPlatform === 'web') {
       url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
@@ -379,18 +375,43 @@ export default function WhatsAppAutomation({
       url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
     }
 
-    if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
-      // Navigate the already-open WhatsApp tab/helper to the next student (no popup blocker!)
-      whatsappWindowRef.current.location.href = url;
-      try { whatsappWindowRef.current.focus(); } catch (_) {}
+    if (whatsappPlatform === 'web') {
+      // For WhatsApp Web: Reuse the same window reference to prevent reloading the client
+      if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
+        whatsappWindowRef.current.location.href = url;
+        try { whatsappWindowRef.current.focus(); } catch (_) {}
+        return true;
+      } else {
+        const newWin = window.open(url, 'whatsapp_auto_dispatch');
+        whatsappWindowRef.current = newWin;
+        if (!newWin) {
+          setPopupBlockerTriggered(true);
+          return false;
+        }
+        setPopupBlockerTriggered(false);
+        return true;
+      }
     } else {
-      // First time: open a new window and save the reference
+      // For Desktop/Standard: Close previous window to avoid clutter, and open a new tab.
+      // This is the ONLY way to bypass the browser's strict security restrictions on automatic protocol launches.
+      if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
+        try { whatsappWindowRef.current.close(); } catch (_) {}
+      }
+      
       const newWin = window.open(
         url, 
-        'whatsapp_auto_dispatch', 
+        '_blank', 
         whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
       );
+      
       whatsappWindowRef.current = newWin;
+      
+      if (!newWin) {
+        setPopupBlockerTriggered(true);
+        return false;
+      }
+      setPopupBlockerTriggered(false);
+      return true;
     }
   };
 
@@ -437,7 +458,15 @@ export default function WhatsAppAutomation({
 
     // Trigger open
     const currentItem = currentQueue[currentIndex];
-    openWhatsAppLink(currentItem);
+    const opened = openWhatsAppLink(currentItem);
+    
+    if (!opened) {
+      // Pause auto-sending if popup is blocked by the browser
+      setIsAutoSending(false);
+      setCountdown(null);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      return;
+    }
 
     // Save status in logs
     setSentLogs(prev => ({
@@ -466,6 +495,13 @@ export default function WhatsAppAutomation({
         console.log('[DEBUG] Queue fully processed.');
         setIsAutoSending(false);
         setCountdown(null);
+        // Close the helper window after a small delay once finished
+        setTimeout(() => {
+          if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
+            try { whatsappWindowRef.current.close(); } catch (_) {}
+            whatsappWindowRef.current = null;
+          }
+        }, 3000);
       }
     }, 600);
   };
@@ -516,7 +552,13 @@ export default function WhatsAppAutomation({
     setCountdown(null);
     if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    
+    // Close any remaining opened window
+    if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
+      try { whatsappWindowRef.current.close(); } catch (_) {}
+    }
     whatsappWindowRef.current = null; // Reset so next session opens a fresh window
+    setPopupBlockerTriggered(false);
   };
 
   return (
@@ -1208,6 +1250,14 @@ export default function WhatsAppAutomation({
                       </div>
                       <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-zinc-400">{queue[queueIndex].phone}</span>
                     </div>
+
+                    {/* Popup Blocker Alert */}
+                    {popupBlockerTriggered && (
+                      <div className="p-3.5 bg-rose-955/35 border border-rose-900/40 rounded-xl text-center text-xs text-rose-400 font-bold font-sans animate-pulse flex flex-col items-center justify-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-rose-500" />
+                        <span>🚨 <strong>تم حظر فتح النوافذ المنبثقة!</strong> يرجى الضغط على أيقونة الحظر في شريط عنوان المتصفح بالأعلى واختيار "السماح دائماً بالنوافذ المنبثقة من هذا الموقع" ثم إعادة تفعيل المراسلة المستمرة.</span>
+                      </div>
+                    )}
 
                     {/* Countdown Progress Indicator */}
                     {countdown !== null && (
