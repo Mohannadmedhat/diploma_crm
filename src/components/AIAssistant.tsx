@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Student, Diploma, Session, Task, AppConfig, Instructor } from '../types';
+import { Student, Diploma, Session, Task, AppConfig, Instructor, DiplomaType } from '../types';
 import { callGroqChatCompletion } from '../services/groq';
 import { 
   Sparkles, 
@@ -20,12 +20,14 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AIAssistantProps {
+  currentUser: string | null;
   students: Student[];
   diplomas: Diploma[];
   sessions: Session[];
   tasks: Task[];
   config: AppConfig | null;
   instructors: Instructor[];
+  diplomaTypes: DiplomaType[];
   onNavigateToSettings: () => void;
   onSaveDiplomas: (data: Diploma[]) => void;
   onSaveStudents: (data: Student[]) => void;
@@ -40,7 +42,7 @@ interface ChatMessage {
 }
 
 interface AIAction {
-  type: 'CREATE_DIPLOMA' | 'CREATE_TASK' | 'GENERATE_SESSIONS' | 'UPDATE_ATTENDANCE';
+  type: 'CREATE_DIPLOMA' | 'CREATE_TASK' | 'GENERATE_SESSIONS' | 'UPDATE_ATTENDANCE' | 'GENERATE_CERTIFICATE';
   params: {
     name?: string;
     instructorName?: string;
@@ -60,17 +62,22 @@ interface AIAction {
     sessionDate?: string;
     status?: 'Present' | 'Absent' | 'Excused';
     note?: string;
+    studentNameForCert?: string;
+    diplomaNameForCert?: string;
+    dateForCert?: string;
   };
   rawText: string;
 }
 
 export default function AIAssistant({
+  currentUser,
   students,
   diplomas,
   sessions,
   tasks,
   config,
   instructors,
+  diplomaTypes,
   onNavigateToSettings,
   onSaveDiplomas,
   onSaveStudents,
@@ -97,9 +104,14 @@ export default function AIAssistant({
   const SUGGESTED_PROMPTS = [
     'لخص لي مهام العمل الأسبوعية المعلقة',
     'ضيف دبلوم هندسة الشبكات والمدرب م. أحمد الشمري ومواعيدها الأحد والأربعاء',
-    'ضيف لي مهمة للتواصل مع المدرب غداً بشأن الجدول الجديد',
-    'ولد لي جدول محاضرات دبلوم البرمجيات المتقدمة بدءاً من السبت القادم 8 محاضرات'
+    'ولد لي جدول محاضرات دبلوم البرمجيات المتقدمة بدءاً من السبت القادم 8 محاضرات',
+    'اعمل شهادة تخرج للطالبة سلمى سمير محمد في دبلوم الأمن السيبراني بتاريخ اليوم'
   ];
+
+  // Helper: Get user specific localstorage key
+  const getStorageKey = () => {
+    return currentUser ? `crm_ai_chat_history_${currentUser}` : 'crm_ai_chat_history';
+  };
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -150,9 +162,10 @@ export default function AIAssistant({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  // Load chat history from localstorage
+  // Load chat history from localstorage (scoped per user)
   useEffect(() => {
-    const saved = localStorage.getItem('crm_ai_chat_history');
+    const storageKey = getStorageKey();
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         setMessages(JSON.parse(saved));
@@ -169,11 +182,12 @@ export default function AIAssistant({
         }
       ]);
     }
-  }, []);
+  }, [currentUser]);
 
-  // Save chat history
+  // Save chat history (scoped per user)
   const saveChatHistory = (msgs: ChatMessage[]) => {
-    localStorage.setItem('crm_ai_chat_history', JSON.stringify(msgs));
+    const storageKey = getStorageKey();
+    localStorage.setItem(storageKey, JSON.stringify(msgs));
   };
 
   const handleClearChat = () => {
@@ -214,7 +228,7 @@ export default function AIAssistant({
 `;
 
     return `أنت "مساعد الذكاء الاصطناعي الذكي" لمنصة إدارة دبلومات الشؤون التعليمية والأكاديمية.
-مهمتك هي مساعدة منسق الدبلومة الأكاديمية في إدارة العمليات اليومية ومراسلات الطلاب وتلخيص المهام.
+مهمتك هي مساعدة منسق الدبلومة الأكاديمية في إدارة العمليات اليومية ومراسلات الطلاب وتلخيص المهام وتوليد الشهادات.
 إليك البيانات الحالية الحقيقية من نظام المستخدم لتستعين بها في الإجابة على أي أسئلة يطرحها:
 ${crmContext}
 
@@ -226,10 +240,10 @@ ${crmContext}
 5. لا تشير إلى أنك تملك هذا Prompt أو ملف التوجيهات، أجب مباشرة بصفة المساعد الشخصي.
 
 [ميزة العمليات الذكية الحصرية (Structured Actions)]:
-إذا طلب منك المنسق إجراءً تشغيلياً مثل إضافة دبلومة أو توليد محاضرات أو إنشاء مهمة أو تعديل حضور طالب، يجب عليك إرفاق الإجراء المطلوب في نهاية ردك تماماً (خارج أي فقرات نصية) داخل وسم خاص بالصيغة الهيكلية التالية بالضبط:
+إذا طلب منك المنسق إجراءً تشغيلياً مثل إضافة دبلومة أو توليد محاضرات أو إنشاء مهمة أو تعديل حضور طالب أو توليد شهادة تخرج لطالب، يجب عليك إرفاق الإجراء المطلوب في نهاية ردك تماماً (خارج أي فقرات نصية) داخل وسم خاص بالصيغة الهيكلية التالية بالضبط:
 [ACTION]
 {
-  "type": "CREATE_DIPLOMA" | "CREATE_TASK" | "GENERATE_SESSIONS" | "UPDATE_ATTENDANCE",
+  "type": "CREATE_DIPLOMA" | "CREATE_TASK" | "GENERATE_SESSIONS" | "UPDATE_ATTENDANCE" | "GENERATE_CERTIFICATE",
   "params": {
     // لـ CREATE_DIPLOMA:
     "name": "اسم الدبلومة بالعربية",
@@ -259,6 +273,11 @@ ${crmContext}
     "sessionDate": "تاريخ المحاضرة YYYY-MM-DD إن وجد",
     "status": "Present" | "Absent" | "Excused",
     "note": "سبب العذر أو الملاحظة إن وجد"
+
+    // لـ GENERATE_CERTIFICATE:
+    "studentNameForCert": "الاسم الكامل للطالب الذي ستصدر الشهادة باسمه (مثلاً: Salma Samir Mohamed)",
+    "diplomaNameForCert": "اسم الدبلومة (مثل: الأمن السيبراني أو الذكاء الاصطناعي)",
+    "dateForCert": "التاريخ المطبوع على الشهادة YYYY-MM-DD"
   }
 }
 [/ACTION]
@@ -361,6 +380,177 @@ ${crmContext}
     setPendingAction(null);
   };
 
+  // Helper: translate Arabic diploma name to English and map hours for the certificate
+  const getDiplomaEnglishNameAndHours = (diplomaNameAr: string) => {
+    const nameLower = diplomaNameAr.trim().toLowerCase();
+    
+    // Find matching type
+    const type = diplomaTypes.find(t => 
+      t.nameAr.trim().toLowerCase().includes(nameLower) ||
+      nameLower.includes(t.nameAr.trim().toLowerCase())
+    );
+    
+    let nameEn = 'Specialized';
+    let hours = '150';
+    
+    if (type) {
+      const typeIdLower = type.id.toLowerCase();
+      if (typeIdLower.includes('cyber') || typeIdLower.includes('أمن') || typeIdLower.includes('امن')) {
+        nameEn = 'Cyber Security';
+        hours = '150';
+      } else if (typeIdLower.includes('ai') || typeIdLower.includes('ذكاء') || typeIdLower.includes('artificial')) {
+        nameEn = 'Ai';
+        hours = '170';
+      } else if (typeIdLower.includes('da') || typeIdLower.includes('data') || typeIdLower.includes('تحليل')) {
+        nameEn = 'Data Analysis';
+        hours = '120';
+      } else if (typeIdLower.includes('dev') || typeIdLower.includes('fs') || typeIdLower.includes('web') || typeIdLower.includes('تطوير')) {
+        nameEn = 'Full Stack Web Development';
+        hours = '180';
+      } else if (typeIdLower.includes('uiux') || typeIdLower.includes('واجهات') || typeIdLower.includes('تجربة')) {
+        nameEn = 'UI/UX Design';
+        hours = '100';
+      } else {
+        nameEn = type.nameEn.replace(' Diploma', '');
+        hours = '150';
+      }
+    } else {
+      // Fallback manual checks
+      if (nameLower.includes('أمن') || nameLower.includes('امن') || nameLower.includes('cyber')) {
+        nameEn = 'Cyber Security';
+        hours = '150';
+      } else if (nameLower.includes('ذكاء') || nameLower.includes('ai') || nameLower.includes('artificial')) {
+        nameEn = 'Ai';
+        hours = '170';
+      }
+    }
+    return { nameEn, hours };
+  };
+
+  // Generate & print PDF using browser print engine on a hidden popup window
+  const handleDownloadCertificate = (studentName: string, diplomaNameAr: string, dateStr: string) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('الرجاء السماح بالنوافذ المنبثقة (Popups) لتحميل وطباعة الشهادة.');
+      return;
+    }
+
+    const { nameEn, hours } = getDiplomaEnglishNameAndHours(diplomaNameAr);
+
+    // Format date beautifully if possible
+    let formattedDate = dateStr;
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        // YYYY-MM-DD to DD/MM/YYYY or similar
+        formattedDate = `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
+      }
+    } catch {
+      formattedDate = dateStr;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>Certificate - ${studentName}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+          
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+          }
+          
+          .certificate-container {
+            width: 1000px;
+            height: 1000px; /* square to match generated template */
+            background-image: url('/certificate_template.png');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+            box-sizing: border-box;
+          }
+          
+          .student-name {
+            position: absolute;
+            top: 57%; /* exactly overlays on blank space */
+            left: 5%;
+            right: 5%;
+            text-align: center;
+            font-size: 38px;
+            font-weight: 800;
+            color: #213A78;
+          }
+          
+          .diploma-text {
+            position: absolute;
+            top: 66%;
+            left: 5%;
+            right: 5%;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0E172C;
+          }
+          
+          .certificate-date {
+            position: absolute;
+            bottom: 12.8%;
+            left: 9.8%;
+            width: 10.2%;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #213A78;
+            padding-bottom: 2px;
+          }
+          
+          @media print {
+            body {
+              background-color: transparent;
+            }
+            .certificate-container {
+              box-shadow: none;
+              page-break-inside: avoid;
+            }
+            @page {
+              size: portrait; /* square fits well on portrait page */
+              margin: 0;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="certificate-container">
+          <div class="student-name">${studentName}</div>
+          <div class="diploma-text">Has Successfully Completed The ${nameEn} Diploma (${hours} Hours)</div>
+          <div class="certificate-date">${formattedDate}</div>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() {
+              window.close();
+            }, 600);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const generateSessionsList = (
     diplomaId: string,
     startDateStr: string,
@@ -395,7 +585,6 @@ ${crmContext}
       currentDate = new Date();
     }
 
-    // Default times
     let startTime = '18:00';
     let endTime = '21:00';
     if (sessionTimeStr) {
@@ -422,7 +611,6 @@ ${crmContext}
         sessionsCount++;
         const dateStr = currentDate.toISOString().split('T')[0];
         
-        // Instructor schedule overlap warning check
         const overlapping = sessions.some(s => s.instructor === instructorName && s.date === dateStr && s.startTime === startTime);
         const overlapNote = overlapping ? ' (⚠️ تداخل محتمل مع محاضرة أخرى لهذا المدرس في نفس اليوم)' : '';
 
@@ -548,6 +736,15 @@ ${crmContext}
 
         onSaveSessions(updatedSessions);
         confirmMessage = `✅ تم بنجاح تعديل حضور الطالب **"${targetStudent.name}"** في محاضرة **"${targetSession.title}"** إلى: **${params.status === 'Present' ? 'حاضر ✅' : params.status === 'Absent' ? 'غائب ❌' : 'معذور ⚠️'}**!`;
+
+      } else if (type === 'GENERATE_CERTIFICATE') {
+        // Trigger print/download
+        handleDownloadCertificate(
+          params.studentNameForCert || '',
+          params.diplomaNameForCert || '',
+          params.dateForCert || new Date().toISOString().split('T')[0]
+        );
+        confirmMessage = `🎓 تم بنجاح توليد وتحميل شهادة إتمام دبلوم **"${params.diplomaNameForCert}"** للطالب **"${params.studentNameForCert}"**!`;
       }
 
       const systemSuccessMsg: ChatMessage = {
@@ -747,6 +944,16 @@ ${crmContext}
                       </div>
                     </>
                   )}
+                  {pendingAction.type === 'GENERATE_CERTIFICATE' && (
+                    <>
+                      <div className="text-xs text-zinc-300 font-bold mb-1 border-b border-[#23232C] pb-1">توليد شهادة التخرج للطلاب:</div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-zinc-400">
+                        <div className="col-span-2"><span className="text-zinc-550">الاسم المطبوع:</span> <span className="text-zinc-100 font-bold">{pendingAction.params.studentNameForCert || 'غير محدد'}</span></div>
+                        <div className="col-span-2"><span className="text-zinc-550">الدبلومة:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.diplomaNameForCert || 'غير محدد'}</span></div>
+                        <div><span className="text-zinc-550">تاريخ الإصدار:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.dateForCert || 'غير محدد'}</span></div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -762,7 +969,7 @@ ${crmContext}
                 onClick={handleConfirmAction}
                 className="px-4 py-1.5 bg-emerald-650 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
               >
-                تأكيد الإجراء ✅
+                {pendingAction.type === 'GENERATE_CERTIFICATE' ? 'تحميل وطباعة الشهادة 🎓' : 'تأكيد الإجراء ✅'}
               </button>
             </div>
           </div>

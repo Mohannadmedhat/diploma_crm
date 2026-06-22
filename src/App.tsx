@@ -808,12 +808,14 @@ export default function App() {
 
                 {activeTab === 'ai-assistant' && (
                   <AIAssistant
+                    currentUser={currentUser}
                     students={students}
                     diplomas={diplomas}
                     sessions={sessions}
                     tasks={tasks}
                     config={config}
                     instructors={instructors}
+                    diplomaTypes={diplomaTypes}
                     onNavigateToSettings={() => setActiveTab('settings')}
                     onSaveDiplomas={handleSaveDiplomas}
                     onSaveStudents={handleSaveStudents}
