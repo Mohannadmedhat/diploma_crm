@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Diploma, Session, Task } from '../types';
+import { Diploma, Session, Task, TaskCategory } from '../types';
 import {
   CalendarDays,
   Plus,
@@ -41,6 +41,39 @@ const ARABIC_DAY_MAP: Record<string, number> = {
   'الخميس': 4,
   'الجمعة': 5,
   'السبت': 6
+};
+
+export const CATEGORY_MAP: Record<TaskCategory, { label: string; badgeClass: string; borderClass: string; colorDotClass: string }> = {
+  Academic: {
+    label: 'أكاديمي',
+    badgeClass: 'bg-violet-950/30 border-violet-900/30 text-violet-400',
+    borderClass: 'border-violet-500/30 bg-violet-950/5 shadow-sm shadow-violet-500/5',
+    colorDotClass: 'bg-violet-500',
+  },
+  Logistics: {
+    label: 'لوجستيات',
+    badgeClass: 'bg-cyan-950/30 border-cyan-900/30 text-cyan-400',
+    borderClass: 'border-cyan-500/30 bg-cyan-950/5 shadow-sm shadow-cyan-500/5',
+    colorDotClass: 'bg-cyan-500',
+  },
+  Communication: {
+    label: 'تواصل',
+    badgeClass: 'bg-emerald-950/30 border-emerald-900/30 text-emerald-400',
+    borderClass: 'border-emerald-500/30 bg-emerald-950/5 shadow-sm shadow-emerald-500/5',
+    colorDotClass: 'bg-emerald-500',
+  },
+  Financial: {
+    label: 'مالي',
+    badgeClass: 'bg-amber-950/30 border-amber-900/30 text-amber-400',
+    borderClass: 'border-amber-500/30 bg-amber-950/5 shadow-sm shadow-amber-500/5',
+    colorDotClass: 'bg-amber-500',
+  },
+  Other: {
+    label: 'عام',
+    badgeClass: 'bg-slate-950/30 border-slate-900/30 text-slate-400',
+    borderClass: 'border-slate-500/30 bg-slate-950/5 shadow-sm shadow-slate-500/5',
+    colorDotClass: 'bg-slate-500',
+  },
 };
 
 function getStudyDaysNumbers(studyDays?: string): number[] {
@@ -98,6 +131,8 @@ export default function WeeklyOpsBoard({
   const [showAddTask, setShowAddTask] = useState<string | null>(null); // date string for which day
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<Task['priority']>('Medium');
+  const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory>('Other');
+  const [newTaskDiplomaId, setNewTaskDiplomaId] = useState<string>('');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskDate, setEditingTaskDate] = useState('');
 
@@ -207,12 +242,48 @@ export default function WeeklyOpsBoard({
       dueDate: dayStr,
       priority: newTaskPriority,
       status: 'Pending',
-      notes: ''
+      notes: '',
+      category: newTaskCategory,
+      diplomaId: newTaskDiplomaId || undefined
     };
     onSaveTasks([newTask, ...tasks]);
     setNewTaskTitle('');
     setNewTaskPriority('Medium');
+    setNewTaskCategory('Other');
+    setNewTaskDiplomaId('');
     setShowAddTask(null);
+  };
+
+  // Postpone task to the next study day of its linked diploma (or first active diploma if unlinked)
+  const handlePostponeTaskToNextStudyDay = (task: Task) => {
+    let targetDiploma = task.diplomaId ? diplomas.find(d => d.id === task.diplomaId) : null;
+    if (!targetDiploma) {
+      targetDiploma = diplomas.find(d => d.status === 'Active' && d.studyDays);
+    }
+
+    const currentDueDate = new Date(task.dueDate);
+    let nextDate = new Date(currentDueDate);
+    let found = false;
+    const studyDaysNumbers = targetDiploma ? getStudyDaysNumbers(targetDiploma.studyDays) : [];
+
+    if (studyDaysNumbers.length > 0) {
+      for (let i = 1; i <= 7; i++) {
+        const checkDate = addDays(currentDueDate, i);
+        if (studyDaysNumbers.includes(checkDate.getDay())) {
+          nextDate = checkDate;
+          found = true;
+          break;
+        }
+      }
+    }
+
+    if (!found) {
+      nextDate = addDays(currentDueDate, 1);
+    }
+
+    const nextDateStr = formatDateStr(nextDate);
+    const updated = tasks.map(t => t.id === task.id ? { ...t, dueDate: nextDateStr } : t);
+    onSaveTasks(updated);
   };
 
   // Toggle task status
@@ -353,11 +424,32 @@ export default function WeeklyOpsBoard({
                         onKeyDown={(e) => e.key === 'Enter' && handleAddTask(dayStr)}
                         autoFocus
                       />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <select
+                          value={newTaskCategory}
+                          onChange={(e) => setNewTaskCategory(e.target.value as TaskCategory)}
+                          className="px-2 py-1.5 bg-[#0A0A0A] border border-[#2A2A2A] text-[11px] text-zinc-300 rounded-lg outline-none cursor-pointer text-right"
+                        >
+                          {Object.entries(CATEGORY_MAP).map(([key, val]) => (
+                            <option key={key} value={key}>تصنيف: {val.label}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={newTaskDiplomaId}
+                          onChange={(e) => setNewTaskDiplomaId(e.target.value)}
+                          className="px-2 py-1.5 bg-[#0A0A0A] border border-[#2A2A2A] text-[11px] text-zinc-300 rounded-lg outline-none cursor-pointer text-right"
+                        >
+                          <option value="">ربط بدبلومة: عام</option>
+                          {diplomas.map((d) => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="flex items-center gap-2">
                         <select
                           value={newTaskPriority}
                           onChange={(e) => setNewTaskPriority(e.target.value as Task['priority'])}
-                          className="flex-1 px-2 py-1.5 bg-[#0A0A0A] border border-[#2A2A2A] text-[11px] text-zinc-300 rounded-lg outline-none cursor-pointer"
+                          className="flex-1 px-2 py-1.5 bg-[#0A0A0A] border border-[#2A2A2A] text-[11px] text-zinc-300 rounded-lg outline-none cursor-pointer text-right"
                         >
                           <option value="Low">أولوية منخفضة</option>
                           <option value="Medium">أولوية متوسطة</option>
@@ -370,7 +462,11 @@ export default function WeeklyOpsBoard({
                           إضافة
                         </button>
                         <button
-                          onClick={() => setShowAddTask(null)}
+                          onClick={() => {
+                            setShowAddTask(null);
+                            setNewTaskCategory('Other');
+                            setNewTaskDiplomaId('');
+                          }}
                           className="p-1.5 text-zinc-500 hover:text-zinc-300 cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -512,6 +608,8 @@ export default function WeeklyOpsBoard({
                   <div className="space-y-1.5">
                     {manualTasks.map((task) => {
                       const isDone = task.status === 'Completed';
+                      const catInfo = CATEGORY_MAP[task.category || 'Other'];
+                      
                       const priorityColor = task.priority === 'High'
                         ? 'bg-rose-950/20 border-rose-900/30 text-rose-400'
                         : task.priority === 'Medium'
@@ -524,7 +622,7 @@ export default function WeeklyOpsBoard({
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all group ${
                             isDone
                               ? 'bg-zinc-950/10 border-[#1A1A1A]'
-                              : 'bg-[#0A0A0A]/60 border-[#222] hover:border-[#333]'
+                              : `${catInfo.borderClass}`
                           }`}
                         >
                           {/* Checkbox */}
@@ -543,6 +641,18 @@ export default function WeeklyOpsBoard({
                             {task.title}
                           </span>
 
+                          {/* Diploma Link Badge */}
+                          {task.diplomaId && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 bg-indigo-950/30 border-indigo-900/30 text-indigo-400 truncate max-w-[120px]" title={getDiplomaName(task.diplomaId)}>
+                              {getDiplomaName(task.diplomaId)}
+                            </span>
+                          )}
+
+                          {/* Category Badge */}
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${catInfo.badgeClass}`}>
+                            {catInfo.label}
+                          </span>
+
                           {/* Priority badge */}
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${priorityColor}`}>
                             {task.priority === 'High' ? 'عاجل' : task.priority === 'Medium' ? 'هام' : 'عادي'}
@@ -550,6 +660,15 @@ export default function WeeklyOpsBoard({
 
                           {/* Actions (visible on hover) */}
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            {!isDone && (
+                              <button
+                                onClick={() => handlePostponeTaskToNextStudyDay(task)}
+                                className="p-1 text-zinc-600 hover:text-indigo-400 cursor-pointer transition-colors"
+                                title="تأجيل للمحاضرة القادمة"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                              </button>
+                            )}
                             {editingTaskId === task.id ? (
                               <div className="flex items-center gap-1">
                                 <input
@@ -713,39 +832,121 @@ export default function WeeklyOpsBoard({
               const placeholders = getPlaceholdersForDay(day);
               const manualTasks = getManualTasksForDay(dayStr);
               const totalItems = postSessionItems.length + placeholders.length + manualTasks.length;
+              
+              const todayStr = formatDateStr(today);
+              const hasOverduePending = tasks.some(t => t.status !== 'Completed' && t.dueDate === dayStr && t.dueDate < todayStr);
+
+              const calendarItems = [
+                ...postSessionItems.map(s => {
+                  const doneCount = [s.recordingUploaded, s.attendanceReviewed, s.instructorPresent === true].filter(Boolean).length;
+                  return {
+                    type: 'session' as const,
+                    id: s.id,
+                    title: s.title,
+                    isCompleted: doneCount === 3,
+                  };
+                }),
+                ...placeholders.map(p => ({
+                  type: 'placeholder' as const,
+                  id: p.id,
+                  title: `محاضرة: ${p.name}`,
+                })),
+                ...manualTasks.map(t => ({
+                  type: 'task' as const,
+                  id: t.id,
+                  title: t.title,
+                  category: t.category || 'Other',
+                  isCompleted: t.status === 'Completed',
+                })),
+              ];
 
               return (
                 <button
                   key={dayStr}
                   type="button"
                   onClick={() => setSelectedGridDate(day)}
-                  className={`aspect-square p-2 rounded-xl border flex flex-col justify-between items-end transition-all relative group cursor-pointer text-right min-h-[50px] sm:min-h-[70px] ${
+                  className={`p-2 rounded-xl border flex flex-col justify-between items-end transition-all relative group cursor-pointer text-right min-h-[50px] sm:min-h-[105px] aspect-square sm:aspect-auto ${
                     isSelected
-                      ? 'border-indigo-500 bg-indigo-950/20 text-white shadow-md'
+                      ? 'border-indigo-500 bg-indigo-950/30 text-white shadow-[0_0_15px_rgba(99,102,241,0.35)]'
                       : isToday
-                      ? 'border-zinc-700 bg-zinc-800/10 text-indigo-400'
+                      ? 'border-indigo-500/60 bg-indigo-950/15 text-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.2)] animate-pulse'
                       : isCurrentMonth
                       ? 'border-zinc-900 bg-zinc-950/30 text-zinc-300 hover:border-zinc-800'
                       : 'border-zinc-900/40 bg-zinc-950/5 text-zinc-650'
                   }`}
                 >
-                  <span className={`text-[10px] font-mono font-bold ${
-                    isSelected ? 'text-indigo-400' : isToday ? 'text-indigo-400' : isCurrentMonth ? 'text-zinc-400 font-black' : 'text-zinc-700'
-                  }`}>
-                    {day.getDate()}
+                  <span className="flex items-center gap-1 w-full justify-between flex-row-reverse">
+                    <span className={`text-[10px] font-mono font-bold ${
+                      isSelected ? 'text-indigo-400' : isToday ? 'text-indigo-400' : isCurrentMonth ? 'text-zinc-400 font-black' : 'text-zinc-700'
+                    }`}>
+                      {day.getDate()}
+                    </span>
+                    {hasOverduePending && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)] shrink-0" title="مهام متأخرة معلقة!" />
+                    )}
                   </span>
                   
-                  {/* Indicators */}
+                  {/* Indicators - Mobile Only */}
                   {totalItems > 0 && (
-                    <div className="flex flex-wrap gap-1 justify-start w-full mt-1">
+                    <div className="flex flex-wrap gap-1 justify-start w-full mt-1 sm:hidden">
                       {postSessionItems.length > 0 && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title={`${postSessionItems.length} محاضرات للمتابعة`} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       )}
                       {placeholders.length > 0 && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" title={`${placeholders.length} حصص مقترحة`} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                       )}
                       {manualTasks.length > 0 && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title={`${manualTasks.length} مهام`} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      )}
+                    </div>
+                  )}
+
+                  {/* Desktop Item Titles */}
+                  {calendarItems.length > 0 && (
+                    <div className="hidden sm:flex flex-col gap-1 w-full mt-1.5 text-[9px] text-right overflow-hidden select-none">
+                      {calendarItems.slice(0, 2).map((item, idx) => {
+                        if (item.type === 'session') {
+                          return (
+                            <div
+                              key={item.id}
+                              className={`px-1 py-0.5 rounded border text-center truncate ${
+                                item.isCompleted
+                                  ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-400 shadow-[0_0_4px_rgba(16,185,129,0.2)]'
+                                  : 'border-amber-500/40 bg-amber-950/20 text-amber-400 shadow-[0_0_4px_rgba(245,158,11,0.2)]'
+                              }`}
+                            >
+                              {item.title}
+                            </div>
+                          );
+                        } else if (item.type === 'placeholder') {
+                          return (
+                            <div
+                              key={item.id}
+                              className="px-1 py-0.5 rounded border border-orange-500/40 bg-orange-950/20 text-orange-400 text-center truncate shadow-[0_0_4px_rgba(249,115,22,0.2)]"
+                            >
+                              {item.title}
+                            </div>
+                          );
+                        } else {
+                          const catStyle = CATEGORY_MAP[item.category];
+                          return (
+                            <div
+                              key={item.id}
+                              className={`px-1 py-0.5 rounded border text-center truncate ${
+                                item.isCompleted
+                                  ? 'border-zinc-800 bg-zinc-900/30 text-zinc-500 line-through'
+                                  : `${catStyle.badgeClass} shadow-[0_0_4px_rgba(0,0,0,0.1)]`
+                              }`}
+                            >
+                              {item.title}
+                            </div>
+                          );
+                        }
+                      })}
+                      {calendarItems.length > 2 && (
+                        <div className="text-[8px] text-zinc-500 font-bold text-center mt-0.5">
+                          +{calendarItems.length - 2} إضافي
+                        </div>
                       )}
                     </div>
                   )}

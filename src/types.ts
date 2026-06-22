@@ -124,6 +124,8 @@ export interface Announcement {
   date: string; // YYYY-MM-DD HH:MM
 }
 
+export type TaskCategory = 'Academic' | 'Logistics' | 'Communication' | 'Financial' | 'Other';
+
 export interface Task {
   id: string;
   title: string;
@@ -131,6 +133,8 @@ export interface Task {
   priority: 'Low' | 'Medium' | 'High'; // 'منخفض' | 'متوسط' | 'مرتفع'
   status: 'Pending' | 'In Progress' | 'Completed'; // 'قيد الانتظار' | 'قيد التنفيذ' | 'مكتمل'
   notes: string;
+  category?: TaskCategory;
+  diplomaId?: string;
 }
 
 export interface MessageTemplate {
