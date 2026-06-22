@@ -457,24 +457,35 @@ body.light [class*="bg-[#121212]" i][class*="text-zinc-300" i] {
 }
 
 /* -------------------------------------------------------------
-   TYPOGRAPHY & METADATA OVERRIDES
+   BULLETPROOF TYPOGRAPHY & CONTRAST CASCADING OVERRIDES
    ------------------------------------------------------------- */
+
+/* By default, make ALL text and elements inherit a rich charcoal slate color in Light Mode */
+body.light,
+body.light div,
+body.light span,
+body.light p,
+body.light a,
+body.light label,
+body.light input,
+body.light select,
+body.light textarea,
+body.light button,
+body.light th,
+body.light td {
+  color: #1e293b; /* Slate 800 (Charcoal) - high contrast base color */
+}
+
+/* Redefine heading elements to maximum contrast Slate 900 */
 body.light h1,
 body.light h2,
 body.light h3,
 body.light h4,
 body.light h5,
 body.light h6,
-body.light label,
-body.light th {
-  color: #0f172a !important; /* Slate 900 base default for headings and labels */
-}
-
-body.light textarea,
-body.light span,
-body.light p,
-body.light div {
-  color: #0f172a; /* Slate 900 base default for all texts inside cards */
+body.light strong,
+body.light b {
+  color: #0f172a !important; /* Slate 900 - almost black */
 }
 
 body.light option {
@@ -536,45 +547,10 @@ body.light textarea:focus {
   outline: none !important;
 }
 
-/* -------------------------------------------------------------
-   CONTRAST RESTORER FOR NESTED BTN TEXT (SAFETY)
-   ------------------------------------------------------------- */
-body.light button.bg-emerald-600,
-body.light button.bg-emerald-600 *,
-body.light button.bg-rose-600,
-body.light button.bg-rose-600 *,
-body.light button.bg-rose-700,
-body.light button.bg-rose-700 *,
-body.light button.bg-indigo-600,
-body.light button.bg-indigo-600 *,
-body.light button.bg-blue-600,
-body.light button.bg-blue-600 *,
-body.light button.bg-black,
-body.light button.bg-black *,
-body.light a.bg-indigo-600,
-body.light a.bg-indigo-600 *,
-body.light a.bg-emerald-600,
-body.light a.bg-emerald-600 *,
-body.light [class*="bg-indigo-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]),
-body.light [class*="bg-indigo-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]) *,
-body.light [class*="bg-emerald-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]),
-body.light [class*="bg-emerald-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]) *,
-body.light [class*="bg-rose-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]),
-body.light [class*="bg-rose-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]) *,
-body.light [class*="bg-gradient-"],
-body.light [class*="bg-gradient-"] * {
-  --text-zinc-100: #ffffff;
-  --text-zinc-200: #ffffff;
-  --text-zinc-300: #f4f4f5;
-  --text-zinc-400: #e4e4e7;
-  --text-zinc-500: #d4d4d8;
-}
-
-/* Precise text color overrides for Light Mode to force readable Slate colors.
-   These target the exact Tailwind classes and also the custom developer typos/classes. */
+/* Precise Tailwind text utility class overrides for Light Mode to force readable Slate colors. */
 body.light .text-white,
 body.light [class*="text-white" i] {
-  color: #0f172a !important; /* Slate 900 base default for text-white */
+  color: #0f172a !important; /* Default fallback for text-white on light backgrounds */
 }
 body.light .text-zinc-100,
 body.light [class*="text-zinc-100" i] {
@@ -598,13 +574,13 @@ body.light [class*="text-zinc-450" i] {
 }
 body.light .text-zinc-500,
 body.light [class*="text-zinc-500" i] {
-  color: #475569 !important; /* Slate 600 */
+  color: #64748b !important; /* Slate 500 */
 }
 body.light .text-zinc-550,
 body.light [class*="text-zinc-550" i],
 body.light .text-zinc-555,
 body.light [class*="text-zinc-555" i] {
-  color: #475569 !important; /* Slate 600 - handles custom classes/typos */
+  color: #475569 !important; /* Slate 600 */
 }
 body.light .text-zinc-600,
 body.light [class*="text-zinc-600" i] {
@@ -612,7 +588,7 @@ body.light [class*="text-zinc-600" i] {
 }
 body.light .text-zinc-650,
 body.light [class*="text-zinc-650" i] {
-  color: #334155 !important; /* Slate 700 - handles custom classes */
+  color: #334155 !important; /* Slate 700 */
 }
 body.light .text-zinc-700,
 body.light [class*="text-zinc-700" i] {
@@ -627,7 +603,9 @@ body.light [class*="text-[#E5E5E5]" i] {
   color: #0f172a !important; /* Slate 900 */
 }
 
-/* Solid and translucent neon backgrounds get solid white text for all descendants in Light Mode */
+/* -------------------------------------------------------------
+   WHITE TEXT SAFEGUARDS FOR SOLID-COLORED NEON BUTTONS/BADGES
+   ------------------------------------------------------------- */
 body.light .bg-indigo-600,
 body.light .bg-indigo-600 *,
 body.light .bg-indigo-600:hover,
