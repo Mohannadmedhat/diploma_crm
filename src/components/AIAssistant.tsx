@@ -497,17 +497,29 @@ ${crmContext}
             justify-content: center;
             align-items: center;
             height: 100vh;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           
           .certificate-container {
             width: 1024px;
             height: 723px;
-            background-image: url('${window.location.origin}/certificate_original.png');
-            background-size: 100% 100%;
-            background-repeat: no-repeat;
             position: relative;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
+            overflow: hidden;
+            background-color: #ffffff;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          .certificate-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1024px;
+            height: 723px;
+            z-index: 0;
           }
           
           .student-name {
@@ -570,6 +582,8 @@ ${crmContext}
       </head>
       <body>
         <div class="certificate-container">
+          <img src="${window.location.origin}/certificate_original.png" class="certificate-bg" onload="startPrint()" onerror="startPrint()" />
+          
           <!-- Masks to cover original left-aligned texts in the certificate screenshot -->
           <div class="mask-name" style="position: absolute; top: 52%; left: 7%; width: 45%; height: 52px; background: #ffffff; z-index: 1;"></div>
           <div class="mask-diploma" style="position: absolute; top: 64.5%; left: 7%; width: 45%; height: 30px; background: #ffffff; z-index: 1;"></div>
@@ -580,7 +594,6 @@ ${crmContext}
           <div class="certificate-date">${formattedDate}</div>
         </div>
         
-        <img src="${window.location.origin}/certificate_original.png" style="display:none;" onload="startPrint()" onerror="startPrint()" />
         <script>
           let printed = false;
           function startPrint() {
