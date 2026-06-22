@@ -813,7 +813,12 @@ export default function App() {
                     sessions={sessions}
                     tasks={tasks}
                     config={config}
+                    instructors={instructors}
                     onNavigateToSettings={() => setActiveTab('settings')}
+                    onSaveDiplomas={handleSaveDiplomas}
+                    onSaveStudents={handleSaveStudents}
+                    onSaveSessions={handleSaveSessions}
+                    onSaveTasks={handleSaveTasks}
                   />
                 )}
 
