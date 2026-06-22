@@ -80,7 +80,9 @@ import {
   CloudOff,
   RefreshCw,
   Database,
-  Shield
+  Shield,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -126,6 +128,21 @@ export default function App() {
 
   // Impersonation state
   const [impersonatedUser, setImpersonatedUserState] = useState<string | null>(null);
+
+  // Theme State (Dark / Light Mode)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    const root = window.document.body;
+    if (theme === 'light') {
+      root.classList.add('light');
+    } else {
+      root.classList.remove('light');
+    }
+    localStorage.setItem('app_theme', theme);
+  }, [theme]);
 
   // Is current user the admin?
   const isAdmin = currentUser?.toLowerCase() === ADMIN_USERNAME;
@@ -554,6 +571,19 @@ export default function App() {
                 <span className="hidden sm:inline">الأدمن</span>
               </button>
             )}
+
+            {/* Theme Toggle Button */}
+            <button
+              onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+              className="px-3 py-2.5 bg-zinc-800/10 border border-zinc-700/20 hover:bg-zinc-700/20 text-zinc-400 hover:text-white rounded-lg text-xs font-black transition-all cursor-pointer shadow-md select-none flex items-center justify-center"
+              title={theme === 'dark' ? 'تفعيل الوضع المضيء (Light Mode)' : 'تفعيل الوضع الداكن (Dark Mode)'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Moon className="w-4 h-4 text-indigo-500" />
+              )}
+            </button>
 
             {/* Logout Button */}
             <button

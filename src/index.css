@@ -1,6 +1,87 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 @import "tailwindcss";
 
+:root {
+  --brand-bg-main: #0A0A0A;
+  --brand-bg-card: #121212;
+  --brand-bg-sidebar: #0F0F0F;
+  --brand-border: #1F1F1F;
+  
+  /* Tailwind zinc/neutral override variables */
+  --bg-zinc-950: #09090b;
+  --bg-neutral-950: #0a0a0a;
+  --bg-zinc-900: #18181b;
+  --bg-zinc-850: #202023;
+  --bg-zinc-800: #27272a;
+  
+  --border-zinc-900: #18181b;
+  --border-zinc-800: #27272a;
+  --border-zinc-850: #202023;
+  
+  --text-white: #ffffff;
+  --text-zinc-100: #f4f4f5;
+  --text-zinc-200: #e4e4e7;
+  --text-zinc-300: #d4d4d8;
+  --text-zinc-400: #a1a1aa;
+  --text-zinc-500: #71717a;
+  
+  /* Custom overrides */
+  --bg-custom-121212: #121212;
+  --bg-custom-0b0b0e: #0b0b0e;
+  --bg-custom-07070a: #07070a;
+  --bg-custom-101010: #101010;
+  --bg-custom-111: #111111;
+  --bg-custom-0a0a10: #0a0a10;
+  --bg-custom-060608: #060608;
+  --bg-custom-0a0a0a: #0a0a0a;
+  --bg-custom-0f0f0f: #0f0f0f;
+  --bg-custom-1a1a1a: #1a1a1a;
+  
+  --border-custom-1f1f1f: #1f1f1f;
+  --border-custom-262626: #262626;
+  --border-custom-2a2a2a: #2a2a2a;
+}
+
+body.light {
+  --brand-bg-main: #f4f5f7;
+  --brand-bg-card: #ffffff;
+  --brand-bg-sidebar: #fcfcfd;
+  --brand-border: #e4e4e7;
+  
+  /* Overrides for Light Mode */
+  --bg-zinc-950: #ffffff;
+  --bg-neutral-950: #ffffff;
+  --bg-zinc-900: #f4f4f5;
+  --bg-zinc-800: #e4e4e7;
+  --bg-zinc-850: #eaeaea;
+  
+  --border-zinc-900: #e4e4e7;
+  --border-zinc-800: #e4e4e7;
+  --border-zinc-850: #e4e4e7;
+  
+  --text-white: #09090b;
+  --text-zinc-100: #18181b;
+  --text-zinc-200: #27272a;
+  --text-zinc-300: #3f3f46;
+  --text-zinc-400: #52525b;
+  --text-zinc-500: #71717a;
+  
+  --bg-custom-121212: #ffffff;
+  --bg-custom-0b0b0e: #ffffff;
+  --bg-custom-07070a: #f4f4f5;
+  --bg-custom-101010: #e4e4e7;
+  --bg-custom-111: #e4e4e7;
+  --bg-custom-0a0a10: #fcfcfd;
+  --bg-custom-060608: #ffffff;
+  --bg-custom-0a0a0a: #ffffff;
+  --bg-custom-0f0f0f: #ffffff;
+  --bg-custom-1a1a1a: #f4f4f5;
+  
+  --border-custom-1f1f1f: #e4e4e7;
+  --border-custom-262626: #e4e4e7;
+  --border-custom-2a2a2a: #d4d4d8;
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -8,13 +89,136 @@
   --color-brand-accent: #3B82F6;
   --color-brand-danger: #EF4444;
   --color-brand-success: #10B981;
-  --color-brand-bg-card: #171717;
-  --color-brand-border: #262626;
-  --color-brand-bg-main: #0A0A0A;
-  --color-brand-bg-sidebar: #0F0F0F;
+  --color-brand-bg-card: var(--brand-bg-card);
+  --color-brand-border: var(--brand-border);
+  --color-brand-bg-main: var(--brand-bg-main);
+  --color-brand-bg-sidebar: var(--brand-bg-sidebar);
+
+  /* Overriding default Tailwind zinc/neutral colors */
+  --color-zinc-950: var(--bg-zinc-950);
+  --color-neutral-950: var(--bg-neutral-950);
+  --color-zinc-900: var(--bg-zinc-900);
+  --color-zinc-850: var(--bg-zinc-850);
+  --color-zinc-800: var(--bg-zinc-800);
+  
+  --color-zinc-400: var(--text-zinc-400);
+  --color-zinc-500: var(--text-zinc-500);
+  --color-zinc-200: var(--text-zinc-200);
+  --color-zinc-300: var(--text-zinc-300);
+  --color-zinc-100: var(--text-zinc-100);
+  --color-white: var(--text-white);
 }
 
 body {
-  background-color: var(--color-brand-bg-main);
-  color: #E5E5E5;
+  background-color: var(--brand-bg-main);
+  color: var(--text-zinc-200);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Specific selector overrides to force light theme on hardcoded bg/border classes */
+body.light [class*="bg-[#121212]"] {
+  background-color: var(--bg-custom-121212) !important;
+}
+body.light [class*="bg-[#0B0B0E]"] {
+  background-color: var(--bg-custom-0b0b0e) !important;
+}
+body.light [class*="bg-[#07070A]"] {
+  background-color: var(--bg-custom-07070a) !important;
+}
+body.light [class*="bg-[#101010]"] {
+  background-color: var(--bg-custom-101010) !important;
+}
+body.light [class*="bg-[#111]"] {
+  background-color: var(--bg-custom-111) !important;
+}
+body.light [class*="bg-[#0A0A10]"] {
+  background-color: var(--bg-custom-0a0a10) !important;
+}
+body.light [class*="bg-[#060608]"] {
+  background-color: var(--bg-custom-060608) !important;
+}
+body.light [class*="bg-[#0A0A0A]"] {
+  background-color: var(--bg-custom-0a0a0a) !important;
+}
+body.light [class*="bg-[#0F0F0F]"] {
+  background-color: var(--bg-custom-0f0f0f) !important;
+}
+body.light [class*="bg-[#1A1A1A]"] {
+  background-color: var(--bg-custom-1a1a1a) !important;
+}
+
+body.light [class*="border-[#1F1F1F]"] {
+  border-color: var(--border-custom-1f1f1f) !important;
+}
+body.light [class*="border-[#262626]"] {
+  border-color: var(--border-custom-262626) !important;
+}
+body.light [class*="border-[#2A2A2A]"] {
+  border-color: var(--border-custom-2a2a2a) !important;
+}
+
+/* Handle specific opaque backgrounds and lists for Light Mode */
+body.light [class*="bg-[#121212]/30"] {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+body.light [class*="bg-[#121212]/50"] {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+body.light [class*="bg-[#121212]/80"] {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+body.light [class*="bg-neutral-950/20"] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+body.light [class*="bg-zinc-950/40"] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+body.light [class*="bg-zinc-950/50"] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+body.light [class*="bg-zinc-950/80"] {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+body.light [class*="bg-black/85"] {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* Emerald, Amber, Rose fallback badges in light mode */
+body.light [class*="bg-emerald-955"] {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+body.light [class*="bg-amber-955"] {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+body.light [class*="bg-rose-955"] {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* WhatsApp message bubbles in Light Mode */
+body.light [class*="bg-[#0d3c2e]/60"],
+body.light [class*="bg-[#0d3c2e]/80"] {
+  background-color: #e7fedb !important;
+  color: #111b21 !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+body.light [class*="text-emerald-100"] {
+  color: #111b21 !important;
+}
+
+/* Side navigation item hover states in Light Mode */
+body.light [class*="hover:bg-[#1C1C1C]"]:hover {
+  background-color: #e4e4e7 !important;
+}
+
+/* Impersonate banner text contrast */
+body.light [class*="bg-amber-500/10"] {
+  background-color: #fef3c7 !important;
+  color: #d97706 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
 }
