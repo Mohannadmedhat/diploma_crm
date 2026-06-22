@@ -43,7 +43,7 @@
 }
 
 body.light {
-  --brand-bg-main: #f8fafc; /* Premium Slate 50 */
+  --brand-bg-main: #f8fafc; /* Premium Slate 50 base */
   --brand-bg-card: #ffffff; /* Pure White */
   --brand-bg-sidebar: #ffffff; /* Pure White */
   --brand-border: #e2e8f0; /* Slate 200 */
@@ -108,10 +108,25 @@ body.light {
   --color-zinc-100: var(--text-zinc-100);
 }
 
+/* -------------------------------------------------------------
+   DYNAMIC BACKGROUND GRADIENT ANIMATION (15s Loop)
+   ------------------------------------------------------------- */
+@keyframes auroraFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 body {
   background-color: var(--brand-bg-main);
   color: var(--text-zinc-200);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.light {
+  background: linear-gradient(-45deg, #f8fafc, #f1f5f9, #eef2ff, #fdf4f5) !important;
+  background-size: 400% 400% !important;
+  animation: auroraFlow 15s ease infinite !important;
 }
 
 /* -------------------------------------------------------------
@@ -124,7 +139,7 @@ body.light .bg-\[\#070707\],
 body.light .bg-\[\#07070a\],
 body.light .bg-\[\#09090b\],
 body.light .bg-\[\#0a0a0a\] {
-  background-color: var(--brand-bg-main) !important;
+  background-color: transparent !important; /* Let the dynamic gradient show through */
 }
 
 body.light .bg-\[\#121212\],
@@ -152,6 +167,8 @@ body.light .bg-\[\#15151a\],
 body.light .bg-\[\#151515\],
 body.light .bg-\[\#1c1c1c\] {
   background-color: var(--brand-bg-card) !important;
+  box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 0 15px 0 rgba(99, 102, 241, 0.03) !important;
+  border-radius: 16px !important;
 }
 
 /* Escape matching for border classes */
@@ -173,7 +190,7 @@ body.light [class*="bg-[#070707]" i],
 body.light [class*="bg-[#07070a]" i],
 body.light [class*="bg-[#09090b]" i],
 body.light [class*="bg-[#0a0a0a]" i] {
-  background-color: var(--brand-bg-main) !important;
+  background-color: transparent !important; /* Let the dynamic gradient show through */
 }
 
 body.light [class*="bg-[#121212]" i],
@@ -201,6 +218,8 @@ body.light [class*="bg-[#15151a]" i],
 body.light [class*="bg-[#151515]" i],
 body.light [class*="bg-[#1c1c1c]" i] {
   background-color: var(--brand-bg-card) !important;
+  box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 0 15px 0 rgba(99, 102, 241, 0.03) !important;
+  border-radius: 16px !important;
 }
 
 body.light [class*="bg-zinc-900" i] {
@@ -243,16 +262,40 @@ body.light [class*="bg-zinc-950/80" i] {
   background-color: rgba(255, 255, 255, 0.9) !important;
 }
 body.light [class*="bg-black/85" i] {
-  background-color: rgba(15, 23, 42, 0.35) !important;
+  background-color: rgba(15, 23, 42, 0.25) !important;
 }
 body.light [class*="bg-black/50" i] {
-  background-color: rgba(15, 23, 42, 0.25) !important;
+  background-color: rgba(15, 23, 42, 0.15) !important;
 }
 body.light [class*="bg-[#0d0d0d]/50" i] {
   background-color: rgba(255, 255, 255, 0.5) !important;
 }
 body.light [class*="bg-[#0a0a0a]/60" i] {
   background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* -------------------------------------------------------------
+   NEON GLOW SHADOWS BASED ON STATUS/TYPE (Q3)
+   ------------------------------------------------------------- */
+body.light [class*="border-rose-" i],
+body.light [class*="bg-rose-955" i],
+body.light [class*="bg-rose-500/10" i],
+body.light [class*="bg-red-955" i] {
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.08), 0 0 10px rgba(239, 68, 68, 0.05) !important;
+}
+body.light [class*="border-emerald-" i],
+body.light [class*="bg-emerald-955" i],
+body.light [class*="bg-emerald-500/10" i] {
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08), 0 0 10px rgba(16, 185, 129, 0.05) !important;
+}
+body.light [class*="border-amber-" i],
+body.light [class*="bg-amber-955" i],
+body.light [class*="bg-amber-500/10" i] {
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.08), 0 0 10px rgba(245, 158, 11, 0.05) !important;
+}
+body.light [class*="border-indigo-" i],
+body.light [class*="border-blue-" i] {
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.08), 0 0 10px rgba(99, 102, 241, 0.05) !important;
 }
 
 /* Wildcard Borders Selector (Failsafe) */
@@ -276,22 +319,16 @@ body.light [class*="border-white/30" i] {
   border-color: var(--brand-border) !important;
 }
 
-/* Hover Backgrounds */
-body.light [class*="hover:bg-[#1c1c1c]" i]:hover,
-body.light [class*="hover:bg-[#1C1C1C]" i]:hover,
-body.light [class*="hover:bg-zinc-900" i]:hover,
-body.light [class*="hover:bg-zinc-800" i]:hover {
-  background-color: var(--bg-zinc-850) !important;
-}
-
-/* Handle Tailwind gradient stops dynamically for Light Mode */
+/* -------------------------------------------------------------
+   DYNAMIC GRADIENTS FOR HEADER/BANNER STOPS
+   ------------------------------------------------------------- */
 body.light [class*="from-indigo-950" i] {
-  --tw-gradient-from: rgba(99, 102, 241, 0.08) !important;
+  --tw-gradient-from: rgba(99, 102, 241, 0.06) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(99, 102, 241, 0)) !important;
   background-image: linear-gradient(to left, var(--tw-gradient-stops)) !important;
 }
 body.light [class*="from-emerald-950" i] {
-  --tw-gradient-from: rgba(16, 185, 129, 0.08) !important;
+  --tw-gradient-from: rgba(16, 185, 129, 0.06) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(16, 185, 129, 0)) !important;
   background-image: linear-gradient(to left, var(--tw-gradient-stops)) !important;
 }
@@ -303,79 +340,94 @@ body.light [class*="to-neutral-950" i] {
   --tw-gradient-to: #ffffff !important;
 }
 
-/* Specific soft indigo & emerald border replacements for gradient headers */
-body.light [class*="border-indigo-900/30" i] {
-  border-color: rgba(99, 102, 241, 0.18) !important;
-}
-body.light [class*="border-emerald-900/30" i] {
-  border-color: rgba(16, 185, 129, 0.18) !important;
+body.light [class*="border-indigo-900/30" i] { border-color: rgba(99, 102, 241, 0.15) !important; }
+body.light [class*="border-emerald-900/30" i] { border-color: rgba(16, 185, 129, 0.15) !important; }
+
+/* -------------------------------------------------------------
+   INTERACTIVE HOVER & FLOATING GLOW ANIMATION (Q9)
+   ------------------------------------------------------------- */
+body.light [class*="bg-[#121212]" i],
+body.light [class*="bg-[#0b0b0e]" i],
+body.light [class*="bg-[#0f0f0f]" i],
+body.light [class*="bg-[#0f0f12]" i],
+body.light [class*="bg-[#0c0c0f]" i] {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* WhatsApp Message Bubbles */
+body.light [class*="bg-[#121212]" i]:hover,
+body.light [class*="bg-[#0b0b0e]" i]:hover,
+body.light [class*="bg-[#0f0f0f]" i]:hover,
+body.light [class*="bg-[#0f0f12]" i]:hover,
+body.light [class*="bg-[#0c0c0f]" i]:hover {
+  transform: translateY(-3px) scale(1.008) !important;
+  box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.15), 0 0 20px 2px rgba(99, 102, 241, 0.06) !important;
+}
+
+body.light [class*="hover:bg-[#1c1c1c]" i]:hover,
+body.light [class*="hover:bg-zinc-900" i]:hover,
+body.light [class*="hover:bg-zinc-800" i]:hover {
+  background-color: var(--bg-zinc-850) !important;
+}
+
+/* -------------------------------------------------------------
+   VIBRANT GRADIENT TEXTS FOR STATISTICS & ACCENTS (Q4)
+   ------------------------------------------------------------- */
+body.light .text-3xl.font-mono,
+body.light .text-4xl.font-mono,
+body.light .text-2xl.font-mono,
+body.light [class*="text-3xl" i][class*="font-mono" i],
+body.light [class*="text-4xl" i][class*="font-mono" i] {
+  background: linear-gradient(135deg, #4f46e5, #0891b2) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 900 !important;
+  display: inline-block !important;
+}
+
+/* Danger Button Glow Gradient (Q14) */
+body.light [class*="bg-rose-600" i],
+body.light [class*="bg-rose-700" i] {
+  background: linear-gradient(135deg, #e11d48, #f43f5e) !important;
+  box-shadow: 0 4px 15px rgba(225, 29, 72, 0.25) !important;
+  transition: all 0.3s ease !important;
+  color: #ffffff !important;
+}
+body.light [class*="bg-rose-600" i]:hover,
+body.light [class*="bg-rose-700" i]:hover {
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.4), 0 0 15px rgba(225, 29, 72, 0.2) !important;
+}
+
+/* Brand Logo (Q16) */
+@keyframes logoPulse {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(99, 102, 241, 0.3)); }
+  50% { filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.7)); }
+}
+body.light .animate-pulse {
+  animation: logoPulse 3s infinite ease-in-out !important;
+}
+
+/* -------------------------------------------------------------
+   WHATSAPP CUSTOMIZATION (Q5, Q6)
+   ------------------------------------------------------------- */
 body.light [class*="bg-[#0d3c2e]/60" i],
 body.light [class*="bg-[#0d3c2e]/80" i] {
   background-color: #d9fdd3 !important;
   color: #111b21 !important;
-  border-color: #c2ebd0 !important;
+  border: 1px solid #c2ebd0 !important;
 }
 body.light [class*="text-emerald-100" i] {
   color: #111b21 !important;
 }
-
-/* Muted or Alert Banners */
-body.light [class*="bg-amber-500/10" i] {
-  background-color: #fef3c7 !important;
-  color: #92400e !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
+/* Received bubble (grey) */
+body.light [class*="bg-[#121212]" i][class*="text-zinc-300" i] {
+  background-color: #f0f2f5 !important;
+  color: #111b21 !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
-/* Fallback Badges & Alerts (emerald, amber, rose, blue, orange, red, pink, zinc) */
-body.light [class*="bg-emerald-955" i],
-body.light [class*="bg-emerald-950/20" i],
-body.light [class*="bg-emerald-950/40" i] {
-  background-color: #d1fae5 !important;
-  color: #065f46 !important;
-  border-color: rgba(16, 185, 129, 0.2) !important;
-}
-body.light [class*="bg-amber-955" i],
-body.light [class*="bg-amber-955/20" i] {
-  background-color: #fef3c7 !important;
-  color: #92400e !important;
-  border-color: rgba(245, 158, 11, 0.2) !important;
-}
-body.light [class*="bg-rose-955" i],
-body.light [class*="bg-rose-955/20" i],
-body.light [class*="bg-rose-955/40" i],
-body.light [class*="bg-red-955" i],
-body.light [class*="bg-red-955/20" i] {
-  background-color: #fee2e2 !important;
-  color: #991b1b !important;
-  border-color: rgba(239, 68, 68, 0.2) !important;
-}
-body.light [class*="bg-indigo-955/20" i],
-body.light [class*="bg-indigo-955/40" i],
-body.light [class*="bg-blue-955/20" i] {
-  background-color: #e0e7ff !important;
-  color: #4338ca !important;
-  border-color: rgba(99, 102, 241, 0.2) !important;
-}
-body.light [class*="bg-pink-955/20" i] {
-  background-color: #fce7f3 !important;
-  color: #9d174d !important;
-  border-color: rgba(236, 72, 153, 0.2) !important;
-}
-body.light [class*="bg-orange-955/20" i] {
-  background-color: #ffedd5 !important;
-  color: #c2410c !important;
-  border-color: rgba(249, 115, 22, 0.2) !important;
-}
-body.light [class*="bg-zinc-955/30" i] {
-  background-color: #f4f4f5 !important;
-  color: #27272a !important;
-  border-color: #e4e4e7 !important;
-}
-
-/* Headings and generic typography controls */
+/* -------------------------------------------------------------
+   TYPOGRAPHY & METADATA OVERRIDES
+   ------------------------------------------------------------- */
 body.light h1,
 body.light h2,
 body.light h3,
@@ -395,7 +447,63 @@ body.light option {
   color: #0f172a !important;
 }
 
-/* Failsafe Contrast Restorer: Forces white text inside buttons or active colored elements to remain white in Light Mode */
+/* Error/Alert Banners (Q17) */
+body.light [class*="bg-rose-500/10" i],
+body.light [class*="bg-red-955/20" i],
+body.light [class*="bg-red-500/20" i] {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.05) !important;
+}
+body.light [class*="bg-rose-500/10" i] *,
+body.light [class*="bg-red-955/20" i] *,
+body.light [class*="bg-red-500/20" i] * {
+  color: #991b1b !important;
+}
+
+/* Checkbox Style (Q18) */
+body.light input[type="checkbox"] {
+  border-color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+  transition: all 0.2s ease !important;
+}
+body.light input[type="checkbox"]:checked {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5) !important;
+}
+
+/* -------------------------------------------------------------
+   FORM INPUTS FOCUS RING & SHADOWS (Q10)
+   ------------------------------------------------------------- */
+body.light input[type="text"],
+body.light input[type="email"],
+body.light input[type="tel"],
+body.light input[type="url"],
+body.light input[type="date"],
+body.light input[type="number"],
+body.light input[type="password"],
+body.light select,
+body.light textarea {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.light input:focus,
+body.light select:focus,
+body.light textarea:focus {
+  transform: scale(1.01) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12), 0 0 15px rgba(59, 130, 246, 0.08) !important;
+  outline: none !important;
+}
+
+/* -------------------------------------------------------------
+   CONTRAST RESTORER FOR NESTED BTN TEXT (SAFETY)
+   ------------------------------------------------------------- */
 body.light button,
 body.light button *,
 body.light a,
@@ -445,32 +553,31 @@ body.light [class*="text-zinc-500" i]:not(button, button *, a, a *, [class*="bg-
 }
 
 /* Light mode specific accent color enhancements (improves readability) */
-body.light .text-indigo-400 {
-  color: #4f46e5 !important;
-}
+body.light .text-indigo-400 { color: #4f46e5 !important; }
 body.light .text-emerald-450,
-body.light .text-emerald-400 {
-  color: #059669 !important;
-}
+body.light .text-emerald-400 { color: #059669 !important; }
 body.light .text-rose-450,
 body.light .text-rose-400,
-body.light .text-red-400 {
-  color: #dc2626 !important;
-}
+body.light .text-red-400 { color: #dc2626 !important; }
 body.light .text-amber-500,
-body.light .text-amber-400 {
-  color: #b45309 !important;
-}
-body.light .text-cyan-400 {
-  color: #0891b2 !important;
-}
-body.light .text-blue-400 {
-  color: #1d4ed8 !important;
-}
+body.light .text-amber-400 { color: #b45309 !important; }
+body.light .text-cyan-400 { color: #0891b2 !important; }
+body.light .text-blue-400 { color: #1d4ed8 !important; }
 
-/* Fix for inputs border focus */
-body.light input:focus,
-body.light select:focus,
-body.light textarea:focus {
-  border-color: #3b82f6 !important;
+/* -------------------------------------------------------------
+   MODERN MINIMAL SCROLLBAR (Q11)
+   ------------------------------------------------------------- */
+body.light ::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+body.light ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+body.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 10px !important;
+}
+body.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
 }
