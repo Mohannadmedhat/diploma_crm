@@ -504,24 +504,33 @@ body.light textarea:focus {
 /* -------------------------------------------------------------
    CONTRAST RESTORER FOR NESTED BTN TEXT (SAFETY)
    ------------------------------------------------------------- */
-body.light button,
-body.light button *,
-body.light a,
-body.light a *,
-body.light [class*="bg-indigo-"] *,
-body.light [class*="bg-emerald-"] *,
-body.light [class*="bg-rose-"] *,
-body.light [class*="bg-amber-"] *,
-body.light [class*="bg-blue-"] *,
-body.light [class*="bg-red-"] *,
-body.light [class*="bg-gradient-"] *,
-body.light [class*="bg-indigo-"],
-body.light [class*="bg-emerald-"],
-body.light [class*="bg-rose-"],
-body.light [class*="bg-amber-"],
-body.light [class*="bg-blue-"],
-body.light [class*="bg-red-"],
-body.light [class*="bg-gradient-"] {
+/* -------------------------------------------------------------
+   CONTRAST RESTORER FOR NESTED BTN TEXT (SAFETY)
+   ------------------------------------------------------------- */
+body.light button.bg-emerald-600,
+body.light button.bg-emerald-600 *,
+body.light button.bg-rose-600,
+body.light button.bg-rose-600 *,
+body.light button.bg-rose-700,
+body.light button.bg-rose-700 *,
+body.light button.bg-indigo-600,
+body.light button.bg-indigo-600 *,
+body.light button.bg-blue-600,
+body.light button.bg-blue-600 *,
+body.light button.bg-black,
+body.light button.bg-black *,
+body.light a.bg-indigo-600,
+body.light a.bg-indigo-600 *,
+body.light a.bg-emerald-600,
+body.light a.bg-emerald-600 *,
+body.light [class*="bg-indigo-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]),
+body.light [class*="bg-indigo-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]) *,
+body.light [class*="bg-emerald-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]),
+body.light [class*="bg-emerald-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]) *,
+body.light [class*="bg-rose-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]),
+body.light [class*="bg-rose-"]:not([class*="/"]):not([class*="-5/"]):not([class*="-10/"]):not([class*="-15/"]):not([class*="-20/"]) *,
+body.light [class*="bg-gradient-"],
+body.light [class*="bg-gradient-"] * {
   --text-zinc-100: #ffffff;
   --text-zinc-200: #ffffff;
   --text-zinc-300: #f4f4f5;
@@ -529,30 +538,90 @@ body.light [class*="bg-gradient-"] {
   --text-zinc-500: #d4d4d8;
 }
 
-/* Precision text overrides that switch dark-mode text classes to Slate colors.
-   Exclude any buttons, links, or elements that have colored backgrounds (or are inside them). */
-body.light .text-white:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
-body.light [class*="text-white" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
-body.light [class*="text-zinc-100" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
-body.light [class*="text-zinc-200" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
-body.light [class*="text-[#D4D4D4]" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
-body.light [class*="text-[#E5E5E5]" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
-  color: var(--text-zinc-100) !important;
+/* Precise text color overrides for Light Mode to force readable Slate colors.
+   These target the exact Tailwind classes and also the custom developer typos/classes. */
+body.light .text-white,
+body.light [class*="text-white" i] {
+  color: #0f172a !important; /* Slate 900 */
+}
+body.light .text-zinc-100,
+body.light [class*="text-zinc-100" i] {
+  color: #0f172a !important; /* Slate 900 */
+}
+body.light .text-zinc-200,
+body.light [class*="text-zinc-200" i] {
+  color: #1e293b !important; /* Slate 800 */
+}
+body.light .text-zinc-300,
+body.light [class*="text-zinc-300" i] {
+  color: #334155 !important; /* Slate 700 */
+}
+body.light .text-zinc-400,
+body.light [class*="text-zinc-400" i] {
+  color: #475569 !important; /* Slate 600 */
+}
+body.light .text-zinc-450,
+body.light [class*="text-zinc-450" i] {
+  color: #475569 !important; /* Slate 600 */
+}
+body.light .text-zinc-500,
+body.light [class*="text-zinc-500" i] {
+  color: #475569 !important; /* Slate 600 */
+}
+body.light .text-zinc-550,
+body.light [class*="text-zinc-550" i],
+body.light .text-zinc-555,
+body.light [class*="text-zinc-555" i] {
+  color: #475569 !important; /* Slate 600 - handles custom classes/typos */
+}
+body.light .text-zinc-600,
+body.light [class*="text-zinc-600" i] {
+  color: #334155 !important; /* Slate 700 */
+}
+body.light .text-zinc-650,
+body.light [class*="text-zinc-650" i] {
+  color: #334155 !important; /* Slate 700 - handles custom classes */
+}
+body.light .text-zinc-700,
+body.light [class*="text-zinc-700" i] {
+  color: #1e293b !important; /* Slate 800 */
+}
+body.light .text-\[\#D4D4D4\],
+body.light [class*="text-[#D4D4D4]" i] {
+  color: #1e293b !important; /* Slate 800 */
+}
+body.light .text-\[\#E5E5E5\],
+body.light [class*="text-[#E5E5E5]" i] {
+  color: #0f172a !important; /* Slate 900 */
 }
 
-body.light [class*="text-zinc-300" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
-  color: var(--text-zinc-200) !important;
+/* Solid colored dark backgrounds get white text overrides in Light Mode */
+body.light .bg-indigo-600,
+body.light .bg-indigo-600 *,
+body.light .bg-indigo-700,
+body.light .bg-indigo-700 *,
+body.light .bg-emerald-600,
+body.light .bg-emerald-600 *,
+body.light .bg-rose-600,
+body.light .bg-rose-600 *,
+body.light .bg-rose-700,
+body.light .bg-rose-700 *,
+body.light .bg-blue-600,
+body.light .bg-blue-600 *,
+body.light .bg-red-600,
+body.light .bg-red-600 *,
+body.light .bg-black,
+body.light .bg-black *,
+body.light .bg-amber-600,
+body.light .bg-amber-600 *,
+body.light .bg-gradient-to-l,
+body.light .bg-gradient-to-l *,
+body.light .bg-gradient-to-br,
+body.light .bg-gradient-to-br * {
+  color: #ffffff !important;
 }
 
-body.light [class*="text-zinc-400" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
-  color: var(--text-zinc-350, #475569) !important;
-}
-
-body.light [class*="text-zinc-500" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
-  color: var(--text-zinc-400) !important;
-}
-
-/* Light mode specific accent color enhancements (improves readability) */
+/* Light mode specific status and active accent text colors (placed last to override white where needed) */
 body.light .text-indigo-400 { color: #4f46e5 !important; }
 body.light .text-emerald-450,
 body.light .text-emerald-400 { color: #059669 !important; }
