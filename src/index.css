@@ -130,18 +130,53 @@ body.light {
 }
 
 /* -------------------------------------------------------------
-   LIGHT MODE RULES
+   LIGHT MODE RULES (ACRYLIC GLASS & NEON GLOWS)
    ------------------------------------------------------------- */
 
-/* Direct class selector overrides for compiled Tailwind classes in production */
+/* Transparent background for outer canvas blocks to let the aurora flow through */
 body.light .bg-\[\#050505\],
 body.light .bg-\[\#070707\],
 body.light .bg-\[\#07070a\],
 body.light .bg-\[\#09090b\],
-body.light .bg-\[\#0a0a0a\] {
-  background-color: transparent !important; /* Let the dynamic gradient show through */
+body.light .bg-\[\#0a0a0a\],
+body.light [class*="bg-[#050505]" i],
+body.light [class*="bg-[#070707]" i],
+body.light [class*="bg-[#07070a]" i],
+body.light [class*="bg-[#09090b]" i],
+body.light [class*="bg-[#0a0a0a]" i] {
+  background-color: transparent !important;
 }
 
+/* Translucent Main Panels (Acrylic glassmorphism) */
+body.light [class*="bg-[#121212]/30" i] {
+  background-color: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+body.light [class*="bg-[#121212]/50" i] {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+body.light [class*="bg-[#121212]/60" i] {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+body.light [class*="bg-[#121212]/80" i] {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+body.light [class*="bg-[#0a0a10]/60" i],
+body.light [class*="bg-[#0a0a0a]/60" i] {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* Card Elements: Premium Acrylic glassmorphism + Transition Animations */
 body.light .bg-\[\#121212\],
 body.light .bg-\[\#0b0b0e\],
 body.light .bg-\[\#0f0f0f\],
@@ -165,34 +200,7 @@ body.light .bg-\[\#0c0c0f\],
 body.light .bg-\[\#0c0c12\],
 body.light .bg-\[\#15151a\],
 body.light .bg-\[\#151515\],
-body.light .bg-\[\#1c1c1c\] {
-  background-color: var(--brand-bg-card) !important;
-  box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 0 15px 0 rgba(99, 102, 241, 0.03) !important;
-  border-radius: 16px !important;
-}
-
-/* Escape matching for border classes */
-body.light .border-\[\#1f1f1f\],
-body.light .border-\[\#262626\],
-body.light .border-\[\#2a2a2a\],
-body.light .border-\[\#2d2d2d\],
-body.light .border-\[\#23232c\],
-body.light .border-\[\#222\],
-body.light .border-\[\#252525\],
-body.light .border-\[\#333\],
-body.light .border-\[\#1f1f27\] {
-  border-color: var(--brand-border) !important;
-}
-
-/* General Wildcard Backgrounds Selector (Failsafe) */
-body.light [class*="bg-[#050505]" i],
-body.light [class*="bg-[#070707]" i],
-body.light [class*="bg-[#07070a]" i],
-body.light [class*="bg-[#09090b]" i],
-body.light [class*="bg-[#0a0a0a]" i] {
-  background-color: transparent !important; /* Let the dynamic gradient show through */
-}
-
+body.light .bg-\[\#1c1c1c\],
 body.light [class*="bg-[#121212]" i],
 body.light [class*="bg-[#0b0b0e]" i],
 body.light [class*="bg-[#0f0f0f]" i],
@@ -217,88 +225,99 @@ body.light [class*="bg-[#0c0c12]" i],
 body.light [class*="bg-[#15151a]" i],
 body.light [class*="bg-[#151515]" i],
 body.light [class*="bg-[#1c1c1c]" i] {
-  background-color: var(--brand-bg-card) !important;
-  box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 0 15px 0 rgba(99, 102, 241, 0.03) !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(99, 102, 241, 0.15) !important; /* Soft indigo neon border by default */
+  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.05), 0 0 12px 1px rgba(99, 102, 241, 0.02) !important;
   border-radius: 16px !important;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-body.light [class*="bg-zinc-900" i] {
-  background-color: var(--bg-zinc-900) !important;
-}
-body.light [class*="bg-zinc-950" i] {
-  background-color: var(--bg-zinc-950) !important;
-}
-body.light [class*="bg-neutral-950" i] {
-  background-color: var(--bg-neutral-950) !important;
-}
-
-/* Translucent Backgrounds */
-body.light [class*="bg-[#121212]/30" i] {
-  background-color: rgba(255, 255, 255, 0.4) !important;
-}
-body.light [class*="bg-[#121212]/50" i] {
-  background-color: rgba(255, 255, 255, 0.6) !important;
-}
-body.light [class*="bg-[#121212]/60" i] {
-  background-color: rgba(255, 255, 255, 0.65) !important;
-}
-body.light [class*="bg-[#121212]/80" i] {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-}
-body.light [class*="bg-[#0a0a10]/60" i],
-body.light [class*="bg-[#0a0a0a]/60" i] {
-  background-color: rgba(255, 255, 255, 0.8) !important;
-}
-body.light [class*="bg-neutral-950/20" i] {
-  background-color: rgba(0, 0, 0, 0.03) !important;
-}
-body.light [class*="bg-zinc-950/40" i] {
-  background-color: rgba(0, 0, 0, 0.02) !important;
-}
-body.light [class*="bg-zinc-950/50" i] {
-  background-color: rgba(0, 0, 0, 0.02) !important;
-}
-body.light [class*="bg-zinc-950/80" i] {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-}
-body.light [class*="bg-black/85" i] {
-  background-color: rgba(15, 23, 42, 0.25) !important;
-}
-body.light [class*="bg-black/50" i] {
-  background-color: rgba(15, 23, 42, 0.15) !important;
-}
-body.light [class*="bg-[#0d0d0d]/50" i] {
-  background-color: rgba(255, 255, 255, 0.5) !important;
-}
-body.light [class*="bg-[#0a0a0a]/60" i] {
-  background-color: rgba(255, 255, 255, 0.6) !important;
+/* Card Hover Floating & Glow Transitions */
+body.light .bg-\[\#121212\]:hover,
+body.light .bg-\[\#0b0b0e\]:hover,
+body.light .bg-\[\#0f0f0f\]:hover,
+body.light [class*="bg-[#121212]" i]:hover,
+body.light [class*="bg-[#0b0b0e]" i]:hover,
+body.light [class*="bg-[#0f0f0f]" i]:hover,
+body.light [class*="bg-[#0f0f12]" i]:hover,
+body.light [class*="bg-[#0c0c0f]" i]:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(99, 102, 241, 0.45) !important; /* Muted neon border focus */
+  box-shadow: 0 20px 35px -10px rgba(99, 102, 241, 0.15), 0 0 20px 4px rgba(99, 102, 241, 0.08) !important;
 }
 
 /* -------------------------------------------------------------
-   NEON GLOW SHADOWS BASED ON STATUS/TYPE (Q3)
+   NEON SHADOWS & BORDERS BY STATUS/TYPE
    ------------------------------------------------------------- */
+
+/* Rose/Danger/Absence Sections */
 body.light [class*="border-rose-" i],
-body.light [class*="bg-rose-955" i],
 body.light [class*="bg-rose-500/10" i],
-body.light [class*="bg-red-955" i] {
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.08), 0 0 10px rgba(239, 68, 68, 0.05) !important;
+body.light [class*="bg-red-500/10" i] {
+  border-color: rgba(244, 63, 94, 0.2) !important;
+  box-shadow: 0 10px 25px -5px rgba(244, 63, 94, 0.05), 0 0 12px 1px rgba(244, 63, 94, 0.02) !important;
 }
-body.light [class*="border-emerald-" i],
-body.light [class*="bg-emerald-955" i],
-body.light [class*="bg-emerald-500/10" i] {
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08), 0 0 10px rgba(16, 185, 129, 0.05) !important;
-}
-body.light [class*="border-amber-" i],
-body.light [class*="bg-amber-955" i],
-body.light [class*="bg-amber-500/10" i] {
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.08), 0 0 10px rgba(245, 158, 11, 0.05) !important;
-}
-body.light [class*="border-indigo-" i],
-body.light [class*="border-blue-" i] {
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.08), 0 0 10px rgba(99, 102, 241, 0.05) !important;
+body.light [class*="border-rose-" i]:hover,
+body.light [class*="bg-rose-500/10" i]:hover,
+body.light [class*="bg-red-500/10" i]:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  box-shadow: 0 20px 35px -10px rgba(244, 63, 94, 0.15), 0 0 20px 4px rgba(244, 63, 94, 0.08) !important;
 }
 
-/* Wildcard Borders Selector (Failsafe) */
+/* Emerald/WhatsApp/Success Sections */
+body.light [class*="border-emerald-" i],
+body.light [class*="bg-emerald-500/10" i] {
+  border-color: rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.05), 0 0 12px 1px rgba(16, 185, 129, 0.02) !important;
+}
+body.light [class*="border-emerald-" i]:hover,
+body.light [class*="bg-emerald-500/10" i]:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 20px 35px -10px rgba(16, 185, 129, 0.15), 0 0 20px 4px rgba(16, 185, 129, 0.08) !important;
+}
+
+/* Indigo/Blue/Upcoming Sections */
+body.light [class*="border-indigo-" i],
+body.light [class*="border-blue-" i] {
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.05), 0 0 12px 1px rgba(99, 102, 241, 0.02) !important;
+}
+body.light [class*="border-indigo-" i]:hover,
+body.light [class*="border-blue-" i]:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  box-shadow: 0 20px 35px -10px rgba(99, 102, 241, 0.15), 0 0 20px 4px rgba(99, 102, 241, 0.08) !important;
+}
+
+/* Amber/Settings/Warning Sections */
+body.light [class*="border-amber-" i],
+body.light [class*="bg-amber-500/10" i] {
+  border-color: rgba(245, 158, 11, 0.2) !important;
+  box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.05), 0 0 12px 1px rgba(245, 158, 11, 0.02) !important;
+}
+body.light [class*="border-amber-" i]:hover,
+body.light [class*="bg-amber-500/10" i]:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  box-shadow: 0 20px 35px -10px rgba(245, 158, 11, 0.15), 0 0 20px 4px rgba(245, 158, 11, 0.08) !important;
+}
+
+/* Escape matching for border classes in Light Mode */
+body.light .border-\[\#1f1f1f\],
+body.light .border-\[\#262626\],
+body.light .border-\[\#2a2a2a\],
+body.light .border-\[\#2d2d2d\],
+body.light .border-\[\#23232c\],
+body.light .border-\[\#222\],
+body.light .border-\[\#252525\],
+body.light .border-\[\#333\],
+body.light .border-\[\#1f1f27\],
 body.light [class*="border-[#1f1f1f]" i],
 body.light [class*="border-[#262626]" i],
 body.light [class*="border-[#2a2a2a]" i],
@@ -316,61 +335,34 @@ body.light [class*="border-white/5" i],
 body.light [class*="border-white/10" i],
 body.light [class*="border-white/20" i],
 body.light [class*="border-white/30" i] {
-  border-color: var(--brand-border) !important;
+  border-color: rgba(226, 232, 240, 0.8) !important;
 }
 
 /* -------------------------------------------------------------
    DYNAMIC GRADIENTS FOR HEADER/BANNER STOPS
    ------------------------------------------------------------- */
 body.light [class*="from-indigo-950" i] {
-  --tw-gradient-from: rgba(99, 102, 241, 0.06) !important;
+  --tw-gradient-from: rgba(99, 102, 241, 0.08) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(99, 102, 241, 0)) !important;
   background-image: linear-gradient(to left, var(--tw-gradient-stops)) !important;
 }
 body.light [class*="from-emerald-950" i] {
-  --tw-gradient-from: rgba(16, 185, 129, 0.06) !important;
+  --tw-gradient-from: rgba(16, 185, 129, 0.08) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(16, 185, 129, 0)) !important;
   background-image: linear-gradient(to left, var(--tw-gradient-stops)) !important;
 }
 body.light [class*="via-zinc-950" i] {
-  --tw-gradient-via: #ffffff !important;
+  --tw-gradient-via: rgba(255, 255, 255, 0.9) !important;
 }
 body.light [class*="to-zinc-950" i],
 body.light [class*="to-neutral-950" i] {
-  --tw-gradient-to: #ffffff !important;
+  --tw-gradient-to: rgba(255, 255, 255, 0.9) !important;
 }
-
-body.light [class*="border-indigo-900/30" i] { border-color: rgba(99, 102, 241, 0.15) !important; }
-body.light [class*="border-emerald-900/30" i] { border-color: rgba(16, 185, 129, 0.15) !important; }
+body.light [class*="border-indigo-900/30" i] { border-color: rgba(99, 102, 241, 0.2) !important; }
+body.light [class*="border-emerald-900/30" i] { border-color: rgba(16, 185, 129, 0.2) !important; }
 
 /* -------------------------------------------------------------
-   INTERACTIVE HOVER & FLOATING GLOW ANIMATION (Q9)
-   ------------------------------------------------------------- */
-body.light [class*="bg-[#121212]" i],
-body.light [class*="bg-[#0b0b0e]" i],
-body.light [class*="bg-[#0f0f0f]" i],
-body.light [class*="bg-[#0f0f12]" i],
-body.light [class*="bg-[#0c0c0f]" i] {
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-body.light [class*="bg-[#121212]" i]:hover,
-body.light [class*="bg-[#0b0b0e]" i]:hover,
-body.light [class*="bg-[#0f0f0f]" i]:hover,
-body.light [class*="bg-[#0f0f12]" i]:hover,
-body.light [class*="bg-[#0c0c0f]" i]:hover {
-  transform: translateY(-3px) scale(1.008) !important;
-  box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.15), 0 0 20px 2px rgba(99, 102, 241, 0.06) !important;
-}
-
-body.light [class*="hover:bg-[#1c1c1c]" i]:hover,
-body.light [class*="hover:bg-zinc-900" i]:hover,
-body.light [class*="hover:bg-zinc-800" i]:hover {
-  background-color: var(--bg-zinc-850) !important;
-}
-
-/* -------------------------------------------------------------
-   VIBRANT GRADIENT TEXTS FOR STATISTICS & ACCENTS (Q4)
+   VIBRANT GRADIENT TEXTS FOR STATISTICS & ACCENTS
    ------------------------------------------------------------- */
 body.light .text-3xl.font-mono,
 body.light .text-4xl.font-mono,
@@ -384,20 +376,7 @@ body.light [class*="text-4xl" i][class*="font-mono" i] {
   display: inline-block !important;
 }
 
-/* Danger Button Glow Gradient (Q14) */
-body.light [class*="bg-rose-600" i],
-body.light [class*="bg-rose-700" i] {
-  background: linear-gradient(135deg, #e11d48, #f43f5e) !important;
-  box-shadow: 0 4px 15px rgba(225, 29, 72, 0.25) !important;
-  transition: all 0.3s ease !important;
-  color: #ffffff !important;
-}
-body.light [class*="bg-rose-600" i]:hover,
-body.light [class*="bg-rose-700" i]:hover {
-  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.4), 0 0 15px rgba(225, 29, 72, 0.2) !important;
-}
-
-/* Brand Logo (Q16) */
+/* Brand Pulse Anim Keyframes */
 @keyframes logoPulse {
   0%, 100% { filter: drop-shadow(0 0 2px rgba(99, 102, 241, 0.3)); }
   50% { filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.7)); }
@@ -407,7 +386,46 @@ body.light .animate-pulse {
 }
 
 /* -------------------------------------------------------------
-   WHATSAPP CUSTOMIZATION (Q5, Q6)
+   STATUS BADGES PREMIUM STYLING (LIGHT COMBINATIONS)
+   ------------------------------------------------------------- */
+body.light [class*="bg-emerald-500/10" i] {
+  background-color: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+body.light [class*="bg-emerald-500/10" i] * {
+  color: #047857 !important;
+}
+
+body.light [class*="bg-amber-500/10" i] {
+  background-color: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+}
+body.light [class*="bg-amber-500/10" i] * {
+  color: #b45309 !important;
+}
+
+body.light [class*="bg-blue-500/10" i] {
+  background-color: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+}
+body.light [class*="bg-blue-500/10" i] * {
+  color: #1d4ed8 !important;
+}
+
+body.light [class*="bg-rose-500/10" i]:not(button),
+body.light [class*="bg-red-500/10" i]:not(button),
+body.light [class*="bg-red-955/20" i] {
+  background-color: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+}
+body.light [class*="bg-rose-500/10" i]:not(button) *,
+body.light [class*="bg-red-500/10" i]:not(button) *,
+body.light [class*="bg-red-955/20" i] * {
+  color: #b91c1c !important;
+}
+
+/* -------------------------------------------------------------
+   WHATSAPP BUBBLES
    ------------------------------------------------------------- */
 body.light [class*="bg-[#0d3c2e]/60" i],
 body.light [class*="bg-[#0d3c2e]/80" i] {
@@ -418,7 +436,6 @@ body.light [class*="bg-[#0d3c2e]/80" i] {
 body.light [class*="text-emerald-100" i] {
   color: #111b21 !important;
 }
-/* Received bubble (grey) */
 body.light [class*="bg-[#121212]" i][class*="text-zinc-300" i] {
   background-color: #f0f2f5 !important;
   color: #111b21 !important;
@@ -438,7 +455,15 @@ body.light label,
 body.light th,
 body.light select,
 body.light input,
-body.light textarea {
+body.light textarea,
+body.light span,
+body.light p,
+body.light div {
+  color: #0f172a; /* Slate 900 base default for all texts inside cards */
+}
+
+body.light option {
+  background-color: #ffffff !important;
   color: #0f172a !important;
 }
 
@@ -595,30 +620,65 @@ body.light [class*="text-[#E5E5E5]" i] {
   color: #0f172a !important; /* Slate 900 */
 }
 
-/* Solid colored dark backgrounds get white text overrides in Light Mode */
-body.light .bg-indigo-600,
-body.light .bg-indigo-600 *,
-body.light .bg-indigo-700,
-body.light .bg-indigo-700 *,
-body.light .bg-emerald-600,
-body.light .bg-emerald-600 *,
-body.light .bg-rose-600,
-body.light .bg-rose-600 *,
-body.light .bg-rose-700,
-body.light .bg-rose-700 *,
-body.light .bg-blue-600,
-body.light .bg-blue-600 *,
-body.light .bg-red-600,
-body.light .bg-red-600 *,
-body.light .bg-black,
-body.light .bg-black *,
-body.light .bg-amber-600,
-body.light .bg-amber-600 *,
-body.light .bg-gradient-to-l,
-body.light .bg-gradient-to-l *,
-body.light .bg-gradient-to-br,
-body.light .bg-gradient-to-br * {
+/* Solid and translucent neon backgrounds get solid white text for all descendants in Light Mode */
+body.light [class*="bg-indigo-600" i],
+body.light [class*="bg-indigo-600" i] *,
+body.light [class*="bg-indigo-700" i],
+body.light [class*="bg-indigo-700" i] *,
+body.light [class*="bg-emerald-600" i],
+body.light [class*="bg-emerald-600" i] *,
+body.light [class*="bg-rose-600" i],
+body.light [class*="bg-rose-600" i] *,
+body.light [class*="bg-rose-700" i],
+body.light [class*="bg-rose-700" i] *,
+body.light [class*="bg-blue-600" i],
+body.light [class*="bg-blue-600" i] *,
+body.light [class*="bg-red-600" i],
+body.light [class*="bg-red-600" i] *,
+body.light [class*="bg-black" i],
+body.light [class*="bg-black" i] *,
+body.light [class*="bg-amber-600" i],
+body.light [class*="bg-amber-600" i] *,
+body.light [class*="bg-gradient-to-l" i],
+body.light [class*="bg-gradient-to-l" i] *,
+body.light [class*="bg-gradient-to-br" i],
+body.light [class*="bg-gradient-to-br" i] * {
   color: #ffffff !important;
+}
+
+/* Force solid neon background styles for buttons that are translucent in dark mode */
+body.light [class*="bg-rose-600/10" i],
+body.light [class*="bg-rose-600" i] {
+  background: linear-gradient(135deg, #f43f5e, #e11d48) !important;
+  border-color: #e11d48 !important;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
+}
+body.light [class*="bg-rose-600/10" i]:hover,
+body.light [class*="bg-rose-600" i]:hover {
+  background: #e11d48 !important;
+  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.45) !important;
+}
+
+body.light [class*="bg-amber-600/10" i],
+body.light [class*="bg-amber-600" i] {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  border-color: #d97706 !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
+}
+body.light [class*="bg-amber-600/10" i]:hover,
+body.light [class*="bg-amber-600" i]:hover {
+  background: #d97706 !important;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45) !important;
+}
+
+body.light [class*="bg-emerald-600" i] {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border-color: #059669 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3) !important;
+}
+body.light [class*="bg-emerald-600" i]:hover {
+  background: #059669 !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45) !important;
 }
 
 /* Light mode specific status and active accent text colors (placed last to override white where needed) */
