@@ -43,43 +43,43 @@
 }
 
 body.light {
-  --brand-bg-main: #f4f5f7;
-  --brand-bg-card: #ffffff;
-  --brand-bg-sidebar: #fcfcfd;
-  --brand-border: #e4e4e7;
+  --brand-bg-main: #f8fafc; /* Premium Slate 50 */
+  --brand-bg-card: #ffffff; /* Pure White */
+  --brand-bg-sidebar: #ffffff; /* Pure White */
+  --brand-border: #e2e8f0; /* Slate 200 */
   
   /* Overrides for Light Mode */
   --bg-zinc-950: #ffffff;
   --bg-neutral-950: #ffffff;
-  --bg-zinc-900: #f4f4f5;
-  --bg-zinc-800: #e4e4e7;
-  --bg-zinc-850: #eaeaea;
+  --bg-zinc-900: #f8fafc;
+  --bg-zinc-850: #f1f5f9;
+  --bg-zinc-800: #e2e8f0;
   
-  --border-zinc-900: #e4e4e7;
-  --border-zinc-800: #e4e4e7;
-  --border-zinc-850: #e4e4e7;
+  --border-zinc-900: #e2e8f0;
+  --border-zinc-800: #e2e8f0;
+  --border-zinc-850: #e2e8f0;
   
-  --text-white: #09090b;
-  --text-zinc-100: #18181b;
-  --text-zinc-200: #27272a;
-  --text-zinc-300: #3f3f46;
-  --text-zinc-400: #52525b;
-  --text-zinc-500: #71717a;
+  --text-white: #ffffff; /* Let default white stay white for buttons/badges */
+  --text-zinc-100: #0f172a; /* Slate 900 */
+  --text-zinc-200: #1e293b; /* Slate 800 */
+  --text-zinc-300: #334155; /* Slate 700 */
+  --text-zinc-400: #475569; /* Slate 600 */
+  --text-zinc-500: #64748b; /* Slate 500 */
   
   --bg-custom-121212: #ffffff;
   --bg-custom-0b0b0e: #ffffff;
-  --bg-custom-07070a: #f4f4f5;
-  --bg-custom-101010: #e4e4e7;
-  --bg-custom-111: #e4e4e7;
-  --bg-custom-0a0a10: #fcfcfd;
-  --bg-custom-060608: #ffffff;
+  --bg-custom-07070a: #f8fafc;
+  --bg-custom-101010: #f1f5f9;
+  --bg-custom-111: #f1f5f9;
+  --bg-custom-0a0a10: #ffffff;
+  --bg-custom-060608: #f8fafc;
   --bg-custom-0a0a0a: #ffffff;
   --bg-custom-0f0f0f: #ffffff;
-  --bg-custom-1a1a1a: #f4f4f5;
+  --bg-custom-1a1a1a: #f1f5f9;
   
-  --border-custom-1f1f1f: #e4e4e7;
-  --border-custom-262626: #e4e4e7;
-  --border-custom-2a2a2a: #d4d4d8;
+  --border-custom-1f1f1f: #e2e8f0;
+  --border-custom-262626: #e2e8f0;
+  --border-custom-2a2a2a: #cbd5e1;
 }
 
 @theme {
@@ -106,7 +106,6 @@ body.light {
   --color-zinc-200: var(--text-zinc-200);
   --color-zinc-300: var(--text-zinc-300);
   --color-zinc-100: var(--text-zinc-100);
-  --color-white: var(--text-white);
 }
 
 body {
@@ -115,110 +114,245 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Specific selector overrides to force light theme on hardcoded bg/border classes */
-body.light [class*="bg-[#121212]"] {
-  background-color: var(--bg-custom-121212) !important;
-}
-body.light [class*="bg-[#0B0B0E]"] {
-  background-color: var(--bg-custom-0b0b0e) !important;
-}
-body.light [class*="bg-[#07070A]"] {
-  background-color: var(--bg-custom-07070a) !important;
-}
-body.light [class*="bg-[#101010]"] {
-  background-color: var(--bg-custom-101010) !important;
-}
-body.light [class*="bg-[#111]"] {
-  background-color: var(--bg-custom-111) !important;
-}
-body.light [class*="bg-[#0A0A10]"] {
-  background-color: var(--bg-custom-0a0a10) !important;
-}
-body.light [class*="bg-[#060608]"] {
-  background-color: var(--bg-custom-060608) !important;
-}
-body.light [class*="bg-[#0A0A0A]"] {
-  background-color: var(--bg-custom-0a0a0a) !important;
-}
-body.light [class*="bg-[#0F0F0F]"] {
-  background-color: var(--bg-custom-0f0f0f) !important;
-}
-body.light [class*="bg-[#1A1A1A]"] {
-  background-color: var(--bg-custom-1a1a1a) !important;
+/* Specific selector overrides to force light theme on hardcoded bg/border classes using case-insensitive modifier 'i' */
+
+/* General Backgrounds */
+body.light [class*="bg-[#050505]" i],
+body.light [class*="bg-[#070707]" i],
+body.light [class*="bg-[#07070a]" i],
+body.light [class*="bg-[#09090b]" i],
+body.light [class*="bg-[#0a0a0a]" i] {
+  background-color: var(--brand-bg-main) !important;
 }
 
-body.light [class*="border-[#1F1F1F]"] {
-  border-color: var(--border-custom-1f1f1f) !important;
-}
-body.light [class*="border-[#262626]"] {
-  border-color: var(--border-custom-262626) !important;
-}
-body.light [class*="border-[#2A2A2A]"] {
-  border-color: var(--border-custom-2a2a2a) !important;
+body.light [class*="bg-[#121212]" i],
+body.light [class*="bg-[#0b0b0e]" i],
+body.light [class*="bg-[#0f0f0f]" i],
+body.light [class*="bg-[#101010]" i],
+body.light [class*="bg-[#111]" i],
+body.light [class*="bg-[#111111]" i],
+body.light [class*="bg-[#1a1a1a]" i],
+body.light [class*="bg-[#171717]" i],
+body.light [class*="bg-[#0d0d0d]" i],
+body.light [class*="bg-[#1c1c1e]" i],
+body.light [class*="bg-[#0a0a10]" i],
+body.light [class*="bg-[#060608]" i],
+body.light [class*="bg-[#0d0d11]" i],
+body.light [class*="bg-[#1e1e1e]" i] {
+  background-color: var(--brand-bg-card) !important;
 }
 
-/* Handle specific opaque backgrounds and lists for Light Mode */
-body.light [class*="bg-[#121212]/30"] {
+body.light [class*="bg-zinc-900" i] {
+  background-color: var(--bg-zinc-900) !important;
+}
+body.light [class*="bg-zinc-950" i] {
+  background-color: var(--bg-zinc-950) !important;
+}
+body.light [class*="bg-neutral-950" i] {
+  background-color: var(--bg-neutral-950) !important;
+}
+
+/* Translucent Backgrounds */
+body.light [class*="bg-[#121212]/30" i] {
   background-color: rgba(255, 255, 255, 0.4) !important;
 }
-body.light [class*="bg-[#121212]/50"] {
+body.light [class*="bg-[#121212]/50" i] {
   background-color: rgba(255, 255, 255, 0.6) !important;
 }
-body.light [class*="bg-[#121212]/80"] {
+body.light [class*="bg-[#121212]/60" i] {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+}
+body.light [class*="bg-[#121212]/80" i] {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+body.light [class*="bg-[#0a0a10]/60" i],
+body.light [class*="bg-[#0a0a0a]/60" i] {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+body.light [class*="bg-neutral-950/20" i] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+body.light [class*="bg-zinc-950/40" i] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+body.light [class*="bg-zinc-950/50" i] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+body.light [class*="bg-zinc-950/80" i] {
   background-color: rgba(255, 255, 255, 0.9) !important;
 }
-body.light [class*="bg-neutral-950/20"] {
-  background-color: rgba(0, 0, 0, 0.04) !important;
+body.light [class*="bg-black/85" i] {
+  background-color: rgba(15, 23, 42, 0.35) !important;
 }
-body.light [class*="bg-zinc-950/40"] {
-  background-color: rgba(0, 0, 0, 0.02) !important;
+body.light [class*="bg-black/50" i] {
+  background-color: rgba(15, 23, 42, 0.25) !important;
 }
-body.light [class*="bg-zinc-950/50"] {
-  background-color: rgba(0, 0, 0, 0.02) !important;
+body.light [class*="bg-[#0d0d0d]/50" i] {
+  background-color: rgba(255, 255, 255, 0.5) !important;
 }
-body.light [class*="bg-zinc-950/80"] {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-}
-body.light [class*="bg-black/85"] {
-  background-color: rgba(15, 23, 42, 0.45) !important;
+body.light [class*="bg-[#0a0a0a]/60" i] {
+  background-color: rgba(255, 255, 255, 0.6) !important;
 }
 
-/* Emerald, Amber, Rose fallback badges in light mode */
-body.light [class*="bg-emerald-955"] {
+/* Borders */
+body.light [class*="border-[#1f1f1f]" i],
+body.light [class*="border-[#262626]" i],
+body.light [class*="border-[#2a2a2a]" i],
+body.light [class*="border-[#2d2d2d]" i],
+body.light [class*="border-[#23232c]" i],
+body.light [class*="border-[#222]" i],
+body.light [class*="border-[#252525]" i],
+body.light [class*="border-[#333]" i],
+body.light [class*="border-zinc-800" i],
+body.light [class*="border-zinc-900" i],
+body.light [class*="border-zinc-850" i],
+body.light [class*="border-white/5" i],
+body.light [class*="border-white/10" i] {
+  border-color: var(--brand-border) !important;
+}
+
+/* Hover Backgrounds */
+body.light [class*="hover:bg-[#1c1c1c]" i]:hover,
+body.light [class*="hover:bg-[#1C1C1C]" i]:hover,
+body.light [class*="hover:bg-zinc-900" i]:hover,
+body.light [class*="hover:bg-zinc-800" i]:hover {
+  background-color: var(--bg-zinc-850) !important;
+}
+
+/* WhatsApp Message Bubbles */
+body.light [class*="bg-[#0d3c2e]/60" i],
+body.light [class*="bg-[#0d3c2e]/80" i] {
+  background-color: #d9fdd3 !important;
+  color: #111b21 !important;
+  border-color: #c2ebd0 !important;
+}
+body.light [class*="text-emerald-100" i] {
+  color: #111b21 !important;
+}
+
+/* Muted or Alert Banners */
+body.light [class*="bg-amber-500/10" i] {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+/* Fallback Badges & Alerts (emerald, amber, rose, blue, orange, red, pink, zinc) */
+body.light [class*="bg-emerald-955" i],
+body.light [class*="bg-emerald-950/20" i],
+body.light [class*="bg-emerald-950/40" i] {
   background-color: #d1fae5 !important;
   color: #065f46 !important;
   border-color: rgba(16, 185, 129, 0.2) !important;
 }
-body.light [class*="bg-amber-955"] {
+body.light [class*="bg-amber-955" i],
+body.light [class*="bg-amber-955/20" i] {
   background-color: #fef3c7 !important;
   color: #92400e !important;
   border-color: rgba(245, 158, 11, 0.2) !important;
 }
-body.light [class*="bg-rose-955"] {
+body.light [class*="bg-rose-955" i],
+body.light [class*="bg-rose-955/20" i],
+body.light [class*="bg-rose-955/40" i],
+body.light [class*="bg-red-955" i],
+body.light [class*="bg-red-955/20" i] {
   background-color: #fee2e2 !important;
   color: #991b1b !important;
   border-color: rgba(239, 68, 68, 0.2) !important;
 }
-
-/* WhatsApp message bubbles in Light Mode */
-body.light [class*="bg-[#0d3c2e]/60"],
-body.light [class*="bg-[#0d3c2e]/80"] {
-  background-color: #e7fedb !important;
-  color: #111b21 !important;
-  border-color: rgba(16, 185, 129, 0.25) !important;
+body.light [class*="bg-indigo-955/20" i],
+body.light [class*="bg-indigo-955/40" i],
+body.light [class*="bg-blue-955/20" i] {
+  background-color: #e0e7ff !important;
+  color: #4338ca !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
 }
-body.light [class*="text-emerald-100"] {
-  color: #111b21 !important;
+body.light [class*="bg-pink-955/20" i] {
+  background-color: #fce7f3 !important;
+  color: #9d174d !important;
+  border-color: rgba(236, 72, 153, 0.2) !important;
+}
+body.light [class*="bg-orange-955/20" i] {
+  background-color: #ffedd5 !important;
+  color: #c2410c !important;
+  border-color: rgba(249, 115, 22, 0.2) !important;
+}
+body.light [class*="bg-zinc-955/30" i] {
+  background-color: #f4f4f5 !important;
+  color: #27272a !important;
+  border-color: #e4e4e7 !important;
 }
 
-/* Side navigation item hover states in Light Mode */
-body.light [class*="hover:bg-[#1C1C1C]"]:hover {
-  background-color: #e4e4e7 !important;
+/* Headings and generic typography controls */
+body.light h1,
+body.light h2,
+body.light h3,
+body.light h4,
+body.light h5,
+body.light h6,
+body.light label,
+body.light th,
+body.light select,
+body.light input,
+body.light textarea {
+  color: #0f172a !important;
 }
 
-/* Impersonate banner text contrast */
-body.light [class*="bg-amber-500/10"] {
-  background-color: #fef3c7 !important;
-  color: #d97706 !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
+body.light option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Precision text overrides that switch dark-mode text classes to Slate colors.
+   Exclude any buttons, links, or elements that have colored backgrounds (or are inside them). */
+body.light .text-white:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
+body.light [class*="text-white" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
+body.light [class*="text-zinc-100" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
+body.light [class*="text-zinc-200" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
+body.light [class*="text-[#D4D4D4]" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *),
+body.light [class*="text-[#E5E5E5]" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
+  color: var(--text-zinc-100) !important;
+}
+
+body.light [class*="text-zinc-300" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
+  color: var(--text-zinc-200) !important;
+}
+
+body.light [class*="text-zinc-400" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
+  color: var(--text-zinc-350, #475569) !important;
+}
+
+body.light [class*="text-zinc-500" i]:not(button, button *, a, a *, [class*="bg-indigo-"], [class*="bg-emerald-"], [class*="bg-rose-"], [class*="bg-amber-"], [class*="bg-blue-"], [class*="bg-red-"], [class*="bg-gradient-"], [class*="bg-[#3b82f6]" i], [class*="bg-indigo-"] *, [class*="bg-emerald-"] *, [class*="bg-rose-"] *, [class*="bg-amber-"] *, [class*="bg-blue-"] *, [class*="bg-red-"] *, [class*="bg-gradient-"] *, [class*="bg-[#3b82f6]" i] *) {
+  color: var(--text-zinc-400) !important;
+}
+
+/* Light mode specific accent color enhancements (improves readability) */
+body.light .text-indigo-400 {
+  color: #4f46e5 !important;
+}
+body.light .text-emerald-450,
+body.light .text-emerald-400 {
+  color: #059669 !important;
+}
+body.light .text-rose-450,
+body.light .text-rose-400,
+body.light .text-red-400 {
+  color: #dc2626 !important;
+}
+body.light .text-amber-500,
+body.light .text-amber-400 {
+  color: #b45309 !important;
+}
+body.light .text-cyan-400 {
+  color: #0891b2 !important;
+}
+body.light .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+/* Fix for inputs border focus */
+body.light input:focus,
+body.light select:focus,
+body.light textarea:focus {
+  border-color: #3b82f6 !important;
 }
