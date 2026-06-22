@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Student, Session, Diploma, MessageTemplate } from '../types';
+import { Student, Session, Diploma, MessageTemplate, AppConfig } from '../types';
+import { improveWhatsAppMessage } from '../services/groq';
 import { parseTemplate, formatWhatsAppLink } from '../utils';
 import { calculateStudentDiplomaAttendance } from '../services/business';
 import {
@@ -32,6 +33,7 @@ interface WhatsAppAutomationProps {
   sessions: Session[];
   diplomas: Diploma[];
   templates: MessageTemplate[];
+  config: AppConfig | null;
 }
 
 interface QueueItem {
@@ -45,7 +47,8 @@ export default function WhatsAppAutomation({
   students,
   sessions,
   diplomas,
-  templates
+  templates,
+  config
 }: WhatsAppAutomationProps) {
   // Tabs: 'absence' | 'class-reminder' | 'custom-message'
   const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message'>('absence');
@@ -83,6 +86,43 @@ export default function WhatsAppAutomation({
   const [isQueueActive, setIsQueueActive] = useState(false);
   const [isAutoSending, setIsAutoSending] = useState(false);
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Groq AI states
+  const [polishingAbsence, setPolishingAbsence] = useState(false);
+  const [polishingCustom, setPolishingCustom] = useState(false);
+
+  const handlePolishMessage = async (type: 'absence' | 'custom', tone: 'friendly' | 'warning' | 'formal') => {
+    if (!config?.groqApiKey) {
+      alert('الرجاء تهيئة مفتاح Groq API في الإعدادات أولاً لتفعيل تحسين الرسائل بالذكاء الاصطناعي.');
+      return;
+    }
+    
+    const isAbsence = type === 'absence';
+    const currentText = isAbsence ? absenceCustomText : customMessageText;
+    if (!currentText.trim()) return;
+
+    if (isAbsence) setPolishingAbsence(true);
+    else setPolishingCustom(true);
+
+    try {
+      const improved = await improveWhatsAppMessage(
+        config.groqApiKey,
+        config.groqModel || 'llama-3.3-70b-versatile',
+        currentText,
+        tone
+      );
+      if (isAbsence) {
+        setAbsenceCustomText(improved);
+      } else {
+        setCustomMessageText(improved);
+      }
+    } catch (e: any) {
+      alert(`فشل تحسين الصياغة: ${e.message}`);
+    } finally {
+      setPolishingAbsence(false);
+      setPolishingCustom(false);
+    }
+  };
 
   // Workflow states
   const [sendMode, setSendMode] = useState<'new-tab' | 'same-tab'>(() => {
@@ -684,6 +724,35 @@ export default function WhatsAppAutomation({
                   className="w-full p-3 bg-[#07070A] border border-zinc-850 text-xs text-zinc-300 rounded-lg outline-hidden focus:border-indigo-500 leading-relaxed resize-none"
                   placeholder="اكتب قالب رسالة الغياب هنا..."
                 />
+                {config?.groqApiKey && (
+                  <div className="flex flex-wrap gap-1.5 pt-1.5 justify-start">
+                    <span className="text-[10px] text-zinc-550 font-bold shrink-0 self-center">تحسين الصياغة بالذكاء الاصطناعي (Groq AI):</span>
+                    <button
+                      type="button"
+                      onClick={() => handlePolishMessage('absence', 'friendly')}
+                      disabled={polishingAbsence}
+                      className="px-2 py-1 bg-indigo-950/20 border border-indigo-900/30 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all text-[10px] rounded cursor-pointer disabled:opacity-50"
+                    >
+                      {polishingAbsence ? 'جاري التحسين...' : 'أسلوب ودّي ✨'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePolishMessage('absence', 'warning')}
+                      disabled={polishingAbsence}
+                      className="px-2 py-1 bg-rose-955/20 border border-rose-900/30 text-rose-400 hover:bg-rose-600 hover:text-white transition-all text-[10px] rounded cursor-pointer disabled:opacity-50"
+                    >
+                      أسلوب تحذيري ⚠️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePolishMessage('absence', 'formal')}
+                      disabled={polishingAbsence}
+                      className="px-2 py-1 bg-slate-950/20 border border-slate-900/30 text-slate-400 hover:bg-slate-600 hover:text-white transition-all text-[10px] rounded cursor-pointer disabled:opacity-50"
+                    >
+                      أسلوب رسمي 💼
+                    </button>
+                  </div>
+                )}
                 <span className="text-[9px] text-zinc-500 leading-relaxed block">
                   يمكنك استخدام المتغيرات مثل `{`{اسم_الطالب}`}` و `{`{اسم_الدبلومة}`}` و `{`{تاريخ_المحاضرة}`}` و `{`{عدد_الغياب}`}` ليتم استبدالها آلياً لكل طالب.
                 </span>

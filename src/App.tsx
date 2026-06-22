@@ -56,6 +56,8 @@ import DataBackupRestore from './components/DataBackupRestore';
 import Login from './components/Login';
 import AdminPanel from './components/AdminPanel';
 import WhatsAppAutomation from './components/WhatsAppAutomation';
+import AIAssistant from './components/AIAssistant';
+import { testGroqConnection } from './services/groq';
 import {
   isCloudConfigured,
   downloadCloudData,
@@ -82,7 +84,9 @@ import {
   Database,
   Shield,
   Sun,
-  Moon
+  Moon,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -92,7 +96,8 @@ type MainTab =
   | 'whatsapp'
   | 'diplomas'
   | 'tasks'
-  | 'settings';
+  | 'settings'
+  | 'ai-assistant';
 
 // Admin username — only this user sees the Admin Panel button
 const ADMIN_USERNAME = 'mohannad';
@@ -133,6 +138,56 @@ export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('app_theme') as 'dark' | 'light') || 'dark';
   });
+
+  // Groq AI State Variables
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [tempModel, setTempModel] = useState('llama-3.3-70b-versatile');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [testingAI, setTestingAI] = useState(false);
+  const [aiSuccess, setAiSuccess] = useState('');
+  const [aiError, setAiError] = useState('');
+
+  // Sync temp states with config when it loads
+  useEffect(() => {
+    if (config) {
+      setTempApiKey(config.groqApiKey || '');
+      setTempModel(config.groqModel || 'llama-3.3-70b-versatile');
+    }
+  }, [config]);
+
+  const handleSaveAISettings = () => {
+    if (!config) return;
+    setAiError('');
+    setAiSuccess('');
+    const newConfig: AppConfig = {
+      ...config,
+      groqApiKey: tempApiKey.trim() || undefined,
+      groqModel: tempModel
+    };
+    setConfig(newConfig);
+    saveConfig(newConfig);
+    syncPersonalToCloud({ config: newConfig });
+    setAiSuccess('تم حفظ إعدادات الذكاء الاصطناعي بنجاح!');
+  };
+
+  const handleTestAIConnection = async () => {
+    if (!tempApiKey.trim()) return;
+    setAiError('');
+    setAiSuccess('');
+    setTestingAI(true);
+    try {
+      const ok = await testGroqConnection(tempApiKey.trim(), tempModel);
+      if (ok) {
+        setAiSuccess('تم الاتصال بـ Groq API بنجاح! المفتاح يعمل بشكل ممتاز.');
+      } else {
+        setAiError('فشل الاتصال: لم يستجب الموديل بشكل صحيح.');
+      }
+    } catch (e: any) {
+      setAiError(e.message || 'فشل الاتصال: يرجى التحقق من المفتاح وصلاحية الإنترنت.');
+    } finally {
+      setTestingAI(false);
+    }
+  };
 
   useEffect(() => {
     const root = window.document.body;
@@ -608,7 +663,8 @@ export default function App() {
             {[
               { id: 'workspace', label: 'مساحة عمل الدبلومة الحالية', icon: GraduationCap },
               { id: 'whatsapp', label: 'أتمتة ومراسلات الواتساب', icon: MessageSquare },
-              { id: 'dashboard', label: 'العمليات واللوحة الرئيسية', icon: Sparkles },
+              { id: 'dashboard', label: 'العمليات واللوحة الرئيسية', icon: Activity },
+              { id: 'ai-assistant', label: 'مساعد الذكاء الاصطناعي', icon: Sparkles },
               { id: 'diplomas', label: 'إدارة وتصنيف الدبلومات', icon: BookOpen },
               { id: 'tasks', label: 'لوحة العمليات الأسبوعية', icon: ClipboardList },
               { id: 'settings', label: 'صيانة وقوالب النظام', icon: Sliders }
@@ -679,6 +735,7 @@ export default function App() {
                     sessions={sessions}
                     diplomas={diplomas}
                     templates={templates}
+                    config={config}
                   />
                 )}
 
@@ -749,6 +806,17 @@ export default function App() {
                   />
                 )}
 
+                {activeTab === 'ai-assistant' && (
+                  <AIAssistant
+                    students={students}
+                    diplomas={diplomas}
+                    sessions={sessions}
+                    tasks={tasks}
+                    config={config}
+                    onNavigateToSettings={() => setActiveTab('settings')}
+                  />
+                )}
+
                 {activeTab === 'settings' && (
                   <div className="space-y-6">
                     <div className="bg-[#121212]/50 border border-[#1F1F1F] p-5 rounded-xl">
@@ -761,6 +829,93 @@ export default function App() {
 
                     <div className="bg-[#121212]/50 border border-[#1F1F1F] p-5 rounded-xl">
                       <DataBackupRestore onSuccessRestore={handleRestoreReload} />
+                    </div>
+
+                    {/* GROQ AI SETTINGS CARD */}
+                    <div className="bg-[#121212]/50 border border-[#1F1F1F] p-5 rounded-xl text-right" dir="rtl">
+                      <div className="text-xs font-bold text-indigo-400 border-b border-[#1F1F1F] pb-2 flex items-center gap-2 mb-4">
+                        <Sparkles className="w-4 h-4 text-indigo-400" />
+                        <span>إعدادات الذكاء الاصطناعي (Groq AI)</span>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-zinc-400 mb-1.5">مفتاح API الخاص بـ Groq (Groq API Key)</label>
+                          <div className="flex gap-2">
+                            <input
+                              type={showApiKey ? 'text' : 'password'}
+                              value={tempApiKey}
+                              onChange={(e) => setTempApiKey(e.target.value)}
+                              placeholder="gsk_..."
+                              className="flex-1 px-3 py-2 bg-[#0A0A0A] border border-[#262626] focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-left font-sans"
+                              dir="ltr"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="px-3 py-2 bg-[#1C1C1C] border border-[#262626] text-xs text-zinc-350 rounded-lg hover:text-white cursor-pointer"
+                            >
+                              {showApiKey ? 'إخفاء' : 'إظهار'}
+                            </button>
+                          </div>
+                          <span className="text-[9px] text-zinc-550 block mt-1 leading-relaxed">
+                            يمكنك الحصول على مفتاح API مجاني تماماً من منصة Groq Cloud لتشغيل المساعد الذكي وصائغ الرسائل.
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-zinc-400 mb-1.5">موديل الذكاء الاصطناعي المفضل (Groq Model)</label>
+                          <select
+                            value={tempModel}
+                            onChange={(e) => setTempModel(e.target.value)}
+                            className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-right cursor-pointer"
+                          >
+                            <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Recommended for Arabic)</option>
+                            <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fast & Light)</option>
+                            <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                          </select>
+                        </div>
+
+                        {aiError && (
+                          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs rounded flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                            <span>{aiError}</span>
+                          </div>
+                        )}
+
+                        {aiSuccess && (
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-350 text-xs rounded flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-450 shrink-0" />
+                            <span>{aiSuccess}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#1F1F1F]">
+                          <button
+                            type="button"
+                            onClick={handleTestAIConnection}
+                            disabled={testingAI || !tempApiKey.trim()}
+                            className="px-4 py-2 bg-[#1C1C1C] border border-[#262626] hover:border-zinc-500 text-zinc-300 hover:text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                          >
+                            {testingAI ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span>جاري الاختبار...</span>
+                              </>
+                            ) : (
+                              <span>اختبار الاتصال ⚡</span>
+                            )}
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={handleSaveAISettings}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-black cursor-pointer transition-colors shadow-md"
+                          >
+                            حفظ إعدادات الذكاء الاصطناعي
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Shared data info banner */}

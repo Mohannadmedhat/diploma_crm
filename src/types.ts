@@ -146,11 +146,14 @@ export interface MessageTemplate {
 export interface AppConfig {
   minAttendanceRate: number; // e.g. 75
   language: 'ar' | 'en'; // Arabic first by default
+  groqApiKey?: string;
+  groqModel?: string;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
   minAttendanceRate: 75,
-  language: 'ar'
+  language: 'ar',
+  groqModel: 'llama-3.3-70b-versatile'
 };
 
 export const DEFAULT_ARABIC_TEMPLATES: MessageTemplate[] = [
