@@ -584,11 +584,6 @@ ${crmContext}
         <div class="certificate-container">
           <img src="${window.location.origin}/certificate_original.png" class="certificate-bg" onload="startPrint()" onerror="startPrint()" />
           
-          <!-- Masks to cover original left-aligned texts in the certificate screenshot -->
-          <div class="mask-name" style="position: absolute; top: 52%; left: 7%; width: 45%; height: 52px; background: #ffffff; z-index: 1;"></div>
-          <div class="mask-diploma" style="position: absolute; top: 64.5%; left: 7%; width: 45%; height: 30px; background: #ffffff; z-index: 1;"></div>
-          <div class="mask-date" style="position: absolute; bottom: 12.8%; left: 9.5%; width: 10.8%; height: 25px; background: #ffffff; z-index: 1;"></div>
-
           <div class="student-name">${studentName}</div>
           <div class="diploma-text">Has Successfully Completed The ${diplomaNameEn} Diploma (${hours} Hours)</div>
           <div class="certificate-date">${formattedDate}</div>
