@@ -484,9 +484,10 @@ ${crmContext}
       <head>
         <meta charset="UTF-8">
         <title>Certificate - ${studentName}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
-          
           body {
             margin: 0;
             padding: 0;
@@ -501,7 +502,7 @@ ${crmContext}
           .certificate-container {
             width: 1024px;
             height: 723px;
-            background-image: url('/certificate_original.png');
+            background-image: url('${window.location.origin}/certificate_original.png');
             background-size: 100% 100%;
             background-repeat: no-repeat;
             position: relative;
@@ -512,9 +513,9 @@ ${crmContext}
           .student-name {
             position: absolute;
             top: 52%;
-            left: 5%;
-            right: 5%;
-            text-align: center;
+            left: 7.2%;
+            width: 45%;
+            text-align: left;
             font-size: 38px;
             font-weight: 800;
             color: #213A78;
@@ -525,10 +526,10 @@ ${crmContext}
           .diploma-text {
             position: absolute;
             top: 64.5%;
-            left: 5%;
-            right: 5%;
-            text-align: center;
-            font-size: 16px;
+            left: 7.2%;
+            width: 45%;
+            text-align: left;
+            font-size: 15px;
             font-weight: 600;
             color: #0E172C;
             z-index: 2;
@@ -569,21 +570,29 @@ ${crmContext}
       </head>
       <body>
         <div class="certificate-container">
-          <!-- Masks to cover original texts in the certificate screenshot -->
-          <div class="mask-name" style="position: absolute; top: 52%; left: 10%; width: 80%; height: 52px; background: #ffffff; z-index: 1;"></div>
-          <div class="mask-diploma" style="position: absolute; top: 64.5%; left: 10%; width: 80%; height: 30px; background: #ffffff; z-index: 1;"></div>
+          <!-- Masks to cover original left-aligned texts in the certificate screenshot -->
+          <div class="mask-name" style="position: absolute; top: 52%; left: 7%; width: 45%; height: 52px; background: #ffffff; z-index: 1;"></div>
+          <div class="mask-diploma" style="position: absolute; top: 64.5%; left: 7%; width: 45%; height: 30px; background: #ffffff; z-index: 1;"></div>
           <div class="mask-date" style="position: absolute; bottom: 12.8%; left: 9.5%; width: 10.8%; height: 25px; background: #ffffff; z-index: 1;"></div>
 
           <div class="student-name">${studentName}</div>
           <div class="diploma-text">Has Successfully Completed The ${diplomaNameEn} Diploma (${hours} Hours)</div>
           <div class="certificate-date">${formattedDate}</div>
         </div>
+        
+        <img src="${window.location.origin}/certificate_original.png" style="display:none;" onload="startPrint()" onerror="startPrint()" />
         <script>
-          window.onload = function() {
+          let printed = false;
+          function startPrint() {
+            if (printed) return;
+            printed = true;
             window.print();
             setTimeout(function() {
               window.close();
             }, 600);
+          }
+          window.onload = function() {
+            setTimeout(startPrint, 1000);
           };
         </script>
       </body>
