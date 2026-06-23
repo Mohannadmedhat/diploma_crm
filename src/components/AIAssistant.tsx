@@ -517,14 +517,15 @@ ${crmContext}
             position: absolute;
             top: 0;
             left: 0;
-            width: 1024px;
-            height: 723px;
+            width: 100%;
+            height: 100%;
             z-index: 0;
+            object-fit: cover;
           }
           
           .student-name {
             position: absolute;
-            top: 52%;
+            top: 51.5%;
             left: 7.2%;
             width: 45%;
             text-align: left;
@@ -532,12 +533,12 @@ ${crmContext}
             font-weight: 800;
             color: #213A78;
             z-index: 2;
-            line-height: 52px;
+            line-height: 1.2;
           }
           
           .diploma-text {
             position: absolute;
-            top: 64.5%;
+            top: 64%;
             left: 7.2%;
             width: 45%;
             text-align: left;
@@ -545,7 +546,7 @@ ${crmContext}
             font-weight: 600;
             color: #0E172C;
             z-index: 2;
-            line-height: 30px;
+            line-height: 1.3;
           }
           
           .certificate-date {
@@ -558,7 +559,7 @@ ${crmContext}
             font-weight: 600;
             color: #213A78;
             z-index: 2;
-            line-height: 25px;
+            line-height: 1.2;
           }
           
           @media print {
@@ -570,11 +571,20 @@ ${crmContext}
             .certificate-container {
               box-shadow: none;
               page-break-inside: avoid;
-              width: 1024px;
-              height: 723px;
+              width: 297mm;
+              height: 210mm;
+            }
+            .student-name {
+              font-size: 28pt;
+            }
+            .diploma-text {
+              font-size: 11pt;
+            }
+            .certificate-date {
+              font-size: 12pt;
             }
             @page {
-              size: landscape;
+              size: A4 landscape;
               margin: 0;
             }
           }
@@ -582,7 +592,7 @@ ${crmContext}
       </head>
       <body>
         <div class="certificate-container">
-          <img src="${window.location.origin}/certificate_original.png" class="certificate-bg" onload="startPrint()" onerror="startPrint()" />
+          <img src="${window.location.origin}/certificate_original.png" class="certificate-bg" onload="onImageLoad()" onerror="onImageLoad()" />
           
           <div class="student-name">${studentName}</div>
           <div class="diploma-text">Has Successfully Completed The ${diplomaNameEn} Diploma (${hours} Hours)</div>
@@ -591,16 +601,31 @@ ${crmContext}
         
         <script>
           let printed = false;
-          function startPrint() {
+          let imageLoaded = false;
+          
+          function checkAndPrint() {
             if (printed) return;
-            printed = true;
-            window.print();
-            setTimeout(function() {
-              window.close();
-            }, 600);
+            if (imageLoaded) {
+              // Wait for custom fonts to load successfully to avoid Times New Roman fallbacks
+              document.fonts.ready.then(function() {
+                printed = true;
+                window.print();
+                setTimeout(function() {
+                  window.close();
+                }, 600);
+              });
+            }
           }
+          
+          function onImageLoad() {
+            imageLoaded = true;
+            checkAndPrint();
+          }
+          
+          // Fallback to guarantee print trigger even if connections stall
           window.onload = function() {
-            setTimeout(startPrint, 1000);
+            imageLoaded = true;
+            setTimeout(checkAndPrint, 1500);
           };
         </script>
       </body>
