@@ -458,7 +458,7 @@ ${crmContext}
     }
   }, [pendingAction, diplomaTypes]);
 
-  // Generate & print PDF using browser print engine on a hidden popup window
+  // Generate & print PDF using browser print engine - pure CSS/SVG certificate (no raster image, infinite quality)
   const handleDownloadCertificate = (studentName: string, diplomaNameEn: string, hours: string, dateStr: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -471,7 +471,6 @@ ${crmContext}
     try {
       const parts = dateStr.split('-');
       if (parts.length === 3) {
-        // YYYY-MM-DD to DD/MM/YYYY or similar
         formattedDate = `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
       }
     } catch {
@@ -486,147 +485,263 @@ ${crmContext}
         <title>Certificate - ${studentName}</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
         <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          
           body {
-            margin: 0;
-            padding: 0;
-            background-color: #f3f4f6;
-            font-family: 'Outfit', sans-serif;
+            background: #eaeaea;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            font-family: 'Outfit', sans-serif;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          
-          .certificate-container {
-            width: 1024px;
-            height: 723px;
+
+          /* ── Certificate card ── */
+          .cert {
+            width: 297mm;
+            height: 210mm;
+            background: #edf1f8;
             position: relative;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-            box-sizing: border-box;
             overflow: hidden;
-            background-color: #ffffff;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            box-shadow: 0 8px 40px rgba(0,0,0,.25);
           }
-          
-          .certificate-bg {
+
+          /* ── Subtle radial highlight in the middle ── */
+          .cert::before {
+            content:'';
+            position:absolute;
+            inset:0;
+            background: radial-gradient(ellipse 70% 60% at 45% 55%, #ffffff 0%, #dce4f0 100%);
+            z-index:0;
+          }
+
+          /* ══════════════ SVG BACKGROUND SHAPES ══════════════ */
+          .bg-svg {
             position: absolute;
-            top: 0;
-            left: 0;
+            inset: 0;
             width: 100%;
             height: 100%;
-            z-index: 0;
-            object-fit: cover;
+            z-index: 1;
           }
-          
+
+          /* ── Content layer ── */
+          .content {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            padding: 9mm 13mm;
+          }
+
+          /* ── Logo ── */
+          .logo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 7mm;
+          }
+          .logo-icon {
+            width: 32px;
+            height: 26px;
+          }
+          .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a2f6e;
+            letter-spacing: 2px;
+          }
+
+          /* ── Main heading ── */
+          .cert-title {
+            font-size: 54px;
+            font-weight: 900;
+            color: #1a2f6e;
+            line-height: 1;
+            margin-bottom: 3mm;
+            letter-spacing: -1px;
+          }
+
+          .cert-subtitle {
+            font-size: 13px;
+            font-weight: 400;
+            color: #333;
+            margin-bottom: 6mm;
+          }
+
+          /* ── Student name ── */
           .student-name {
-            position: absolute;
-            top: 51.5%;
-            left: 7.2%;
-            width: 45%;
-            text-align: left;
-            font-size: 38px;
+            font-size: 34px;
             font-weight: 800;
-            color: #213A78;
-            z-index: 2;
-            line-height: 1.2;
+            color: #1a2f6e;
+            margin-bottom: 4mm;
           }
-          
+
+          /* ── Diploma text ── */
           .diploma-text {
-            position: absolute;
-            top: 64%;
-            left: 7.2%;
-            width: 45%;
-            text-align: left;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 600;
-            color: #0E172C;
-            z-index: 2;
-            line-height: 1.3;
+            color: #111;
+            margin-bottom: 0;
           }
-          
-          .certificate-date {
+
+          /* ── Date block ── */
+          .date-block {
             position: absolute;
-            bottom: 12.8%;
-            left: 9.5%;
-            width: 10.8%;
+            bottom: 13mm;
+            left: 13mm;
+          }
+          .date-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a2f6e;
+            border-bottom: 2px solid #1a2f6e;
+            padding-bottom: 2px;
+            min-width: 28mm;
             text-align: center;
-            font-size: 16px;
-            font-weight: 600;
-            color: #213A78;
-            z-index: 2;
-            line-height: 1.2;
           }
-          
+          .date-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: #555;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-top: 2px;
+          }
+
+          /* ── Bottom-right stamp logo ── */
+          .stamp-logo {
+            position: absolute;
+            bottom: 10mm;
+            right: 68mm;
+            text-align: center;
+            border: 2px solid #1a2f6e;
+            border-radius: 4px;
+            padding: 4px 8px;
+            line-height: 1.15;
+          }
+          .stamp-logo .sl-bracket {
+            font-size: 15px;
+            font-weight: 900;
+            color: #1a2f6e;
+            letter-spacing: 1px;
+          }
+          .stamp-logo .sl-name {
+            font-size: 8px;
+            font-weight: 700;
+            color: #1a2f6e;
+            letter-spacing: 1px;
+            display: block;
+          }
+          .stamp-logo .sl-sub {
+            font-size: 7px;
+            color: #333;
+            display: block;
+            letter-spacing: .5px;
+          }
+
           @media print {
-            body {
-              background-color: transparent;
-              margin: 0;
-              padding: 0;
-            }
-            .certificate-container {
-              box-shadow: none;
-              page-break-inside: avoid;
-              width: 297mm;
-              height: 210mm;
-            }
-            .student-name {
-              font-size: 28pt;
-            }
-            .diploma-text {
-              font-size: 11pt;
-            }
-            .certificate-date {
-              font-size: 12pt;
-            }
-            @page {
-              size: A4 landscape;
-              margin: 0;
-            }
+            body { background: transparent; min-height: unset; }
+            .cert { box-shadow: none; }
+            @page { size: A4 landscape; margin: 0; }
           }
         </style>
       </head>
       <body>
-        <div class="certificate-container">
-          <img src="${window.location.origin}/certificate_original.png" class="certificate-bg" onload="onImageLoad()" onerror="onImageLoad()" />
-          
-          <div class="student-name">${studentName}</div>
-          <div class="diploma-text">Has Successfully Completed The ${diplomaNameEn} Diploma (${hours} Hours)</div>
-          <div class="certificate-date">${formattedDate}</div>
+        <div class="cert">
+
+          <!-- Radial bg handled by ::before -->
+
+          <!-- ═══ SVG decorative shapes ═══ -->
+          <svg class="bg-svg" viewBox="0 0 842 595" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <!-- ── Top-right cluster ── -->
+            <polygon points="842,0 700,0 842,120" fill="#1a2f6e" opacity="1"/>
+            <polygon points="842,0 760,0 842,70" fill="#2a3f8e" opacity="0.6"/>
+            <!-- stacked outline squares top-right -->
+            <rect x="650" y="10" width="90" height="90" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.35" transform="rotate(15,695,55)"/>
+            <rect x="670" y="30" width="70" height="70" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.25" transform="rotate(15,705,65)"/>
+            <rect x="690" y="50" width="50" height="50" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.2" transform="rotate(15,715,75)"/>
+            <!-- big diamond top-right -->
+            <polygon points="842,160 750,100 842,80" fill="#1a2f6e" opacity="0.85"/>
+            <polygon points="842,220 760,150 842,150" fill="#2440a0" opacity="0.5"/>
+
+            <!-- ── Bottom-right cluster ── -->
+            <polygon points="842,595 680,595 842,440" fill="#1a2f6e" opacity="1"/>
+            <polygon points="842,595 750,595 842,500" fill="#2a3f8e" opacity="0.6"/>
+            <!-- stacked outline squares bottom-right -->
+            <rect x="680" y="470" width="90" height="90" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.35" transform="rotate(-15,725,515)"/>
+            <rect x="700" y="490" width="70" height="70" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.25" transform="rotate(-15,735,525)"/>
+            <!-- extra mid-right shard -->
+            <polygon points="842,380 790,300 842,295" fill="#1a2f6e" opacity="0.55"/>
+
+            <!-- ── Top-left small corner ── -->
+            <polygon points="0,0 0,70 60,0" fill="#1a2f6e" opacity="1"/>
+
+            <!-- ── Bottom-left small corner ── -->
+            <polygon points="0,595 0,510 80,595" fill="#1a2f6e" opacity="1"/>
+          </svg>
+
+          <!-- ═══ Certificate badge / seal (right-center) ═══ -->
+          <svg style="position:absolute;top:28%;right:22%;z-index:12;width:100px;height:100px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <!-- Ribbon -->
+            <rect x="42" y="72" width="7" height="22" fill="#b3a0e0" rx="2"/>
+            <rect x="51" y="72" width="7" height="22" fill="#9b88cc" rx="2"/>
+            <!-- Outer circle -->
+            <circle cx="50" cy="48" r="28" fill="none" stroke="#1a2f6e" stroke-width="2.5"/>
+            <circle cx="50" cy="48" r="23" fill="#f0f4ff" stroke="#1a2f6e" stroke-width="1.5"/>
+            <!-- Stars -->
+            <text x="50" y="36" text-anchor="middle" font-size="8" fill="#1a2f6e" font-family="serif">★ ★ ★</text>
+            <text x="50" y="52" text-anchor="middle" font-size="7" font-weight="700" fill="#1a2f6e" font-family="Outfit,sans-serif">Achevment</text>
+            <text x="50" y="62" text-anchor="middle" font-size="7" font-weight="700" fill="#1a2f6e" font-family="Outfit,sans-serif">Awarded</text>
+            <text x="50" y="75" text-anchor="middle" font-size="8" fill="#1a2f6e" font-family="serif">★ ★</text>
+          </svg>
+
+          <!-- ═══ Main content ═══ -->
+          <div class="content">
+            <!-- Logo -->
+            <div class="logo">
+              <svg class="logo-icon" viewBox="0 0 38 30" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="5" height="30" fill="#1a2f6e"/>
+                <rect x="8" y="0" width="5" height="30" fill="#1a2f6e"/>
+                <rect x="15" y="8" width="23" height="5" fill="#4a90d9"/>
+                <rect x="15" y="17" width="23" height="5" fill="#4a90d9"/>
+              </svg>
+              <span class="logo-text">INSTANT</span>
+            </div>
+
+            <!-- Certificate heading -->
+            <div class="cert-title">Certificate</div>
+            <div class="cert-subtitle">Of Completion this certificate is awarded to</div>
+
+            <!-- Student name -->
+            <div class="student-name">${studentName}</div>
+
+            <!-- Diploma text -->
+            <div class="diploma-text">Has Successfully Completed The ${diplomaNameEn} Diploma&nbsp;&nbsp;(${hours} Hours)</div>
+          </div>
+
+          <!-- Date block -->
+          <div class="date-block">
+            <div class="date-value">${formattedDate}</div>
+            <div class="date-label">DATE</div>
+          </div>
+
+          <!-- Bottom-right stamp -->
+          <div class="stamp-logo">
+            <div class="sl-bracket">[i]NSTANT</div>
+            <span class="sl-name">SOFTWARE SOLUTIONS</span>
+            <span class="sl-sub">110700500016800 :س.ت</span>
+          </div>
+
         </div>
-        
+
         <script>
-          let printed = false;
-          let imageLoaded = false;
-          
-          function checkAndPrint() {
-            if (printed) return;
-            if (imageLoaded) {
-              // Wait for custom fonts to load successfully to avoid Times New Roman fallbacks
-              document.fonts.ready.then(function() {
-                printed = true;
-                window.print();
-                setTimeout(function() {
-                  window.close();
-                }, 600);
-              });
-            }
-          }
-          
-          function onImageLoad() {
-            imageLoaded = true;
-            checkAndPrint();
-          }
-          
-          // Fallback to guarantee print trigger even if connections stall
-          window.onload = function() {
-            imageLoaded = true;
-            setTimeout(checkAndPrint, 1500);
-          };
+          document.fonts.ready.then(function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 600);
+          });
         </script>
       </body>
       </html>
@@ -635,6 +750,7 @@ ${crmContext}
     printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
+
 
   const generateSessionsList = (
     diplomaId: string,
