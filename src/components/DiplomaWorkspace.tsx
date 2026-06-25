@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Diploma, Student, Session, DiplomaType, MessageTemplate, DEFAULT_ARABIC_TEMPLATES, Instructor, Mentor, AttendanceStatus } from '../types';
+import { Diploma, Student, Session, DiplomaType, MessageTemplate, DEFAULT_ARABIC_TEMPLATES, Instructor, Mentor, AttendanceStatus, Task } from '../types';
 import { 
   BookOpen, 
   Users, 
@@ -36,6 +36,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { bulkParseStudentCSV, generateArabicCSV, STUDY_DAYS_PRESETS, getSessionDurationHours, parseSessionTimeTo24h, addHoursToTime } from '../services/business';
 import StudentForm from './StudentForm';
+import ReportingCenter from './ReportingCenter';
 
 interface DiplomaWorkspaceProps {
   diplomaId: string;
@@ -52,6 +53,7 @@ interface DiplomaWorkspaceProps {
   onSaveSessions: (newSessions: Session[]) => void;
   onSaveInstructors: (insts: Instructor[]) => void;
   onSaveMentors: (ments: Mentor[]) => void;
+  tasks?: Task[];
 }
 
 type WorkspaceTab = 
@@ -77,7 +79,8 @@ export default function DiplomaWorkspace({
   onSaveStudents,
   onSaveSessions,
   onSaveInstructors,
-  onSaveMentors
+  onSaveMentors,
+  tasks = []
 }: DiplomaWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
   const [showStudentEditForm, setShowStudentEditForm] = useState(false);
@@ -1786,124 +1789,13 @@ export default function DiplomaWorkspace({
 
         {/* TAB 6: REPORTS */}
         {activeTab === 'reports' && (
-          <div className="bg-[#0B0B0E] p-6 rounded-2xl border border-zinc-900 space-y-6">
-            <div className="border-b border-zinc-900 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-white">استحقاق الشهادات وأهلية الطلاب للتخرج في الدبلوم الحالي</h3>
-                <p className="text-xs text-zinc-400 font-sans mt-0.5">مراجعة الطلاب المستوفين لشروط تخطي الحد الأقصى المسموح من الغياب صفي</p>
-              </div>
-              <span className="text-[10px] bg-indigo-950 uppercase text-indigo-400 border border-indigo-900 px-3 py-1 rounded">النسبة المعتمدة: {localThreshold}%</span>
-            </div>
-
-            {/* Reports Mini Stats (Feature 2) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-sans select-none">
-              <div className="p-4 bg-zinc-950/30 border border-zinc-900 rounded-xl text-right">
-                <span className="block text-[10px] text-zinc-500">إجمالي طلاب الدبلومة:</span>
-                <span className="text-2xl font-black text-white font-mono mt-1 block">
-                  {enrolledStudents.length} <span className="text-xs text-zinc-400 font-sans font-normal">طالب</span>
-                </span>
-              </div>
-              <div className="p-4 bg-emerald-950/10 border border-emerald-900/20 rounded-xl text-right">
-                <span className="block text-[10px] text-emerald-500 font-bold">المؤهلين للتخرج (مستحق):</span>
-                <span className="text-2xl font-black text-emerald-400 font-mono mt-1 block">
-                  {enrolledStudents.filter(st => {
-                    let totalSessions = 0;
-                    let attended = 0;
-                    enrolledSessions.forEach(ses => {
-                      const rec = ses.attendance?.[st.id];
-                      if (rec && (rec.status === 'Present' || rec.status === 'Absent')) {
-                        totalSessions++;
-                        if (rec.status === 'Present') attended++;
-                      }
-                    });
-                    const rate = totalSessions > 0 ? Math.round((attended / totalSessions) * 100) : 100;
-                    return rate >= localThreshold;
-                  }).length} <span className="text-xs text-emerald-500 font-sans font-normal">طالب</span>
-                </span>
-              </div>
-              <div className="p-4 bg-rose-950/10 border border-rose-900/20 rounded-xl text-right">
-                <span className="block text-[10px] text-rose-500 font-bold">غير المؤهلين (تحت الإنذار):</span>
-                <span className="text-2xl font-black text-rose-450 font-mono mt-1 block">
-                  {enrolledStudents.filter(st => {
-                    let totalSessions = 0;
-                    let attended = 0;
-                    enrolledSessions.forEach(ses => {
-                      const rec = ses.attendance?.[st.id];
-                      if (rec && (rec.status === 'Present' || rec.status === 'Absent')) {
-                        totalSessions++;
-                        if (rec.status === 'Present') attended++;
-                      }
-                    });
-                    const rate = totalSessions > 0 ? Math.round((attended / totalSessions) * 100) : 100;
-                    return rate < localThreshold;
-                  }).length} <span className="text-xs text-rose-450 font-sans font-normal">طالب</span>
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-right text-zinc-400 font-sans">
-                  <thead>
-                    <tr className="border-b border-zinc-900 text-zinc-500">
-                      <th className="py-2 pr-2">اسم الطالب</th>
-                      <th className="py-2">هاتف الاتصال</th>
-                      <th className="py-2">عدد الجلسات المدونة</th>
-                      <th className="py-2">مرات الحضور</th>
-                      <th className="py-2">مرات الغياب</th>
-                      <th className="py-2">معدل المواظبة</th>
-                      <th className="py-2 pl-2">الأهلية للتخرج والشهادة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enrolledStudents.map((st) => {
-                      let totalSessions = 0;
-                      let attended = 0;
-                      let absent = 0;
-                      
-                      enrolledSessions.forEach(ses => {
-                        const rec = ses.attendance?.[st.id];
-                        if (rec && (rec.status === 'Present' || rec.status === 'Absent')) {
-                          totalSessions++;
-                          if (rec.status === 'Present') attended++;
-                          else absent++;
-                        }
-                      });
-
-                      const rate = totalSessions > 0 ? Math.round((attended / totalSessions) * 100) : 100;
-                      const isEligible = rate >= localThreshold;
-
-                      return (
-                        <tr key={`row-rep-${st.id}`} className="border-b border-zinc-900/30 hover:bg-zinc-950/30">
-                          <td className="py-3 pr-2 font-bold text-white capitalize">{st.name}</td>
-                          <td className="py-3 font-mono text-[11px] text-zinc-500">{st.phone}</td>
-                          <td className="py-3 font-mono">{totalSessions}</td>
-                          <td className="py-3 font-mono text-emerald-400">{attended}</td>
-                          <td className="py-3 font-mono text-rose-400">{absent}</td>
-                          <td className="py-3 font-mono font-bold">{rate}%</td>
-                          <td className="py-3 pl-2">
-                            <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${
-                              isEligible 
-                                ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/35' 
-                                : 'bg-rose-950/20 text-rose-400 border border-rose-900/30'
-                            }`}>
-                              {isEligible ? 'مستحق ومعتمد للشهادة' : 'مستبعد (تدني الحضور)'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-
-                    {enrolledStudents.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center text-zinc-600">لا توجد بيانات طلاب لاستصدار تقريرها.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <ReportingCenter
+            students={students}
+            diplomas={diplomas}
+            sessions={sessions}
+            tasks={tasks}
+            initialDiplomaId={diploma.id}
+          />
         )}
 
         {/* TAB 7: SETTINGS & LINKS FOR CURRENT DIPLOMA */}

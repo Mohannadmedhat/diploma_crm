@@ -67,6 +67,13 @@ export default function SessionManager({
   const [syncStatusMsg, setSyncStatusMsg] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isLiveFetching, setIsLiveFetching] = useState(false);
 
+  // One-click absentee follow-up states
+  const [showAbsenteeModal, setShowAbsenteeModal] = useState<string | null>(null);
+  const [followedUpMap, setFollowedUpMap] = useState<Record<string, boolean>>({});
+  const [customMessageTemplate, setCustomMessageTemplate] = useState<string>(
+    'السلام عليكم سعادة [ولي_الأمر]، نود إحاطتكم بغياب الطالب [اسم_الطالب] عن المحاضرة التعليمية لدبلوم [الدبلوم] بتاريخ [التاريخ]. نأمل حث الطالب على المواظبة ومراجعة التسجيل لتعويض ما فاته.'
+  );
+
   // Compute sessions for current diploma
   const filteredSessions = sessions.filter((s) => s.diplomaId === selectedDiplomaId);
 
@@ -795,6 +802,18 @@ export default function SessionManager({
                                 مزامنة الحضور من Google Sheets
                               </button>
                             )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowAbsenteeModal(session.id);
+                                setFollowedUpMap({});
+                              }}
+                              className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-bold items-center gap-1 inline-flex transition-all cursor-pointer shadow-xs"
+                            >
+                              <UserX className="w-3.5 h-3.5" />
+                              متابعة الغائبين (واتساب)
+                            </button>
                           </div>
                         </div>
 
@@ -987,6 +1006,137 @@ export default function SessionManager({
           })
         )}
       </div>
+
+      {/* One-Click Absentee Follow-up Modal */}
+      {showAbsenteeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs select-none">
+          <div className="bg-[#0F0F0F] border border-[#262626] rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden text-right" dir="rtl">
+            {/* Header */}
+            <div className="p-4 border-b border-[#262626] flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <UserX className="w-5 h-5 text-rose-500" />
+                متابعة الطلاب الغائبين جماعياً - واتساب
+              </h3>
+              <button
+                onClick={() => setShowAbsenteeModal(null)}
+                className="text-zinc-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Template customization */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-zinc-400">تعديل قالب الرسالة الموحدة:</label>
+                <textarea
+                  value={customMessageTemplate}
+                  onChange={(e) => setCustomMessageTemplate(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] focus:border-[#3B82F6] text-xs text-zinc-100 rounded outline-hidden resize-none font-sans"
+                  placeholder="اكتب قالب الرسالة هنا..."
+                />
+                <div className="text-[10px] text-zinc-500 flex flex-wrap gap-x-3 gap-y-1">
+                  <span>الرموز المتاحة:</span>
+                  <span>`[اسم_الطالب]` اسم الطالب</span>
+                  <span>`[ولي_الأمر]` اسم ولي الأمر</span>
+                  <span>`[الدبلوم]` اسم الدبلومة</span>
+                  <span>`[التاريخ]` تاريخ المحاضرة</span>
+                </div>
+              </div>
+
+              {/* Absentees List */}
+              <div className="space-y-2">
+                <span className="block text-xs font-bold text-zinc-300">الطلاب الغائبون في هذه المحاضرة:</span>
+                {(() => {
+                  const currentSession = sessions.find(s => s.id === showAbsenteeModal);
+                  if (!currentSession) return null;
+                  const diploma = diplomas.find(d => d.id === currentSession.diplomaId);
+                  const absentees = enrolledStudents.filter(st => {
+                    const rec = currentSession.attendance[st.id];
+                    return rec && rec.status === 'Absent';
+                  });
+
+                  if (absentees.length === 0) {
+                    return (
+                      <div className="p-6 text-center text-xs text-zinc-500 bg-[#0A0A0A] border border-[#222] rounded">
+                        لا يوجد طلاب مسجلين كغائبين في هذه الجلسة.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {absentees.map(st => {
+                        const isSent = followedUpMap[st.id];
+                        
+                        // Construct customized message
+                        let msg = customMessageTemplate
+                          .replace(/\[اسم_الطالب\]/g, st.name)
+                          .replace(/\[ولي_الأمر\]/g, st.parentName || 'ولي الأمر')
+                          .replace(/\[الدبلوم\]/g, diploma?.name || '')
+                          .replace(/\[التاريخ\]/g, currentSession.date);
+
+                        let cleanedPhone = st.phone.replace(/[\s\+\-]/g, '');
+                        if (cleanedPhone.startsWith('0')) {
+                          cleanedPhone = '966' + cleanedPhone.substring(1);
+                        }
+                        const apiLink = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodeURIComponent(msg)}`;
+
+                        return (
+                          <div key={st.id} className={`p-3 rounded-lg border flex items-center justify-between gap-3 transition-colors ${
+                            isSent ? 'bg-emerald-955/10 border-emerald-500/20' : 'bg-[#0A0A0A] border-[#222]'
+                          }`}>
+                            <div className="text-right">
+                              <span className="text-xs font-bold text-zinc-100 block">{st.name}</span>
+                              <span className="text-[10px] text-zinc-500 block font-sans">ولي الأمر: {st.parentName} | الهاتف: {st.phone}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {isSent && (
+                                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  تمت المتابعة
+                                </span>
+                              )}
+                              <a
+                                href={apiLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => {
+                                  setFollowedUpMap(prev => ({ ...prev, [st.id]: true }));
+                                }}
+                                className={`px-3 py-1.5 rounded text-[10px] font-bold inline-flex items-center gap-1 transition-all ${
+                                  isSent 
+                                    ? 'bg-zinc-850 hover:bg-zinc-800 text-zinc-400' 
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs'
+                                }`}
+                              >
+                                <MessageCircle className="w-3 h-3 text-white" />
+                                إرسال واتساب
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[#262626] bg-[#0A0A0A] flex justify-end">
+              <button
+                onClick={() => setShowAbsenteeModal(null)}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-xs cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

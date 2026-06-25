@@ -124,9 +124,11 @@ export default function App() {
   const [reloadKey, setReloadKey] = useState(0);
 
   // Cloud Sync Status Indicator
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'error' | 'local'>(
-    isCloudConfigured ? 'synced' : 'local'
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'error' | 'local' | 'offline'>(
+    isCloudConfigured ? (navigator.onLine ? 'synced' : 'offline') : 'local'
   );
+
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Admin panel visibility
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -371,6 +373,11 @@ export default function App() {
     config?: AppConfig | null;
   }) => {
     if (!isCloudConfigured) return;
+    if (!navigator.onLine) {
+      setSyncStatus('offline');
+      localStorage.setItem('unsynced_personal', 'true');
+      return;
+    }
     setSyncStatus('saving');
     try {
       const payload = {
@@ -384,10 +391,17 @@ export default function App() {
         backupDate: new Date().toISOString()
       };
       const ok = await uploadCloudData(payload);
-      setSyncStatus(ok ? 'synced' : 'error');
+      if (ok) {
+        setSyncStatus('synced');
+        localStorage.removeItem('unsynced_personal');
+      } else {
+        setSyncStatus('error');
+        localStorage.setItem('unsynced_personal', 'true');
+      }
     } catch (e) {
       console.error(e);
       setSyncStatus('error');
+      localStorage.setItem('unsynced_personal', 'true');
     }
   };
 
@@ -399,6 +413,11 @@ export default function App() {
     templates?: MessageTemplate[];
   }) => {
     if (!isCloudConfigured) return;
+    if (!navigator.onLine) {
+      setSyncStatus('offline');
+      localStorage.setItem('unsynced_shared', 'true');
+      return;
+    }
     setSyncStatus('saving');
     try {
       const payload = {
@@ -409,12 +428,58 @@ export default function App() {
         updatedAt: new Date().toISOString()
       };
       const ok = await uploadSharedData(payload);
-      setSyncStatus(ok ? 'synced' : 'error');
+      if (ok) {
+        setSyncStatus('synced');
+        localStorage.removeItem('unsynced_shared');
+      } else {
+        setSyncStatus('error');
+        localStorage.setItem('unsynced_shared', 'true');
+      }
     } catch (e) {
       console.error(e);
       setSyncStatus('error');
+      localStorage.setItem('unsynced_shared', 'true');
     }
   };
+
+  // Listen for online/offline events
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      const hasUnsyncedPersonal = localStorage.getItem('unsynced_personal') === 'true';
+      const hasUnsyncedShared = localStorage.getItem('unsynced_shared') === 'true';
+      
+      if (hasUnsyncedPersonal || hasUnsyncedShared) {
+        setSyncStatus('saving');
+        try {
+          if (hasUnsyncedPersonal) {
+            await syncPersonalToCloud();
+          }
+          if (hasUnsyncedShared) {
+            await syncSharedToCloud();
+          }
+        } catch (e) {
+          console.error('Error auto-syncing on restore connection', e);
+        }
+      } else {
+        setSyncStatus('synced');
+      }
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      if (isCloudConfigured) {
+        setSyncStatus('offline');
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [diplomas, students, sessions, announcements, tasks, config, diplomaTypes, instructors, mentors, templates]);
 
   // Adjust selected diploma if somehow it goes invalid
   useEffect(() => {
@@ -425,10 +490,28 @@ export default function App() {
 
   // --- State Save Handlers (Personal) ---
   const handleSaveDiplomas = (newDiplomas: Diploma[]) => {
+    // Detect which diploma IDs were removed
+    const newIds = new Set(newDiplomas.map((d) => d.id));
+    const removedIds = diplomas.map((d) => d.id).filter((id) => !newIds.has(id));
+
     setDiplomas(newDiplomas);
     saveDiplomas(newDiplomas);
     syncPersonalToCloud({ diplomas: newDiplomas });
+
+    // Cascade delete: remove sessions & tasks linked to removed diplomas
+    if (removedIds.length > 0) {
+      const cleanedSessions = sessions.filter((s) => !removedIds.includes(s.diplomaId));
+      setSessions(cleanedSessions);
+      saveSessions(cleanedSessions);
+      syncPersonalToCloud({ sessions: cleanedSessions });
+
+      const cleanedTasks = tasks.filter((t) => !t.diplomaId || !removedIds.includes(t.diplomaId));
+      setTasks(cleanedTasks);
+      saveTasks(cleanedTasks);
+      syncSharedToCloud({ tasks: cleanedTasks });
+    }
   };
+
 
   const handleSaveStudents = (newStudents: Student[]) => {
     setStudents(newStudents);
@@ -584,7 +667,13 @@ export default function App() {
           <div className="flex items-center gap-3 text-xs font-sans">
 
             {/* Cloud Sync Status */}
-            {syncStatus === 'synced' && (
+            {!isOnline && isCloudConfigured && (
+              <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-zinc-400 bg-zinc-800/10 border border-zinc-700/20 px-2.5 py-1.5 rounded-lg select-none">
+                <CloudOff className="w-3.5 h-3.5 text-zinc-500" />
+                <span>وضع عدم الاتصال (أوفلاين)</span>
+              </div>
+            )}
+            {isOnline && syncStatus === 'synced' && (
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg select-none">
                 <Cloud className="w-3.5 h-3.5" />
                 <span>متزامن سحابياً</span>
@@ -593,10 +682,10 @@ export default function App() {
             {syncStatus === 'saving' && (
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1.5 rounded-lg select-none">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>جاري الحفظ...</span>
+                <span>جاري المزامنة...</span>
               </div>
             )}
-            {syncStatus === 'error' && (
+            {isOnline && syncStatus === 'error' && (
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1.5 rounded-lg select-none animate-pulse">
                 <CloudOff className="w-3.5 h-3.5" />
                 <span>فشل المزامنة</span>
@@ -607,6 +696,21 @@ export default function App() {
                 <Database className="w-3.5 h-3.5" />
                 <span>وضع محلي</span>
               </div>
+            )}
+
+            {/* Unsynced Changes Retry button */}
+            {isOnline && (localStorage.getItem('unsynced_personal') === 'true' || localStorage.getItem('unsynced_shared') === 'true') && syncStatus !== 'saving' && (
+              <button
+                onClick={() => {
+                  syncPersonalToCloud();
+                  syncSharedToCloud();
+                }}
+                className="hidden sm:flex items-center gap-1.5 text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg select-none hover:bg-amber-500/20 cursor-pointer animate-pulse font-bold"
+                title="توجد تعديلات محلية غير مرفوعة. اضغط للمزامنة اليدوية فوراً"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>رفع المعلق</span>
+              </button>
             )}
 
             {/* Current User Display */}
@@ -726,6 +830,7 @@ export default function App() {
                     onSaveSessions={handleSaveSessions}
                     onSaveInstructors={handleSaveInstructors}
                     onSaveMentors={handleSaveMentors}
+                    tasks={tasks}
                   />
                 )}
 
