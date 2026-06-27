@@ -109,6 +109,7 @@ export default function WhatsAppAutomation({
   const [isQueueActive, setIsQueueActive] = useState(false);
   const [isAutoSending, setIsAutoSending] = useState(false);
   const [showExtensionInstructions, setShowExtensionInstructions] = useState(false);
+  const [extensionInstalled, setExtensionInstalled] = useState(false);
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Groq AI states
@@ -561,52 +562,32 @@ export default function WhatsAppAutomation({
 
     // If using WhatsApp Web and Auto-Sending (Extension mode)
     if (whatsappPlatform === 'web' && isAutoSending) {
-      console.log('[DEBUG] Chrome Extension Auto-send mode active. Monitoring tab closure...');
-      let elapsedSeconds = 0;
-      const maxWaitSeconds = 25; // fail-safe timeout
-
-      const checkClosed = setInterval(() => {
-        elapsedSeconds += 0.5;
+      console.log('[DEBUG] Chrome Extension Auto-send mode active. Waiting for WA_SENT_SUCCESS event...');
+      
+      // Clear any previous timers
+      if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
+      
+      // Set a 45-second fail-safe timeout in case the extension isn't loaded or fails to send
+      autoSendTimerRef.current = setTimeout(() => {
+        console.log('[DEBUG] Fail-safe timer fired. Advancing queue...');
         
-        if (!isAutoSendingRef.current) {
-          clearInterval(checkClosed);
-          return;
-        }
-
-        const isClosed = !whatsappWindowRef.current || whatsappWindowRef.current.closed;
-        
-        if (isClosed || elapsedSeconds >= maxWaitSeconds) {
-          clearInterval(checkClosed);
-          
-          if (elapsedSeconds >= maxWaitSeconds) {
-            console.log('[DEBUG] Tab closing timed out. Advancing anyway.');
-            try { whatsappWindowRef.current?.close(); } catch (_) {}
-          } else {
-            console.log('[DEBUG] Tab closed. Advancing queue...');
+        setQueue(prev => prev.map((item, idx) => {
+          if (idx === currentIndex) {
+            return { ...item, status: 'skipped' };
           }
+          return item;
+        }));
 
-          // Mark current item as success
-          setQueue(prev => prev.map((item, idx) => {
-            if (idx === currentIndex) {
-              return { ...item, status: 'success' };
-            }
-            return item;
-          }));
+        const nextIdx = currentIndex + 1;
+        setQueueIndex(nextIdx);
 
-          const nextIdx = currentIndex + 1;
-          setQueueIndex(nextIdx);
-
-          if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
-            // Wait 1.5 seconds for safety before next dispatch
-            autoSendTimerRef.current = setTimeout(() => {
-              processCurrentQueueItem();
-            }, 1500);
-          } else {
-            setIsAutoSending(false);
-            setCountdown(null);
-          }
+        if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
+          processCurrentQueueItem();
+        } else {
+          setIsAutoSending(false);
+          setCountdown(null);
         }
-      }, 500);
+      }, 45000);
 
       return;
     }
@@ -641,6 +622,83 @@ export default function WhatsAppAutomation({
       }
     }, 600);
   };
+
+  // Listen for the custom DOM event from the Chrome extension bridge to advance the queue
+  useEffect(() => {
+    const handleExtensionSuccess = () => {
+      console.log('[DEBUG] WA_SENT_SUCCESS event received from Chrome extension.');
+      
+      if (whatsappPlatform === 'web' && isAutoSendingRef.current) {
+        // Clear fail-safe timer
+        if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
+        
+        const currentIndex = queueIndexRef.current;
+        const currentQueue = queueRef.current;
+        
+        if (currentIndex < currentQueue.length) {
+          // Mark current item as success
+          setQueue(prev => prev.map((item, idx) => {
+            if (idx === currentIndex) {
+              return { ...item, status: 'success' };
+            }
+            return item;
+          }));
+
+          const nextIdx = currentIndex + 1;
+          setQueueIndex(nextIdx);
+
+          if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
+            // Wait 1.5 seconds safety margin before opening the next tab
+            autoSendTimerRef.current = setTimeout(() => {
+              processCurrentQueueItem();
+            }, 1500);
+          } else {
+            setIsAutoSending(false);
+            setCountdown(null);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('WA_SENT_SUCCESS', handleExtensionSuccess);
+    return () => {
+      window.removeEventListener('WA_SENT_SUCCESS', handleExtensionSuccess);
+    };
+  }, [whatsappPlatform]);
+
+  // Detect if the Chrome extension is installed on mount/loaded
+  useEffect(() => {
+    // Check immediately if already set by the bridge script
+    if ((window as any).isWAExtensionInstalled) {
+      setExtensionInstalled(true);
+      return;
+    }
+
+    // Listen for the WA_EXTENSION_LOADED event dispatched by bridge.js
+    const handleLoaded = () => {
+      console.log('[WA-Extension] Connection established via event!');
+      setExtensionInstalled(true);
+    };
+    window.addEventListener('WA_EXTENSION_LOADED', handleLoaded);
+
+    // Also poll every 500ms for up to 10 seconds in case the event already fired
+    let pollCount = 0;
+    const poll = setInterval(() => {
+      pollCount++;
+      if ((window as any).isWAExtensionInstalled) {
+        console.log('[WA-Extension] Detected via polling!');
+        setExtensionInstalled(true);
+        clearInterval(poll);
+      } else if (pollCount >= 20) { // 20 x 500ms = 10 seconds
+        clearInterval(poll);
+      }
+    }, 500);
+
+    return () => {
+      window.removeEventListener('WA_EXTENSION_LOADED', handleLoaded);
+      clearInterval(poll);
+    };
+  }, []);
 
   // Toggle Auto-Send Timer
   useEffect(() => {
@@ -1760,34 +1818,19 @@ export default function WhatsAppAutomation({
                               checked={isAutoSending}
                               onChange={(e) => {
                                 const checked = e.target.checked;
-                                if (checked) {
-                                  // Pre-emptively open the helper window on user gesture to avoid popup blocker!
-                                  if (!whatsappWindowRef.current || whatsappWindowRef.current.closed) {
-                                    const currentItem = queue[queueIndex];
-                                    if (currentItem) {
-                                      let cleanPhone = currentItem.phone.replace(/[^\d+]/g, '');
-                                      const encodedText = encodeURIComponent(currentItem.message);
-                                      let url = '';
-                                      if (whatsappPlatform === 'web') {
-                                        url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
-                                      } else {
-                                        url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
-                                      }
-                                      
-                                      const newWin = window.open(
-                                        url, 
-                                        'whatsapp_auto_dispatch', 
-                                        whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
-                                      );
-                                      whatsappWindowRef.current = newWin;
-                                    }
-                                  }
-                                }
                                 setIsAutoSending(checked);
+                                if (checked) {
+                                  setWhatsappPlatform('web');
+                                }
                               }}
                               className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
                             />
                             <span>تشغيل الإرسال التلقائي المستمر</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold font-sans ${
+                              extensionInstalled ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' : 'bg-amber-955/25 text-amber-500 border border-amber-900/35 animate-pulse'
+                            }`}>
+                              {extensionInstalled ? 'الربط التلقائي متصل بنجاح ✅' : 'الإرسال التلقائي معطل (يتطلب تثبيت الإضافة) ⚠️'}
+                            </span>
                           </label>
                           <span className="text-zinc-850">|</span>
                           <div className="flex items-center gap-1.5 text-xs text-zinc-400">
@@ -1810,7 +1853,8 @@ export default function WhatsAppAutomation({
                             <select
                               value={whatsappPlatform}
                               onChange={(e) => setWhatsappPlatform(e.target.value as any)}
-                              className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-bold cursor-pointer outline-none focus:ring-0"
+                              disabled={isAutoSending}
+                              className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-bold cursor-pointer outline-none focus:ring-0 disabled:opacity-50"
                             >
                               <option value="standard">الرابط القياسي (ويب/تطبيق)</option>
                               <option value="desktop">تطبيق الكمبيوتر (Desktop App) 💻</option>

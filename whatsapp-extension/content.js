@@ -1,67 +1,123 @@
-console.log("[WhatsApp Automation Extension] Active and monitoring...");
+// content.js - Runs on web.whatsapp.com
+console.log("[WA-Extension] Content script loaded on WhatsApp Web.");
 
-// Run immediately to capture the automation flag before WhatsApp Web strips it from the URL
-const hasAutomateParam = window.location.href.includes("automate=1");
-if (hasAutomateParam) {
-  sessionStorage.setItem("wa_automate_active", "true");
-  console.log("[WhatsApp Automation Extension] Flag saved to sessionStorage.");
-}
+let automationTriggered = false;
+let attempts = 0;
+const MAX_ATTEMPTS = 150; // 75 seconds max (150 x 500ms)
 
-// Start checking for the send button if the flag is active
-if (sessionStorage.getItem("wa_automate_active") === "true") {
-  console.log("[WhatsApp Automation Extension] Automation is ACTIVE. Searching for send button...");
-  
-  let attempts = 0;
-  const maxAttempts = 60; // 60 seconds timeout (WhatsApp Web can take time to load)
-  
-  const interval = setInterval(() => {
-    attempts++;
-    
-    // Check if there is an error popup (like "Phone number shared via link is invalid")
-    const pageText = document.body?.innerText || "";
-    if (
-      pageText.includes("رقم الهاتف غير صالح") || 
-      pageText.includes("Phone number is invalid") || 
-      pageText.includes("أدخل رقم هاتف صالح") || 
-      pageText.includes("رقم الهاتف غير مسجل") ||
-      pageText.includes("isn't on WhatsApp")
-    ) {
-      console.log("[WhatsApp Automation Extension] Invalid phone number popup detected. Closing tab...");
-      clearInterval(interval);
-      sessionStorage.removeItem("wa_automate_active");
-      setTimeout(() => {
-        window.close();
-      }, 1000);
+// Main loop - runs every 500ms
+const mainLoop = setInterval(() => {
+  attempts++;
+
+  // Check if we should be in automation mode
+  // The URL will contain automate=1 when first opened, even if WhatsApp later changes it
+  if (!automationTriggered) {
+    const url = window.location.href;
+    if (url.includes("automate=1")) {
+      automationTriggered = true;
+      console.log("[WA-Extension] Automation mode ACTIVATED. URL:", url);
+    }
+  }
+
+  if (!automationTriggered) {
+    if (attempts >= MAX_ATTEMPTS) {
+      clearInterval(mainLoop);
+      console.log("[WA-Extension] Timed out waiting for automate flag in URL.");
+    }
+    return;
+  }
+
+  // --- AUTOMATION MODE ---
+
+  // Check for "invalid phone number" dialog
+  const bodyText = document.body ? document.body.innerText : "";
+  const invalidPhrases = [
+    "isn't on WhatsApp",
+    "Phone number shared via link is invalid",
+    "رقم الهاتف غير صالح",
+    "رقم غير مسجل",
+    "The phone number shared via link is invalid",
+  ];
+  for (const phrase of invalidPhrases) {
+    if (bodyText.includes(phrase)) {
+      console.log("[WA-Extension] Invalid phone detected. Closing tab...");
+      clearInterval(mainLoop);
+      notifyDone();
       return;
     }
-    
-    // Find the WhatsApp Web Send button
-    const sendButton = document.querySelector('button span[data-icon="send"]')?.parentElement || 
-                       document.querySelector('span[data-icon="send"]')?.parentElement || 
-                       document.querySelector('button[data-testid="compose-btn-send"]') ||
-                       document.querySelector('button[aria-label="Send"]') ||
-                       document.querySelector('button[data-tab="11"]');
-                       
-    if (sendButton) {
-      console.log("[WhatsApp Automation Extension] Send button found! Clicking in 1 second...");
-      clearInterval(interval);
-      
-      setTimeout(() => {
-        sendButton.click();
-        console.log("[WhatsApp Automation Extension] Clicked!");
-        
-        // Wait 3.5 seconds to ensure the message is sent over WebSocket, then close the tab
-        setTimeout(() => {
-          sessionStorage.removeItem("wa_automate_active");
-          console.log("[WhatsApp Automation Extension] Done. Closing tab...");
-          window.close();
-        }, 3500);
-      }, 1000);
-      
-    } else if (attempts >= maxAttempts) {
-      console.log("[WhatsApp Automation Extension] Timeout waiting for send button.");
-      sessionStorage.removeItem("wa_automate_active");
-      clearInterval(interval);
+  }
+
+  // Try to find the send button - WhatsApp Web uses multiple selectors across versions
+  const sendButton = findSendButton();
+
+  if (sendButton) {
+    // Make sure it's not disabled
+    if (isButtonDisabled(sendButton)) {
+      console.log("[WA-Extension] Send button found but disabled. Waiting...");
+      return;
     }
-  }, 1000);
+
+    console.log("[WA-Extension] Send button found and enabled! Clicking...");
+    clearInterval(mainLoop);
+
+    // Small delay to ensure message text is fully loaded in the input box
+    setTimeout(() => {
+      sendButton.click();
+      console.log("[WA-Extension] Message sent! Waiting 3s before closing...");
+
+      // Wait for the message to actually transmit, then close
+      setTimeout(() => {
+        notifyDone();
+      }, 3000);
+    }, 800);
+
+    return;
+  }
+
+  // Timeout fallback
+  if (attempts >= MAX_ATTEMPTS) {
+    console.log("[WA-Extension] TIMEOUT. Closing tab without confirmed send.");
+    clearInterval(mainLoop);
+    notifyDone();
+  }
+
+}, 500);
+
+function findSendButton() {
+  // Try many possible selectors - WhatsApp updates their DOM frequently
+  const selectors = [
+    'button[data-tab="11"]',
+    'button[data-testid="compose-btn-send"]',
+    'button[aria-label="Send"]',
+    'button[aria-label="إرسال"]',
+    'span[data-icon="send"]',
+  ];
+
+  for (const sel of selectors) {
+    const el = document.querySelector(sel);
+    if (el) {
+      // If it's a span, get the parent button
+      return el.tagName === "BUTTON" ? el : el.closest("button") || el.parentElement;
+    }
+  }
+  return null;
+}
+
+function isButtonDisabled(btn) {
+  return (
+    btn.disabled === true ||
+    btn.hasAttribute("disabled") ||
+    btn.getAttribute("aria-disabled") === "true"
+  );
+}
+
+function notifyDone() {
+  console.log("[WA-Extension] Sending automation_done signal to background...");
+  chrome.runtime.sendMessage({ action: "wa_automation_done" }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn("[WA-Extension] Error sending message:", chrome.runtime.lastError.message);
+    } else {
+      console.log("[WA-Extension] Background acknowledged:", response);
+    }
+  });
 }
