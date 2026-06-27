@@ -70,6 +70,23 @@ export default function WhatsAppAutomation({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDiplomaId, setSelectedDiplomaId] = useState(diplomas[0]?.id || '');
 
+  // 5️⃣ MANUAL SCHEDULE STATE
+  const [manualSchedDiplomaId, setManualSchedDiplomaId] = useState(diplomas[0]?.id || '');
+  const [manualSchedTargetGroup, setManualSchedTargetGroup] = useState<'all' | 'absent_only' | 'exceeded_absences'>('all');
+  const [manualSchedMessageType, setManualSchedMessageType] = useState<'session_reminder' | 'absence_warning' | 'custom'>('session_reminder');
+  const [manualSchedDateTime, setManualSchedDateTime] = useState('');
+  const [manualSchedTemplate, setManualSchedTemplate] = useState('');
+
+  useEffect(() => {
+    if (manualSchedMessageType === 'session_reminder') {
+      setManualSchedTemplate('السلام عليكم {studentName} 👋، نذكركم بمحاضرة دبلوم {course} القادمة في موعدها المحدد. حضوركم واهتمامكم يسعدنا!');
+    } else if (manualSchedMessageType === 'absence_warning') {
+      setManualSchedTemplate('مرحباً {studentName}، نود إحاطتكم بأن غيابكم في دبلوم {course} قد تكرر. يرجى الالتزام بالحضور لتفادي الإجراءات الإدارية.');
+    } else if (manualSchedMessageType === 'custom') {
+      setManualSchedTemplate('السلام عليكم {studentName}، بخصوص دبلوم {course} نود إعلامكم بأن...');
+    }
+  }, [manualSchedMessageType]);
+
   // 1️⃣ ABSENCE STATE
   const [selectedAbsenceSessionId, setSelectedAbsenceSessionId] = useState('');
   const [absenceTemplateId, setAbsenceTemplateId] = useState(templates[0]?.id || '');
@@ -848,6 +865,52 @@ export default function WhatsAppAutomation({
     }
     whatsappWindowRef.current = null; // Reset so next session opens a fresh window
     setPopupBlockerTriggered(false);
+  };
+
+  const handleSaveManualSchedule = () => {
+    if (!manualSchedDateTime) {
+      alert('يرجى اختيار تاريخ ووقت الإرسال المجدول.');
+      return;
+    }
+    if (!manualSchedTemplate.trim()) {
+      alert('يرجى كتابة نص قالب الرسالة.');
+      return;
+    }
+
+    const scheduledDate = new Date(manualSchedDateTime);
+    if (scheduledDate.getTime() <= Date.now()) {
+      alert('يرجى اختيار موعد في المستقبل (بعد الوقت الحالي).');
+      return;
+    }
+
+    const targetDip = diplomas.find(d => d.id === manualSchedDiplomaId);
+    if (!targetDip) return;
+
+    const newSchedule: ScheduledMessage = {
+      id: `sched_manual_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      diplomaId: manualSchedDiplomaId,
+      diplomaName: targetDip.name,
+      messageType: manualSchedMessageType,
+      messageTemplate: manualSchedTemplate,
+      targetGroup: manualSchedTargetGroup,
+      scheduledAt: scheduledDate.toISOString(),
+      status: 'pending' as const,
+      createdAt: new Date().toISOString(),
+      note: 'جدولة يدوية بواسطة المنسق'
+    };
+
+    const updatedConfig: AppConfig = {
+      ...config,
+      minAttendanceRate: config?.minAttendanceRate ?? 75,
+      language: config?.language ?? 'ar',
+      scheduledMessages: [...(config?.scheduledMessages || []), newSchedule]
+    };
+
+    if (onSaveConfig) {
+      onSaveConfig(updatedConfig);
+      setManualSchedDateTime('');
+      alert('تم جدولة الرسالة بنجاح! ستظهر في القائمة.');
+    }
   };
 
   return (
@@ -1798,7 +1861,7 @@ export default function WhatsAppAutomation({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Right Column: Active Scheduled Items */}
-              <div className="lg:col-span-8 space-y-4">
+              <div className="lg:col-span-7 space-y-4">
                 <div className="bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
                     <div>
@@ -1817,7 +1880,7 @@ export default function WhatsAppAutomation({
                           <div className="p-12 text-center text-zinc-650 bg-neutral-950/20 border border-dashed border-zinc-900 rounded-xl font-sans text-xs">
                             لا توجد رسائل مجدولة معلقة حالياً.
                             <br />
-                            <span className="text-[10px] text-zinc-700 mt-1 block">يمكنك جدولة الرسائل عبر محادثة Groq Copilot (مثال: "جدول تذكير لدبلوم الأمن السيبراني غداً الساعة 6 مساءً")</span>
+                            <span className="text-[10px] text-zinc-700 mt-1 block">يمكنك إضافتها يدوياً من الاستمارة الجانبية أو جدولة الرسائل عبر محادثة Groq Copilot!</span>
                           </div>
                         );
                       }
@@ -1871,17 +1934,106 @@ export default function WhatsAppAutomation({
                 </div>
               </div>
 
-              {/* Left Column: Archives & Logs */}
-              <div className="lg:col-span-4 space-y-4">
+              {/* Left Column: Create Manual Schedule Form + History Logs */}
+              <div className="lg:col-span-5 space-y-6">
+                
+                {/* Manual Schedule Form */}
+                <div className="bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
+                  <div className="border-b border-zinc-900 pb-2.5 flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-xs font-bold text-zinc-200">جدولة رسالة جديدة يدوياً</h3>
+                  </div>
+
+                  <div className="space-y-3 font-sans">
+                    {/* Diploma Selection */}
+                    <div className="space-y-1 text-right">
+                      <label className="block text-[10px] text-zinc-400 font-bold">الدبلومة المستهدفة:</label>
+                      <select
+                        value={manualSchedDiplomaId}
+                        onChange={(e) => setManualSchedDiplomaId(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#07070A] border border-zinc-800 text-xs text-zinc-250 rounded-lg outline-hidden cursor-pointer"
+                      >
+                        <option value="">-- اختر الدبلومة --</option>
+                        {diplomas.map(d => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Target Group */}
+                    <div className="space-y-1 text-right">
+                      <label className="block text-[10px] text-zinc-400 font-bold">المجموعة المستهدفة:</label>
+                      <select
+                        value={manualSchedTargetGroup}
+                        onChange={(e) => setManualSchedTargetGroup(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-[#07070A] border border-zinc-800 text-xs text-zinc-250 rounded-lg outline-hidden cursor-pointer"
+                      >
+                        <option value="all">كل الطلاب المسجلين بالدبلومة</option>
+                        <option value="absent_only">الطلاب الغائبين في المحاضرة الأخيرة</option>
+                        <option value="exceeded_absences">الطلاب المتجاوزين لنسب الغياب المسموحة</option>
+                      </select>
+                    </div>
+
+                    {/* Message Type */}
+                    <div className="space-y-1 text-right">
+                      <label className="block text-[10px] text-zinc-400 font-bold">نوع التنبيه / الرسالة:</label>
+                      <select
+                        value={manualSchedMessageType}
+                        onChange={(e) => setManualSchedMessageType(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-[#07070A] border border-zinc-800 text-xs text-zinc-250 rounded-lg outline-hidden cursor-pointer"
+                      >
+                        <option value="session_reminder">تذكير بموعد محاضرة</option>
+                        <option value="absence_warning">تحذير نسبة غياب مرتفعة</option>
+                        <option value="custom">رسالة إعلانية أو مخصصة</option>
+                      </select>
+                    </div>
+
+                    {/* Scheduled Date/Time picker */}
+                    <div className="space-y-1 text-right">
+                      <label className="block text-[10px] text-zinc-400 font-bold">تاريخ ووقت الإرسال المجدول:</label>
+                      <input
+                        type="datetime-local"
+                        value={manualSchedDateTime}
+                        onChange={(e) => setManualSchedDateTime(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#07070A] border border-zinc-800 text-xs text-zinc-250 rounded-lg outline-hidden cursor-pointer text-right font-sans"
+                        required
+                      />
+                    </div>
+
+                    {/* Template Editor */}
+                    <div className="space-y-1 text-right">
+                      <label className="block text-[10px] text-zinc-400 font-bold">نص قالب الرسالة:</label>
+                      <textarea
+                        value={manualSchedTemplate}
+                        onChange={(e) => setManualSchedTemplate(e.target.value)}
+                        rows={4}
+                        className="w-full p-2.5 bg-[#07070A] border border-zinc-850 text-xs text-zinc-300 rounded-lg outline-hidden focus:border-indigo-500 leading-relaxed font-sans resize-none"
+                        placeholder="اكتب القالب هنا..."
+                      />
+                      <span className="text-[9px] text-zinc-500 block leading-normal mt-1">
+                        المتغيرات المدعومة: <code className="text-indigo-400 font-mono text-[9px]">{`{studentName}`}</code> لاسم الطالب و <code className="text-indigo-400 font-mono text-[9px]">{`{course}`}</code> للدبلومة.
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={handleSaveManualSchedule}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-550 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-md mt-2"
+                    >
+                      حفظ وجدولة الرسالة تلقائياً ⏰
+                    </button>
+                  </div>
+                </div>
+
+                {/* History Logs */}
                 <div className="bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
                   <div className="border-b border-zinc-900 pb-3">
-                    <h3 className="text-xs font-bold text-zinc-200">سجل وجدول العمليات التاريخية</h3>
+                    <h3 className="text-xs font-bold text-zinc-200">سجل العمليات التاريخية</h3>
                     <span className="text-[10px] text-zinc-550 block font-sans mt-0.5">
                       تاريخ العمليات المجدولة السابقة وحالتها.
                     </span>
                   </div>
 
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {(() => {
                       const pastSchedules = (config?.scheduledMessages || [])
                         .filter(s => s.status !== 'pending')
@@ -1896,9 +2048,9 @@ export default function WhatsAppAutomation({
                       }
 
                       return pastSchedules.map(schedule => (
-                        <div key={schedule.id} className="p-3 bg-[#07070A]/50 border border-zinc-950 rounded-lg space-y-1.5">
+                        <div key={schedule.id} className="p-3 bg-[#07070A]/50 border border-zinc-950 rounded-lg space-y-1.5 text-right">
                           <div className="flex justify-between items-center text-[10px]">
-                            <span className="font-bold text-zinc-450 truncate max-w-[120px]">{schedule.diplomaName}</span>
+                            <span className="font-bold text-zinc-400 truncate max-w-[120px]">{schedule.diplomaName}</span>
                             <span className={`px-1.5 py-0.5 rounded font-sans font-bold text-[8px] ${
                               schedule.status === 'sent'
                                 ? 'bg-emerald-950/20 text-emerald-450 border border-emerald-900/35'
@@ -1909,11 +2061,11 @@ export default function WhatsAppAutomation({
                               {schedule.status === 'sent' ? 'تم الإرسال' : schedule.status === 'cancelled' ? 'ملغي' : 'فشل'}
                             </span>
                           </div>
-                          <div className="text-[9px] text-zinc-550 font-sans">
+                          <div className="text-[9px] text-zinc-500 font-sans">
                             ⏰ الموعد: {formatScheduledAt(schedule.scheduledAt)}
                           </div>
                           {schedule.note && (
-                            <div className="text-[9px] text-zinc-450 bg-[#0A0A0D] p-1.5 rounded border border-zinc-950 font-sans leading-relaxed">
+                            <div className="text-[9px] text-zinc-400 bg-[#0A0A0D] p-1.5 rounded border border-zinc-950 font-sans leading-relaxed">
                               {schedule.note}
                             </div>
                           )}
@@ -1922,6 +2074,7 @@ export default function WhatsAppAutomation({
                     })()}
                   </div>
                 </div>
+
               </div>
 
             </div>

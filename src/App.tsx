@@ -893,13 +893,13 @@ export default function App() {
 
           {/* Logo Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3B82F6] to-cyan-500 flex items-center justify-center shadow-lg shadow-[#3B82F6]/10 shrink-0">
-              <GraduationCap className="w-5 h-5 text-white animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-[#3B82F6]/5">
+              <img src="/logo.png" className="w-full h-full object-cover" alt="SAYED Logo" />
             </div>
             <div>
               <h1 className="text-sm font-black text-white tracking-wide flex items-center gap-1.5 leading-relaxed">
-                منصة دبلومات الشؤون التعليمية والأكاديمية
-                <span className="text-[10px] bg-blue-955 text-[#3B82F6] px-2 py-0.5 rounded-sm border border-blue-900/30 uppercase font-mono font-black">Workspace 2.0</span>
+                سيد | SAYED CRM
+                <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-sm border border-indigo-900/30 uppercase font-mono font-black animate-pulse">Workspace 2.0</span>
               </h1>
               <p className="text-[10px] text-zinc-500 font-sans mt-0.5">لوحة ذكية لتعقب المواظبة اليومية والتحذيرات التلقائية عبر WhatsApp</p>
             </div>
