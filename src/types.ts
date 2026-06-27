@@ -12,6 +12,7 @@ export interface Instructor {
   phone: string;
   email: string;
   status: 'Active' | 'Inactive';
+  specialty?: string;
 }
 
 export interface Mentor {
@@ -20,6 +21,7 @@ export interface Mentor {
   phone: string;
   email: string;
   status: 'Active' | 'Inactive';
+  specialty?: string;
 }
 
 export interface Diploma {

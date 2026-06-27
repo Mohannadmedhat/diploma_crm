@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Instructor } from '../types';
-import { User, Plus, Edit2, Trash2, ShieldAlert, CheckCircle, XCircle, Phone, Mail } from 'lucide-react';
+import { Instructor, Diploma } from '../types';
+import { User, Plus, Edit2, Trash2, ShieldAlert, Phone, Mail, Award, BookOpen, ExternalLink, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface InstructorsProps {
   instructors: Instructor[];
   onSaveInstructors: (instructors: Instructor[]) => void;
   isAdmin?: boolean;
+  diplomas: Diploma[];
 }
 
-export default function InstructorsManager({ instructors, onSaveInstructors, isAdmin = false }: InstructorsProps) {
+export default function InstructorsManager({ instructors, onSaveInstructors, isAdmin = false, diplomas }: InstructorsProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -17,6 +18,7 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [specialty, setSpecialty] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
   const [error, setError] = useState('');
 
@@ -25,6 +27,7 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
     setName('');
     setPhone('');
     setEmail('');
+    setSpecialty('');
     setStatus('Active');
     setShowForm(true);
     setError('');
@@ -35,6 +38,7 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
     setName(inst.name);
     setPhone(inst.phone);
     setEmail(inst.email);
+    setSpecialty(inst.specialty || '');
     setStatus(inst.status);
     setShowForm(true);
     setError('');
@@ -58,6 +62,7 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
       name: name.trim(),
       phone: phone.trim(),
       email: email.trim(),
+      specialty: specialty.trim() || undefined,
       status: status
     };
 
@@ -92,21 +97,30 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
     onSaveInstructors(updated);
   };
 
+  // Helper to extract initials for avatar
+  const getInitials = (fullName: string) => {
+    const cleanName = fullName.replace(/(د\.|م\.|أ\.)\s+/g, ''); // strip honorifics
+    const parts = cleanName.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '🎓';
+    if (parts.length === 1) return parts[0].substring(0, 2);
+    return `${parts[0][0]} ${parts[parts.length - 1][0]}`;
+  };
+
   return (
-    <div className="space-y-4 text-right" id="instructors-manager" dir="rtl">
+    <div className="space-y-6 text-right" id="instructors-manager" dir="rtl">
       {/* Header controls */}
-      <div className="flex items-center justify-between border-b border-[#262626] pb-3">
+      <div className="flex items-center justify-between border-b border-[#262626] pb-4">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-            <User className="w-5 h-5 text-indigo-500" />
-            إدارة المحاضرين الأكاديميين (Instructors Directory)
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+            أعضاء هيئة التدريس والمحاضرين האكاديميين
           </h3>
-          <p className="text-xs text-zinc-400 font-sans mt-0.5">تسجيل بيانات السادة المحاضرين والأساتذة الأكاديميين لتسهيل تعيينهم على البرامج المختلفة</p>
+          <p className="text-[11px] text-zinc-400 font-sans mt-0.5">تسجيل وتعديل بيانات السادة المحاضرين مع ربطهم بمواد وتخصصات الدبلومات.</p>
         </div>
         {isAdmin ? (
           <button
             onClick={handleStartAdd}
-            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-500 hover:to-emerald-400 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 shadow-md active:scale-95"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/10 active:scale-95"
             id="btn-add-instructor"
           >
             <Plus className="w-4 h-4" />
@@ -130,21 +144,21 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
       <AnimatePresence>
         {showForm && (
           <motion.form
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="p-5 bg-[#0F0F0F] border border-indigo-900/20 rounded-xl space-y-4"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-5 bg-[#0A0A0E] border border-indigo-900/30 rounded-xl space-y-4 shadow-2xl"
             onSubmit={handleSave}
             id="form-instructor"
           >
-            <div className="text-xs font-bold text-indigo-400 uppercase border-b border-[#262626] pb-1.5 flex items-center gap-1.5">
+            <div className="text-xs font-bold text-indigo-400 uppercase border-b border-zinc-900 pb-1.5 flex items-center gap-1.5">
               <User className="w-4 h-4" />
               {editingId ? 'تعديل بيانات المحاضر الحالي' : 'تسجيل محاضر أكاديمي جديد'}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
                   اسم المحاضر بالكامل <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -152,13 +166,26 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="مثال: د. عادل القحطاني"
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-right"
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-right"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
+                  التخصص الرئيسي / المادة
+                </label>
+                <input
+                  type="text"
+                  value={specialty}
+                  onChange={(e) => setSpecialty(e.target.value)}
+                  placeholder="مثال: أمن سيبراني، برمجة ويب"
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-right"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
                   رقم الهاتف (مع رمز الدولة) <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -166,14 +193,14 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="مثال: +966500000000"
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-left font-sans"
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-left font-sans"
                   required
                   dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
                   البريد الإلكتروني الافتراضي
                 </label>
                 <input
@@ -181,17 +208,17 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g., adel@platform.edu"
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-left font-sans"
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-left font-sans"
                   dir="ltr"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
                 حالة المحاضر الحالية
               </label>
-              <div className="flex items-center gap-4 mt-1">
+              <div className="flex items-center gap-4 mt-1 font-sans">
                 <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
                   <input
                     type="radio"
@@ -237,45 +264,120 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
       </AnimatePresence>
 
       {/* List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {instructors.map((ins) => (
-          <div
-            key={ins.id}
-            className={`bg-[#0F0F0F]/60 border rounded-xl p-4 transition-all flex flex-col justify-between ${
-              ins.status === 'Active' ? 'border-[#262626] hover:border-emerald-500/30' : 'border-dashed border-zinc-800 opacity-65'
-            }`}
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {instructors.map((ins) => {
+          const instructorDips = diplomas.filter(d => d.instructorId === ins.id);
+          const activeDips = instructorDips.filter(d => d.status === 'Active');
+
+          return (
+            <div
+              key={ins.id}
+              className={`bg-[#121212]/30 backdrop-blur-md border rounded-2xl p-5 transition-all flex flex-col justify-between relative overflow-hidden group shadow-lg ${
+                ins.status === 'Active'
+                  ? 'border-zinc-800/80 hover:border-indigo-550/40 hover:bg-[#121212]/50'
+                  : 'border-dashed border-zinc-900 opacity-60'
+              }`}
+            >
+              {/* Status Badge */}
+              <div className="absolute top-4 left-4">
                 {isAdmin ? (
                   <button
                     type="button"
                     onClick={() => toggleStatus(ins)}
-                    className={`text-[9px] font-mono border px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0 cursor-pointer transition-all ${
+                    className={`text-[8px] font-bold border px-2 py-0.5 rounded-full cursor-pointer transition-all ${
                       ins.status === 'Active'
                         ? 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30'
-                        : 'text-zinc-500 bg-zinc-950/30 border-zinc-900'
+                        : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
                     }`}
                   >
-                    {ins.status === 'Active' ? 'نشط ومفعل' : 'معطل مؤقتاً'}
+                    {ins.status === 'Active' ? 'نشط' : 'معطل'}
                   </button>
                 ) : (
                   <div
-                    className={`text-[9px] font-mono border px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0 transition-all ${
+                    className={`text-[8px] font-bold border px-2 py-0.5 rounded-full transition-all ${
                       ins.status === 'Active'
                         ? 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30'
-                        : 'text-zinc-500 bg-zinc-950/30 border-zinc-900'
+                        : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
                     }`}
                   >
-                    {ins.status === 'Active' ? 'نشط ومفعل' : 'معطل مؤقتاً'}
+                    {ins.status === 'Active' ? 'نشط' : 'معطل'}
                   </div>
                 )}
+              </div>
 
+              {/* Main Card Content */}
+              <div className="flex gap-3 text-right">
+                {/* Avatar Badge */}
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600/10 to-indigo-550/5 border border-indigo-550/20 flex items-center justify-center text-indigo-400 font-black text-xs shrink-0 select-none uppercase shadow-sm">
+                  {getInitials(ins.name)}
+                </div>
+
+                <div className="space-y-1 overflow-hidden">
+                  <span className="text-xs font-bold text-white block group-hover:text-indigo-400 transition-colors leading-relaxed truncate" title={ins.name}>
+                    {ins.name}
+                  </span>
+                  
+                  {/* Specialty */}
+                  <span className="inline-flex items-center gap-1 text-[9px] text-zinc-400 bg-zinc-900/60 border border-zinc-850 px-2 py-0.5 rounded font-sans">
+                    <Award className="w-2.5 h-2.5 text-zinc-500" />
+                    {ins.specialty || 'تخصص عام / أكاديمي'}
+                  </span>
+
+                  {/* Active Diplomas Count */}
+                  <div className="flex items-center gap-1 text-[9px] text-indigo-400 font-sans font-medium mt-1">
+                    <BookOpen className="w-2.5 h-2.5 shrink-0" />
+                    <span>
+                      {activeDips.length > 0 
+                        ? `يدرس: ${activeDips.length} دبلومة نشطة`
+                        : 'لا توجد دبلومات نشطة حالياً'
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Footer: Action Links and admin settings */}
+              <div className="flex items-center justify-between border-t border-zinc-900/50 mt-4 pt-3 gap-2">
+                {/* Communication channels */}
+                <div className="flex items-center gap-2">
+                  {/* WhatsApp chat */}
+                  <a
+                    href={`https://wa.me/${ins.phone.replace(/\+/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-7 h-7 rounded-lg bg-emerald-950/20 border border-emerald-900/25 text-emerald-450 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center cursor-pointer shadow-sm"
+                    title={`واتساب: ${ins.phone}`}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </a>
+
+                  {/* Phone Call */}
+                  <a
+                    href={`tel:${ins.phone}`}
+                    className="w-7 h-7 rounded-lg bg-blue-955 border border-blue-900/25 text-blue-400 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center cursor-pointer shadow-sm"
+                    title={`اتصال هاتفي: ${ins.phone}`}
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                  </a>
+
+                  {/* Email */}
+                  {ins.email && (
+                    <a
+                      href={`mailto:${ins.email}`}
+                      className="w-7 h-7 rounded-lg bg-indigo-950/20 border border-indigo-900/25 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center cursor-pointer shadow-sm"
+                      title={`البريد الإلكتروني: ${ins.email}`}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+
+                {/* Edit & Delete Controls (Only for Admin) */}
                 {isAdmin && (
-                  <div className="flex items-center gap-1 bg-[#171717]/80 rounded border border-[#232323] px-1">
+                  <div className="flex items-center gap-1 bg-[#171717]/60 rounded-lg border border-[#232323] px-1 shrink-0">
                     <button
                       onClick={() => handleStartEdit(ins)}
-                      className="p-1 px-1.5 text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px]"
+                      className="p-1 px-1.5 text-zinc-450 hover:text-white transition-colors cursor-pointer text-[10px]"
                       title="تعديل"
                     >
                       <Edit2 className="w-3 h-3" />
@@ -290,25 +392,9 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                   </div>
                 )}
               </div>
-
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-white block">{ins.name}</span>
-                <div className="space-y-1 block font-mono text-[10px] text-zinc-455">
-                  <div className="flex items-center gap-1.5 font-sans" dir="ltr">
-                    <Phone className="w-3 h-3 text-zinc-500" />
-                    <span>{ins.phone}</span>
-                  </div>
-                  {ins.email && (
-                    <div className="flex items-center gap-1.5 font-sans overflow-hidden text-ellipsis whitespace-nowrap" dir="ltr">
-                      <Mail className="w-3 h-3 text-zinc-500" />
-                      <span>{ins.email}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

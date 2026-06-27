@@ -91,7 +91,8 @@ import {
   Sun,
   Moon,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -251,6 +252,7 @@ export default function App() {
   // Selector for active workspace/tab
   const [selectedDiplomaId, setSelectedDiplomaId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<MainTab>('workspace');
+  const [directoryTab, setDirectoryTab] = useState<'instructors' | 'mentors'>('instructors');
 
   // Trigger app state reload on backup successfully restored
   const [reloadKey, setReloadKey] = useState(0);
@@ -1148,20 +1150,60 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-[#121212]/50 border border-[#1F1F1F] p-5 rounded-2xl shadow">
-                        <InstructorsManager
-                          instructors={instructors}
-                          onSaveInstructors={handleSaveInstructors}
-                          isAdmin={isAdmin}
-                        />
+                    {/* Unified Lecturers & Mentors Directory Card */}
+                    <div className="bg-[#121212]/50 border border-[#1F1F1F] p-6 rounded-2xl shadow-xl space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-zinc-900 pb-4">
+                        <div>
+                          <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                            <Users className="w-4 h-4 text-indigo-500" />
+                            دليل الأكاديميين والمتابعين (Faculty & Mentors Directory)
+                          </h4>
+                          <span className="text-[10px] text-zinc-550 block font-sans mt-0.5">
+                            تنظيم وإدارة السادة أعضاء هيئة التدريس والمنسقين المسؤولين عن المتابعة الأكاديمية والتقنية.
+                          </span>
+                        </div>
+                        
+                        {/* Tab Switcher */}
+                        <div className="flex bg-[#0A0A0A] p-1 rounded-lg border border-zinc-900 self-start md:self-center font-sans">
+                          <button
+                            onClick={() => setDirectoryTab('instructors')}
+                            className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                              directoryTab === 'instructors'
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'text-zinc-500 hover:text-zinc-200'
+                            }`}
+                          >
+                            👨‍🏫 المحاضرون الأكاديميون ({instructors.length})
+                          </button>
+                          <button
+                            onClick={() => setDirectoryTab('mentors')}
+                            className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                              directoryTab === 'mentors'
+                                ? 'bg-teal-600 text-white shadow-md'
+                                : 'text-zinc-500 hover:text-zinc-200'
+                            }`}
+                          >
+                            👥 المنسقون والمنتورز ({mentors.length})
+                          </button>
+                        </div>
                       </div>
-                      <div className="bg-[#121212]/50 border border-[#1F1F1F] p-5 rounded-2xl shadow">
-                        <MentorsManager
-                          mentors={mentors}
-                          onSaveMentors={handleSaveMentors}
-                          isAdmin={isAdmin}
-                        />
+
+                      <div className="pt-2">
+                        {directoryTab === 'instructors' ? (
+                          <InstructorsManager
+                            instructors={instructors}
+                            onSaveInstructors={handleSaveInstructors}
+                            isAdmin={isAdmin}
+                            diplomas={diplomas}
+                          />
+                        ) : (
+                          <MentorsManager
+                            mentors={mentors}
+                            onSaveMentors={handleSaveMentors}
+                            isAdmin={isAdmin}
+                            diplomas={diplomas}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
