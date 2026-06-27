@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Student, Session, Diploma, MessageTemplate, AppConfig } from '../types';
+import { Student, Session, Diploma, MessageTemplate, AppConfig, ScheduledMessage } from '../types';
 import { improveWhatsAppMessage } from '../services/groq';
 import { parseTemplate, formatWhatsAppLink } from '../utils';
 import { calculateStudentDiplomaAttendance } from '../services/business';
+import { formatScheduledAt } from '../services/scheduler';
 import {
   MessageSquare,
   AlertTriangle,
@@ -34,6 +35,15 @@ interface WhatsAppAutomationProps {
   diplomas: Diploma[];
   templates: MessageTemplate[];
   config: AppConfig | null;
+  onSaveConfig?: (newConfig: AppConfig) => void;
+  autoTriggerOptions?: {
+    diplomaId: string;
+    messageType: 'session_reminder' | 'absence_warning' | 'custom';
+    messageTemplate: string;
+    targetGroup: 'all' | 'absent_only' | 'exceeded_absences';
+    scheduleId: string;
+  } | null;
+  onClearAutoTrigger?: () => void;
 }
 
 interface QueueItem {
@@ -48,10 +58,13 @@ export default function WhatsAppAutomation({
   sessions,
   diplomas,
   templates,
-  config
+  config,
+  onSaveConfig,
+  autoTriggerOptions,
+  onClearAutoTrigger
 }: WhatsAppAutomationProps) {
-  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster'
-  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster'>('absence');
+  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules'
+  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules'>('absence');
 
   // Search/Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,6 +211,108 @@ export default function WhatsAppAutomation({
   // Stores reference to the opened WhatsApp window so we can navigate it
   // without popup blocker (navigating existing window = always allowed)
   const whatsappWindowRef = useRef<Window | null>(null);
+
+  // Tracking schedule updates
+  const currentScheduleIdRef = useRef<string | null>(null);
+
+  const updateScheduleStatus = (status: 'sent' | 'cancelled' | 'failed') => {
+    if (!currentScheduleIdRef.current || !config || !onSaveConfig) return;
+    const scheduleId = currentScheduleIdRef.current;
+
+    const updatedSchedules = (config.scheduledMessages || []).map(s => {
+      if (s.id === scheduleId) {
+        return {
+          ...s,
+          status,
+          sentAt: status === 'sent' ? new Date().toISOString() : undefined,
+          note: status === 'sent' ? 'تم إرسال الجدولة بنجاح' : 'تم إلغاء الإرسال بواسطة المستخدم يدوياً'
+        };
+      }
+      return s;
+    });
+
+    onSaveConfig({
+      ...config,
+      scheduledMessages: updatedSchedules
+    });
+
+    currentScheduleIdRef.current = null;
+  };
+
+  // Auto trigger loop for scheduled messages
+  useEffect(() => {
+    if (!autoTriggerOptions) return;
+
+    const { diplomaId, messageType, messageTemplate, targetGroup, scheduleId } = autoTriggerOptions;
+
+    const diplomaObj = diplomas.find(d => d.id === diplomaId);
+    if (!diplomaObj) {
+      if (onClearAutoTrigger) onClearAutoTrigger();
+      return;
+    }
+
+    // Filter students
+    let list: Student[] = students.filter(st => st.diplomaIds.includes(diplomaId));
+
+    if (targetGroup === 'absent_only') {
+      const diplomaSessions = sessions.filter(s => s.diplomaId === diplomaId).sort((a, b) => b.date.localeCompare(a.date));
+      const latestSession = diplomaSessions[0];
+      if (latestSession) {
+        list = list.filter(st => {
+          const rec = latestSession.attendance?.[st.id];
+          return rec && rec.status === 'Absent';
+        });
+      }
+    } else if (targetGroup === 'exceeded_absences') {
+      list = list.filter(st => {
+        const stats = calculateStudentDiplomaAttendance(st, diplomaObj, sessions, config?.minAttendanceRate || 75);
+        return stats.absentCount > (diplomaObj.allowedAbsences || 3);
+      });
+    }
+
+    if (list.length === 0) {
+      // No target students: complete the schedule instantly
+      if (config && onSaveConfig) {
+        const updatedSchedules = (config.scheduledMessages || []).map(s => {
+          if (s.id === scheduleId) {
+            return {
+              ...s,
+              status: 'sent' as const,
+              sentAt: new Date().toISOString(),
+              note: 'اكتملت الجدولة (لم يتم العثور على طلاب مطابقين للشروط)'
+            };
+          }
+          return s;
+        });
+        onSaveConfig({ ...config, scheduledMessages: updatedSchedules });
+      }
+      if (onClearAutoTrigger) onClearAutoTrigger();
+      return;
+    }
+
+    // Build the queue items
+    const queueItems: QueueItem[] = list.map(student => {
+      const diplomaSessions = sessions.filter(s => s.diplomaId === diplomaId).sort((a, b) => b.date.localeCompare(a.date));
+      const latestSession = diplomaSessions[0];
+      const finalMsg = compileMessage(messageTemplate, student, diplomaObj, latestSession);
+      return {
+        student,
+        message: finalMsg,
+        phone: student.phone,
+        status: 'pending'
+      };
+    });
+
+    currentScheduleIdRef.current = scheduleId;
+    setQueue(queueItems);
+    setQueueIndex(0);
+    setCopied(false);
+    setIsQueueActive(true);
+    setWhatsappPlatform('web');
+    setIsAutoSending(true);
+
+    if (onClearAutoTrigger) onClearAutoTrigger();
+  }, [autoTriggerOptions, students, sessions, diplomas]);
 
   // Sync selected diploma ID when it changes
   useEffect(() => {
@@ -613,6 +728,9 @@ export default function WhatsAppAutomation({
         console.log('[DEBUG] Queue fully processed.');
         setIsAutoSending(false);
         setCountdown(null);
+        if (currentScheduleIdRef.current) {
+          updateScheduleStatus('sent');
+        }
         setTimeout(() => {
           if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
             try { whatsappWindowRef.current.close(); } catch (_) {}
@@ -718,6 +836,11 @@ export default function WhatsAppAutomation({
     setCountdown(null);
     if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+
+    if (currentScheduleIdRef.current) {
+      const status = queueIndex >= queue.length ? 'sent' : 'cancelled';
+      updateScheduleStatus(status);
+    }
     
     // Close any remaining opened window
     if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
@@ -763,7 +886,8 @@ export default function WhatsAppAutomation({
           { id: 'absence', label: 'متابعة الغائبين (Absence Tracking)', icon: Search, color: 'text-rose-500 bg-rose-500/5' },
           { id: 'class-reminder', label: 'تذكير المحاضرة (Class Reminder)', icon: Clock, color: 'text-indigo-400 bg-indigo-500/5' },
           { id: 'custom-message', label: 'رسالة خاصة (Custom Message)', icon: FileText, color: 'text-emerald-400 bg-emerald-500/5' },
-          { id: 'broadcaster', label: 'مرسل التعميمات الموحد (Unified Broadcaster)', icon: Users, color: 'text-amber-400 bg-amber-500/5' }
+          { id: 'broadcaster', label: 'مرسل التعميمات الموحد (Unified Broadcaster)', icon: Users, color: 'text-amber-400 bg-amber-500/5' },
+          { id: 'schedules', label: 'إدارة الجدولة والرسائل المجدولة (Schedules)', icon: Calendar, color: 'text-purple-400 bg-purple-500/5' }
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -1654,10 +1778,148 @@ export default function WhatsAppAutomation({
                         );
                       })}
                     {Object.values(selectedBroadcastDiplomas).filter(Boolean).length === 0 && (
-                      <div className="p-8 text-center text-zinc-600 text-xs font-sans">
+                      <div className="p-8 text-center text-zinc-650 bg-neutral-950/20 border border-dashed border-zinc-900 rounded-xl font-sans text-xs">
                         يرجى تحديد مجموعة واحدة على الأقل من القائمة لبدء الإرسال.
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ==========================================
+            TAB 5: SCHEDULES MANAGEMENT
+            ========================================== */}
+        {activeTab === 'schedules' && (
+          <div className="lg:col-span-12 space-y-6 animate-fadeIn" dir="rtl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Right Column: Active Scheduled Items */}
+              <div className="lg:col-span-8 space-y-4">
+                <div className="bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                    <div>
+                      <h3 className="text-xs font-bold text-zinc-200">الرسائل المجدولة النشطة (المعلقة)</h3>
+                      <span className="text-[10px] text-zinc-550 block font-sans mt-0.5">
+                        الرسائل التي سيقوم النظام بإرسالها بمجرد أن يحين موعدها والتطبيق مفتوح.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {(() => {
+                      const pendingSchedules = (config?.scheduledMessages || []).filter(s => s.status === 'pending');
+                      if (pendingSchedules.length === 0) {
+                        return (
+                          <div className="p-12 text-center text-zinc-650 bg-neutral-950/20 border border-dashed border-zinc-900 rounded-xl font-sans text-xs">
+                            لا توجد رسائل مجدولة معلقة حالياً.
+                            <br />
+                            <span className="text-[10px] text-zinc-700 mt-1 block">يمكنك جدولة الرسائل عبر محادثة Groq Copilot (مثال: "جدول تذكير لدبلوم الأمن السيبراني غداً الساعة 6 مساءً")</span>
+                          </div>
+                        );
+                      }
+
+                      return pendingSchedules.map(schedule => {
+                        const cancelSchedule = () => {
+                          if (window.confirm('هل تريد فعلاً إلغاء هذه الجدولة؟')) {
+                            const updated = (config?.scheduledMessages || []).map(s => {
+                              if (s.id === schedule.id) return { ...s, status: 'cancelled' as const, note: 'تم إلغاء الجدولة بواسطة المنسق' };
+                              return s;
+                            });
+                            if (onSaveConfig && config) {
+                              onSaveConfig({ ...config, scheduledMessages: updated });
+                            }
+                          }
+                        };
+
+                        return (
+                          <div key={schedule.id} className="p-4 bg-[#07070A] border border-zinc-900 rounded-xl space-y-3 text-right">
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-1">
+                                <span className="text-xs font-bold text-indigo-400 block">{schedule.diplomaName}</span>
+                                <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500 font-sans">
+                                  <span className="bg-zinc-900 px-2 py-0.5 rounded text-zinc-300">
+                                    ⏱️ {formatScheduledAt(schedule.scheduledAt)}
+                                  </span>
+                                  <span className="bg-zinc-900 px-2 py-0.5 rounded text-zinc-300">
+                                    🎯 المستهدف: {schedule.targetGroup === 'absent_only' ? 'الطلاب الغائبين فقط' : schedule.targetGroup === 'exceeded_absences' ? 'المتجاوزين نسب الغياب' : 'جميع طلاب الدبلومة'}
+                                  </span>
+                                  <span className="bg-zinc-900 px-2 py-0.5 rounded text-zinc-300">
+                                    ✉️ {schedule.messageType === 'absence_warning' ? 'تحذير غياب' : schedule.messageType === 'custom' ? 'رسالة مخصصة' : 'تذكير بمحاضرة'}
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={cancelSchedule}
+                                className="p-1.5 bg-rose-955/10 border border-rose-900/30 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg transition-colors cursor-pointer text-[10px] font-bold flex items-center gap-1"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                إلغاء
+                              </button>
+                            </div>
+                            <div className="p-2.5 bg-[#0A0A0E] border border-zinc-950 rounded-lg text-[11px] text-zinc-400 font-mono whitespace-pre-wrap leading-relaxed">
+                              {schedule.messageTemplate}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Left Column: Archives & Logs */}
+              <div className="lg:col-span-4 space-y-4">
+                <div className="bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
+                  <div className="border-b border-zinc-900 pb-3">
+                    <h3 className="text-xs font-bold text-zinc-200">سجل وجدول العمليات التاريخية</h3>
+                    <span className="text-[10px] text-zinc-550 block font-sans mt-0.5">
+                      تاريخ العمليات المجدولة السابقة وحالتها.
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                    {(() => {
+                      const pastSchedules = (config?.scheduledMessages || [])
+                        .filter(s => s.status !== 'pending')
+                        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+                      if (pastSchedules.length === 0) {
+                        return (
+                          <div className="p-6 text-center text-zinc-650 text-xs font-sans">
+                            لا توجد سجلات تاريخية بعد.
+                          </div>
+                        );
+                      }
+
+                      return pastSchedules.map(schedule => (
+                        <div key={schedule.id} className="p-3 bg-[#07070A]/50 border border-zinc-950 rounded-lg space-y-1.5">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-zinc-450 truncate max-w-[120px]">{schedule.diplomaName}</span>
+                            <span className={`px-1.5 py-0.5 rounded font-sans font-bold text-[8px] ${
+                              schedule.status === 'sent'
+                                ? 'bg-emerald-950/20 text-emerald-450 border border-emerald-900/35'
+                                : schedule.status === 'cancelled'
+                                ? 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+                                : 'bg-rose-955/20 text-rose-400 border border-rose-900/35'
+                            }`}>
+                              {schedule.status === 'sent' ? 'تم الإرسال' : schedule.status === 'cancelled' ? 'ملغي' : 'فشل'}
+                            </span>
+                          </div>
+                          <div className="text-[9px] text-zinc-550 font-sans">
+                            ⏰ الموعد: {formatScheduledAt(schedule.scheduledAt)}
+                          </div>
+                          {schedule.note && (
+                            <div className="text-[9px] text-zinc-450 bg-[#0A0A0D] p-1.5 rounded border border-zinc-950 font-sans leading-relaxed">
+                              {schedule.note}
+                            </div>
+                          )}
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>

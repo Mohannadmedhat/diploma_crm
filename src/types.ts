@@ -148,12 +148,29 @@ export interface AppConfig {
   language: 'ar' | 'en'; // Arabic first by default
   groqApiKey?: string;
   groqModel?: string;
+  scheduledMessages?: ScheduledMessage[];
+}
+
+export interface ScheduledMessage {
+  id: string;
+  diplomaId: string;
+  diplomaName: string;
+  messageType: 'session_reminder' | 'absence_warning' | 'custom';
+  messageTemplate: string;
+  targetGroup: 'all' | 'absent_only' | 'exceeded_absences';
+  scheduledAt: string; // ISO datetime string e.g. "2026-06-29T18:00:00"
+  status: 'pending' | 'sent' | 'cancelled' | 'failed';
+  createdAt: string;
+  sentAt?: string;
+  note?: string;
+  createdBy?: string;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
   minAttendanceRate: 75,
   language: 'ar',
-  groqModel: 'llama-3.3-70b-versatile'
+  groqModel: 'llama-3.3-70b-versatile',
+  scheduledMessages: []
 };
 
 export const DEFAULT_ARABIC_TEMPLATES: MessageTemplate[] = [

@@ -239,6 +239,15 @@ export default function App() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [config, setConfig] = useState<AppConfig | null>(null);
 
+  // Active trigger for scheduled messages
+  const [activeAutoTriggerSchedule, setActiveAutoTriggerSchedule] = useState<{
+    diplomaId: string;
+    messageType: 'session_reminder' | 'absence_warning' | 'custom';
+    messageTemplate: string;
+    targetGroup: 'all' | 'absent_only' | 'exceeded_absences';
+    scheduleId: string;
+  } | null>(null);
+
   // Selector for active workspace/tab
   const [selectedDiplomaId, setSelectedDiplomaId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<MainTab>('workspace');
@@ -294,6 +303,42 @@ export default function App() {
     syncPersonalToCloud({ config: newConfig });
     setAiSuccess('تم حفظ إعدادات الذكاء الاصطناعي بنجاح!');
   };
+
+  const handleSaveConfig = (newConfig: AppConfig) => {
+    setConfig(newConfig);
+    saveConfig(newConfig);
+    syncPersonalToCloud({ config: newConfig });
+  };
+
+  // Background Scheduler Loop
+  useEffect(() => {
+    if (!config?.scheduledMessages || config.scheduledMessages.length === 0) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const due = config.scheduledMessages?.find(s => {
+        if (s.status !== 'pending') return false;
+        const scheduledTime = new Date(s.scheduledAt);
+        const diffMs = now.getTime() - scheduledTime.getTime();
+        // Trigger if scheduled time is reached or up to 3 minutes past (to avoid missing it)
+        return diffMs >= 0 && diffMs < 3 * 60 * 1000;
+      });
+
+      if (due) {
+        console.log('[Scheduler] Found due schedule:', due);
+        setActiveAutoTriggerSchedule({
+          diplomaId: due.diplomaId,
+          messageType: due.messageType,
+          messageTemplate: due.messageTemplate,
+          targetGroup: due.targetGroup,
+          scheduleId: due.id
+        });
+        setActiveTab('whatsapp');
+      }
+    }, 20000); // Check every 20 seconds
+
+    return () => clearInterval(interval);
+  }, [config?.scheduledMessages]);
 
   const handleTestAIConnection = async () => {
     if (!tempApiKey.trim()) return;
@@ -1059,6 +1104,9 @@ export default function App() {
                     diplomas={diplomas}
                     templates={templates}
                     config={config}
+                    onSaveConfig={handleSaveConfig}
+                    autoTriggerOptions={activeAutoTriggerSchedule}
+                    onClearAutoTrigger={() => setActiveAutoTriggerSchedule(null)}
                   />
                 )}
 
@@ -1146,6 +1194,7 @@ export default function App() {
                     onSaveStudents={handleSaveStudents}
                     onSaveSessions={handleSaveSessions}
                     onSaveTasks={handleSaveTasks}
+                    onSaveConfig={handleSaveConfig}
                   />
                 )}
 

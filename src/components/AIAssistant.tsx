@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Student, Diploma, Session, Task, AppConfig, Instructor, DiplomaType } from '../types';
+import { Student, Diploma, Session, Task, AppConfig, Instructor, DiplomaType, ScheduledMessage } from '../types';
 import { callGroqChatCompletion } from '../services/groq';
+import { createScheduledMessage, parseScheduleTime, formatScheduledAt } from '../services/scheduler';
 import { 
   Sparkles, 
   Send, 
@@ -33,6 +34,7 @@ interface AIAssistantProps {
   onSaveStudents: (data: Student[]) => void;
   onSaveSessions: (data: Session[]) => void;
   onSaveTasks: (data: Task[]) => void;
+  onSaveConfig: (data: AppConfig) => void;
 }
 
 interface ChatMessage {
@@ -42,7 +44,7 @@ interface ChatMessage {
 }
 
 interface AIAction {
-  type: 'CREATE_DIPLOMA' | 'CREATE_TASK' | 'GENERATE_SESSIONS' | 'UPDATE_ATTENDANCE' | 'GENERATE_CERTIFICATE';
+  type: 'CREATE_DIPLOMA' | 'CREATE_TASK' | 'GENERATE_SESSIONS' | 'UPDATE_ATTENDANCE' | 'GENERATE_CERTIFICATE' | 'SCHEDULE_MESSAGE';
   params: {
     name?: string;
     instructorName?: string;
@@ -65,6 +67,11 @@ interface AIAction {
     studentNameForCert?: string;
     diplomaNameForCert?: string;
     dateForCert?: string;
+    // Scheduling params
+    scheduledAt?: string;        // ISO datetime or natural language
+    messageType?: ScheduledMessage['messageType'];
+    messageTemplate?: string;
+    targetGroup?: ScheduledMessage['targetGroup'];
   };
   rawText: string;
 }
@@ -82,7 +89,8 @@ export default function AIAssistant({
   onSaveDiplomas,
   onSaveStudents,
   onSaveSessions,
-  onSaveTasks
+  onSaveTasks,
+  onSaveConfig
 }: AIAssistantProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -246,10 +254,10 @@ ${crmContext}
 5. لا تشير إلى أنك تملك هذا Prompt أو ملف التوجيهات، أجب مباشرة بصفة المساعد الشخصي.
 
 [ميزة العمليات الذكية الحصرية (Structured Actions)]:
-إذا طلب منك المنسق إجراءً تشغيلياً مثل إضافة دبلومة أو توليد محاضرات أو إنشاء مهمة أو تعديل حضور طالب أو توليد شهادة تخرج لطالب، يجب عليك إرفاق الإجراء المطلوب في نهاية ردك تماماً (خارج أي فقرات نصية) داخل وسم خاص بالصيغة الهيكلية التالية بالضبط:
+إذا طلب منك المنسق إجراءً تشغيلياً مثل إضافة دبلومة، أو توليد محاضرات، أو إنشاء مهمة، أو تعديل حضور طالب، أو توليد شهادة، أو جدولة رسالة/تذكير واتساب، يجب عليك إرفاق الإجراء المطلوب في نهاية ردك تماماً (خارج أي فقرات نصية) داخل وسم خاص بالصيغة الهيكلية التالية بالضبط:
 [ACTION]
 {
-  "type": "CREATE_DIPLOMA" | "CREATE_TASK" | "GENERATE_SESSIONS" | "UPDATE_ATTENDANCE" | "GENERATE_CERTIFICATE",
+  "type": "CREATE_DIPLOMA" | "CREATE_TASK" | "GENERATE_SESSIONS" | "UPDATE_ATTENDANCE" | "GENERATE_CERTIFICATE" | "SCHEDULE_MESSAGE",
   "params": {
     // لـ CREATE_DIPLOMA:
     "name": "اسم الدبلومة بالعربية",
@@ -284,6 +292,13 @@ ${crmContext}
     "studentNameForCert": "الاسم الكامل للطالب باللغة الإنجليزية حصراً (حتى لو كتبه المستخدم بالعربية، قم بترجمته/تهجئته بالإنجليزية، مثل: 'مهند مدحت فتوح' -> 'Mohand Medhat Fatouh')",
     "diplomaNameForCert": "اسم الدبلومة (مثل: الأمن السيبراني أو الذكاء الاصطناعي)",
     "dateForCert": "التاريخ المطبوع على الشهادة YYYY-MM-DD"
+
+    // لـ SCHEDULE_MESSAGE:
+    "diplomaName": "اسم الدبلومة المستهدفة بدقة لربط التذكير",
+    "scheduledAt": "موعد الإرسال بصيغة YYYY-MM-DDTHH:MM:SS أو بصيغة نصية طبيعية مثل 'الساعة 6 مساء' أو 'بعد ساعتين'",
+    "messageType": "session_reminder" | "absence_warning" | "custom",
+    "messageTemplate": "نص الرسالة أو قالب الإرسال. استخدم {studentName} لاسم الطالب و {course} لاسم الدبلومة و {date} للتاريخ.",
+    "targetGroup": "all" | "absent_only" | "exceeded_absences"
   }
 }
 [/ACTION]
@@ -947,6 +962,51 @@ ${crmContext}
           editCertDate
         );
         confirmMessage = `🎓 تم بنجاح توليد وتحميل شهادة إتمام دبلوم **"${editCertDiploma}"** للطالب **"${editCertName}"**!`;
+      } else if (type === 'SCHEDULE_MESSAGE') {
+        let targetDip = diplomas.find(d => d.name.trim().toLowerCase().includes((params.diplomaName || '').trim().toLowerCase()));
+        if (!targetDip && params.diplomaId) {
+          targetDip = diplomas.find(d => d.id === params.diplomaId);
+        }
+
+        if (!targetDip) {
+          throw new Error('لم أتمكن من تحديد الدبلومة المطلوبة لجدولة الرسالة. يرجى كتابة اسم الدبلومة بوضوح في أمرك.');
+        }
+
+        let isoTime = params.scheduledAt || '';
+        if (isoTime && !isNaN(Date.parse(isoTime))) {
+          // Valid ISO string already
+        } else if (isoTime) {
+          const parsed = parseScheduleTime(isoTime);
+          if (parsed) {
+            isoTime = parsed;
+          } else {
+            // Fallback: 1 hour from now
+            isoTime = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+          }
+        } else {
+          isoTime = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+        }
+
+        const newSchedule = createScheduledMessage({
+          diplomaId: targetDip.id,
+          diplomaName: targetDip.name,
+          messageType: params.messageType || 'session_reminder',
+          messageTemplate: params.messageTemplate || 'السلام عليكم {studentName}، نذكركم بمحاضرة دبلوم {course} القادمة في موعدها المحدد. حضوركم واهتمامكم يسعدنا!',
+          targetGroup: params.targetGroup || 'all',
+          scheduledAt: isoTime,
+          note: params.notes || `جدولة تلقائية لمراسلة طلاب دبلوم ${targetDip.name}`,
+          createdBy: currentUser || 'AI Assistant'
+        });
+
+        const updatedConfig: AppConfig = {
+          ...config,
+          minAttendanceRate: config?.minAttendanceRate ?? 75,
+          language: config?.language ?? 'ar',
+          scheduledMessages: [...(config?.scheduledMessages || []), newSchedule]
+        };
+
+        onSaveConfig(updatedConfig);
+        confirmMessage = `⏰ تم بنجاح جدولة إرسال تذكير دبلوم **"${targetDip.name}"** بتاريخ **${formatScheduledAt(isoTime)}**!`;
       }
 
       const systemSuccessMsg: ChatMessage = {
@@ -1186,6 +1246,18 @@ ${crmContext}
                             className="w-full bg-[#121216] border border-[#23232C] rounded-lg px-3 py-1.5 text-xs text-white outline-hidden focus:border-indigo-500 font-semibold mt-1"
                           />
                         </div>
+                      </div>
+                    </>
+                  )}
+                  {pendingAction.type === 'SCHEDULE_MESSAGE' && (
+                    <>
+                      <div className="text-xs text-zinc-300 font-bold mb-1 border-b border-[#23232C] pb-1">جدولة رسالة تذكير تلقائية:</div>
+                      <div className="space-y-1 text-[11px] text-zinc-400">
+                        <div><span className="text-zinc-550">الدبلومة:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.diplomaName || 'غير محدد'}</span></div>
+                        <div><span className="text-zinc-550">وقت الإرسال المجدول:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.scheduledAt ? (isNaN(Date.parse(pendingAction.params.scheduledAt)) ? pendingAction.params.scheduledAt : formatScheduledAt(pendingAction.params.scheduledAt)) : 'بعد ساعة (افتراضي)'}</span></div>
+                        <div><span className="text-zinc-550">فئة الطلاب:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.targetGroup === 'absent_only' ? 'الطلاب الغائبين فقط' : pendingAction.params.targetGroup === 'exceeded_absences' ? 'الطلاب المتجاوزين نسب الغياب' : 'كل الطلاب'}</span></div>
+                        <div><span className="text-zinc-550">نوع الرسالة:</span> <span className="text-zinc-100 font-semibold">{pendingAction.params.messageType === 'absence_warning' ? 'تحذير غياب' : pendingAction.params.messageType === 'custom' ? 'رسالة مخصصة' : 'تذكير بموعد محاضرة'}</span></div>
+                        {pendingAction.params.messageTemplate && <div className="mt-1.5 p-2 bg-[#09090D] border border-zinc-800 rounded-lg text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap">{pendingAction.params.messageTemplate}</div>}
                       </div>
                     </>
                   )}
