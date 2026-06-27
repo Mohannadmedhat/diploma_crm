@@ -893,8 +893,8 @@ export default function App() {
 
           {/* Logo Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-[#3B82F6]/5">
-              <img src="/logo.png" className="w-full h-full object-cover" alt="SAYED Logo" />
+            <div className="w-16 h-16 rounded-xl bg-white border border-zinc-200 flex items-center justify-center overflow-hidden shrink-0 shadow-lg shadow-white/5">
+              <img src="/logo.png" className="w-full h-full object-contain p-0.5" alt="SAYED Logo" />
             </div>
             <div>
               <h1 className="text-sm font-black text-white tracking-wide flex items-center gap-1.5 leading-relaxed">
