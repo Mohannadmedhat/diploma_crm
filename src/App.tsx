@@ -1073,6 +1073,8 @@ export default function App() {
                     onSaveDiplomas={handleSaveDiplomas}
                     onSaveStudents={handleSaveStudents}
                     onSaveSessions={handleSaveSessions}
+                    tasks={tasks}
+                    onSaveTasks={handleSaveTasks}
                   />
                 )}
 

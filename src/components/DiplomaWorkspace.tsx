@@ -31,7 +31,8 @@ import {
   TrendingUp,
   Award,
   BookMarked,
-  LayoutDashboard
+  LayoutDashboard,
+  Grid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { bulkParseStudentCSV, generateArabicCSV, STUDY_DAYS_PRESETS, getSessionDurationHours, parseSessionTimeTo24h, addHoursToTime } from '../services/business';
@@ -44,9 +45,9 @@ interface DiplomaWorkspaceProps {
   students: Student[];
   sessions: Session[];
   diplomaTypes: DiplomaType[];
-  templates: MessageTemplate[];
-  instructors: Instructor[];
-  mentors: Mentor[];
+  templates?: MessageTemplate[];
+  instructors?: Instructor[];
+  mentors?: Mentor[];
   minAttendanceRate: number;
   onSaveDiplomas: (newDiplomas: Diploma[]) => void;
   onSaveStudents: (newStudents: Student[]) => void;
@@ -60,6 +61,7 @@ type WorkspaceTab =
   | 'overview' 
   | 'students' 
   | 'sessions' 
+  | 'attendance-matrix'
   | 'sheets' 
   | 'whatsapp' 
   | 'reports' 
@@ -689,6 +691,7 @@ export default function DiplomaWorkspace({
           { id: 'overview', label: 'نظرة عامة والملخص', icon: LayoutDashboard },
           { id: 'students', label: 'الطلاب والدليل صفي', icon: Users },
           { id: 'sessions', label: 'المحاضرات والتحضير', icon: CalendarCheck2 },
+          { id: 'attendance-matrix', label: 'مصفوفة الحضور الشاملة', icon: Grid },
           { id: 'sheets', label: 'مزامنة Google Sheets', icon: FileSpreadsheet },
           { id: 'whatsapp', label: 'المراسلات والتنبيهات', icon: MessageSquare },
           { id: 'reports', label: 'التقارير والأهلية', icon: BarChart4 },
@@ -1635,7 +1638,172 @@ export default function DiplomaWorkspace({
                 </div>
               </div>
             </div>
+          </div>
+        )}
 
+        {/* TAB 3.5: ATTENDANCE MATRIX (Feature: All Student Attendance Grid) */}
+        {activeTab === 'attendance-matrix' && (
+          <div className="space-y-6 text-right animate-fadeIn" dir="rtl">
+            <div className="bg-zinc-950/40 p-5 rounded-2xl border border-zinc-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 font-sans">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Grid className="w-5 h-5 text-indigo-400" />
+                  مصفوفة الحضور الشاملة (Attendance Matrix)
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans mt-0.5">جدول حضور تفاعلي يتيح رصد وتعديل حضور الطلاب لجميع الجلسات. انقر على أي خلية للتعديل الفوري.</p>
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center gap-3 text-[10px] font-sans text-zinc-400">
+                <span className="font-bold ml-1">دليل الحالات:</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> حاضر</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> غائب</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> معذور</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-zinc-700" /> لم يرصد</span>
+              </div>
+            </div>
+
+            {/* Attendance Matrix Table */}
+            <div className="bg-[#121212]/30 border border-[#232323] rounded-xl overflow-hidden">
+              <div className="overflow-x-auto max-w-full">
+                <table className="w-full text-right text-xs border-collapse relative">
+                  <thead className="bg-[#0A0A0C] text-zinc-400 border-b border-zinc-900 font-sans text-[11px]">
+                    <tr>
+                      {/* Sticky Student Name Header Column */}
+                      <th className="p-3 sticky right-0 bg-[#0A0A0C] z-10 min-w-[180px] border-l border-zinc-900 shadow-[2px_0_5px_rgba(0,0,0,0.4)]">
+                        اسم الطالب كاملاً
+                      </th>
+                      {/* Sessions Columns */}
+                      {enrolledSessions.map((ses, idx) => (
+                        <th key={ses.id} className="p-3 text-center border-l border-zinc-900 min-w-[100px] whitespace-nowrap">
+                          <span className="block font-bold text-white">جلسة {idx + 1}</span>
+                          <span className="block text-[9px] text-zinc-500 font-mono mt-0.5">{ses.date}</span>
+                        </th>
+                      ))}
+                      {/* Total Rate Column */}
+                      <th className="p-3 text-center min-w-[90px] whitespace-nowrap">
+                        معدل الحضور
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-900 text-zinc-300">
+                    {enrolledStudents.map((st) => {
+                      let presentCount = 0;
+                      let absentCount = 0;
+                      let excusedCount = 0;
+
+                      enrolledSessions.forEach((ses) => {
+                        const record = ses.attendance?.[st.id];
+                        if (record) {
+                          if (record.status === 'Present') presentCount++;
+                          else if (record.status === 'Absent') absentCount++;
+                          else if (record.status === 'Excused') excusedCount++;
+                        }
+                      });
+
+                      const markedSessions = presentCount + absentCount;
+                      const attendanceRate = markedSessions > 0
+                        ? Math.round((presentCount / markedSessions) * 100)
+                        : 100;
+
+                      return (
+                        <tr key={st.id} className="hover:bg-zinc-900/10 transition-colors">
+                          {/* Sticky Student Name Cell */}
+                          <td className="p-3 sticky right-0 bg-[#121215] font-bold text-white border-l border-zinc-900 shadow-[2px_0_5px_rgba(0,0,0,0.4)]">
+                            {st.name}
+                          </td>
+                          {/* Attendance Status Cells */}
+                          {enrolledSessions.map((ses) => {
+                            const record = ses.attendance?.[st.id];
+                            let statusText = '➖';
+                            let cellClass = 'bg-zinc-950/20 text-zinc-650';
+
+                            if (record) {
+                              if (record.status === 'Present') {
+                                statusText = 'حاضر ✅';
+                                cellClass = 'bg-emerald-955/20 hover:bg-emerald-955/35 text-emerald-400 border-emerald-900/30';
+                              } else if (record.status === 'Absent') {
+                                statusText = 'غائب ❌';
+                                cellClass = 'bg-rose-955/20 hover:bg-rose-955/35 text-rose-450 border-rose-900/30';
+                              } else if (record.status === 'Excused') {
+                                statusText = 'معذور ⚠️';
+                                cellClass = 'bg-amber-955/20 hover:bg-amber-955/35 text-amber-400 border-amber-900/30';
+                              }
+                            }
+
+                            return (
+                              <td key={ses.id} className="p-2 border-l border-zinc-900 text-center select-none">
+                                <button
+                                  onClick={() => {
+                                    // Cycle through statuses: Unrecorded -> Present -> Absent -> Excused -> Unrecorded
+                                    let nextStatus: AttendanceStatus | undefined = undefined;
+                                    if (!record) {
+                                      nextStatus = 'Present';
+                                    } else if (record.status === 'Present') {
+                                      nextStatus = 'Absent';
+                                    } else if (record.status === 'Absent') {
+                                      nextStatus = 'Excused';
+                                    } else if (record.status === 'Excused') {
+                                      nextStatus = undefined;
+                                    }
+
+                                    // Create a fresh updated sessions list
+                                    const updatedSessions = sessions.map((s) => {
+                                      if (s.id === ses.id) {
+                                        const nextAttendance = { ...(s.attendance || {}) };
+                                        if (nextStatus) {
+                                          nextAttendance[st.id] = {
+                                            studentId: st.id,
+                                            status: nextStatus,
+                                            note: ''
+                                          };
+                                        } else {
+                                          delete nextAttendance[st.id];
+                                        }
+                                        return {
+                                          ...s,
+                                          attendance: nextAttendance,
+                                          attendanceReviewed: true
+                                        };
+                                      }
+                                      return s;
+                                    });
+
+                                    onSaveSessions(updatedSessions);
+                                  }}
+                                  className={`w-full py-1.5 px-2 rounded-lg border text-[10px] font-bold cursor-pointer transition-all ${cellClass}`}
+                                >
+                                  {statusText}
+                                </button>
+                              </td>
+                            );
+                          })}
+                          {/* Attendance Rate Cell */}
+                          <td className="p-3 text-center font-mono">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              attendanceRate >= 90 ? 'bg-emerald-950/20 text-emerald-400' : attendanceRate >= 75 ? 'bg-amber-950/20 text-amber-400' : 'bg-rose-955/20 text-rose-400'
+                            }`}>
+                              {attendanceRate}%
+                            </span>
+                            <span className="block text-[9px] text-zinc-500 mt-0.5 font-sans">
+                              (حاضر: {presentCount} / غائب: {absentCount} {excusedCount > 0 && `/ عذر: ${excusedCount}`})
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {enrolledStudents.length === 0 && (
+                      <tr>
+                        <td colSpan={enrolledSessions.length + 2} className="p-8 text-center text-zinc-500 font-sans text-xs">
+                          لا يوجد طلاب مسجلين في هذا دبلوم بعد.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

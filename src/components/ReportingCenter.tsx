@@ -44,6 +44,14 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
   // Custom threshold for certification calculation (Requirement 7)
   const [eligibilityThreshold, setEligibilityThreshold] = useState<number>(75);
 
+  // Print layout customizer states (Feature 4)
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printReportTitle, setPrintReportTitle] = useState('تقرير الأداء الأكاديمي الرسمي');
+  const [showPrintHeader, setShowPrintHeader] = useState(true);
+  const [showSignatures, setShowSignatures] = useState(true);
+  const [showStamp, setShowStamp] = useState(true);
+  const [printRemarks, setPrintRemarks] = useState('');
+
   const selectedDiploma = useMemo(() => {
     return diplomas.find((d) => d.id === selectedDiplomaId);
   }, [diplomas, selectedDiplomaId]);
@@ -392,14 +400,29 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
       {/* Main Print Out Container */}
       <div className="bg-[#121212]/30 border border-[#232323] rounded-xl p-5" id="printable-report-body">
         
-        {/* Printable Letterhead styling (visible on print only) */}
-        <div className="hidden print:flex flex-col items-center justify-center text-center pb-6 border-b-2 border-zinc-300 mb-6 font-sans">
-          <h1 className="text-lg font-black text-black">منصة دبلومات الشؤون التعليمية والأكاديمية المعتمدة</h1>
-          <h2 className="text-sm font-bold text-zinc-700 mt-1">تقرير رسمي صادر ببيانات الحضور والاستحقاقات الدراسية</h2>
-          <div className="flex justify-center gap-6 mt-3 text-[10px] text-zinc-650 font-mono">
-            <span>تاريخ الإصدار والطباعة: {new Date().toISOString().replace('T', ' ').substring(0, 16)}</span>
-            <span>الدبلوم المحلل: {selectedDiploma?.name}</span>
+        {/* Printable Letterhead styling (Feature 4 - Official Header) */}
+        {showPrintHeader && (
+          <div className="hidden print:grid grid-cols-3 items-center justify-between text-center pb-5 border-b-2 border-zinc-900 mb-6 font-sans text-black" dir="rtl">
+            <div className="text-right space-y-1 font-sans">
+              <div className="text-[11px] font-bold">المملكة العربية السعودية</div>
+              <div className="text-[10px] text-zinc-700">إدارة الشؤون التعليمية والأكاديمية</div>
+              <div className="text-[10px] text-zinc-700">قسم التدريب والتعليم المستمر</div>
+            </div>
+            <div className="text-center space-y-1 font-sans">
+              <div className="text-sm font-black tracking-wide">وزارة التعليم والتدريب</div>
+              <div className="text-[9px] text-zinc-500 font-mono">الرمز الموحد: DEP-{(selectedDiploma?.id || '').substring(0, 6).toUpperCase()}</div>
+            </div>
+            <div className="text-left space-y-1 font-sans">
+              <div className="text-[11px] font-bold">التاريخ: {new Date().toLocaleDateString('ar-SA')}</div>
+              <div className="text-[10px] text-zinc-700">حالة المستند: تقرير معتمد</div>
+              <div className="text-[10px] text-zinc-700">الدبلوم: {selectedDiploma?.name}</div>
+            </div>
           </div>
+        )}
+
+        {/* Custom Document Title */}
+        <div className="text-center mb-6 hidden print:block text-black" dir="rtl">
+          <h2 className="text-sm font-black border-b border-zinc-300 pb-2 inline-block px-8">{printReportTitle}</h2>
         </div>
 
         {/* Tab 1 Content: Attendance Detail Grid */}
@@ -560,6 +583,31 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
             )}
           </div>
         )}
+        {/* Remarks Section (Feature 4 - PDF Print Builder) */}
+        {printRemarks.trim() && (
+          <div className="hidden print:block mt-6 p-4 bg-zinc-50 border border-zinc-200 rounded-lg text-black font-sans text-xs text-right" dir="rtl">
+            <h4 className="font-bold text-zinc-800 border-b border-zinc-200 pb-1.5 mb-2">توصيات وملاحظات المنسق الإداري:</h4>
+            <p className="leading-relaxed whitespace-pre-line text-zinc-700">{printRemarks}</p>
+          </div>
+        )}
+
+        {/* Signature Section (Feature 4 - PDF Print Builder) */}
+        {showSignatures && (
+          <div className="hidden print:grid grid-cols-3 gap-6 mt-12 pt-8 border-t border-dashed border-zinc-300 text-black text-center font-sans text-[11px]" dir="rtl">
+            <div className="space-y-12">
+              <span className="block font-bold">توقيع المنسق الأكاديمي</span>
+              <span className="block text-zinc-400">............................</span>
+            </div>
+            <div className="space-y-12">
+              <span className="block font-bold">{showStamp ? 'ختم الاعتماد والمنصة' : 'المشرف العام'}</span>
+              <span className="block text-zinc-450">............................</span>
+            </div>
+            <div className="space-y-12">
+              <span className="block font-bold">توقيع مدير شؤون الطلاب</span>
+              <span className="block text-zinc-400">............................</span>
+            </div>
+          </div>
+        )}
 
       </div>
 
@@ -577,7 +625,7 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
                 <span>تصدير هذا التقرير إلى Excel (CSV)</span>
               </button>
               <button
-                onClick={handlePrint}
+                onClick={() => setShowPrintModal(true)}
                 className="px-4 py-2 bg-[#171717] hover:bg-[#262626] border border-[#262626] text-zinc-250 hover:text-white rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
                 id="btn-print-pdf-reporting-center"
               >
@@ -767,6 +815,108 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
               لا توجد دبلومات متاحة لعرض التقرير.
             </div>
           )}
+        </div>
+      )}
+      {/* Print settings and customization modal (Feature 4 - PDF Builder) */}
+      {showPrintModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs select-none" dir="rtl">
+          <div className="bg-[#0f0f11] border border-zinc-800 rounded-2xl p-6 w-full max-w-lg text-right space-y-4 shadow-2xl">
+            
+            <div className="flex items-center justify-between border-b border-zinc-900 pb-2.5">
+              <span className="text-xs font-black text-white flex items-center gap-1.5 font-sans">
+                <Printer className="w-4 h-4 text-indigo-400" />
+                تخصيص الخيارات ومظهر الطباعة الرسمي للتقرير (PDF)
+              </span>
+              <button 
+                onClick={() => setShowPrintModal(false)} 
+                className="text-zinc-500 hover:text-white cursor-pointer hover:bg-zinc-900 p-0.5 rounded"
+              >
+                <XCircle className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 font-sans text-xs">
+              
+              <div className="space-y-1">
+                <label className="block text-zinc-400 font-bold">عنوان التقرير المطبوع:</label>
+                <input
+                  type="text"
+                  value={printReportTitle}
+                  onChange={(e) => setPrintReportTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-black border border-zinc-900 focus:border-indigo-600 text-xs text-white rounded outline-none"
+                  placeholder="مثال: كشف غياب وحضور طلاب دبلومة الأمن السيبراني"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <label className="flex items-center gap-2 text-zinc-350 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showPrintHeader}
+                    onChange={(e) => setShowPrintHeader(e.target.checked)}
+                    className="accent-indigo-600 rounded"
+                  />
+                  <span>إظهار الترويسة الوزارية الرسمية</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-zinc-350 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showSignatures}
+                    onChange={(e) => setShowSignatures(e.target.checked)}
+                    className="accent-indigo-600 rounded"
+                  />
+                  <span>تضمين قسم التوقيعات بالمستند</span>
+                </label>
+              </div>
+
+              {showSignatures && (
+                <label className="flex items-center gap-2 text-zinc-350 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={showStamp}
+                    onChange={(e) => setShowStamp(e.target.checked)}
+                    className="accent-indigo-600 rounded"
+                  />
+                  <span>إضافة حقل ختم الاعتماد والمنصة</span>
+                </label>
+              )}
+
+              <div className="space-y-1 pt-2">
+                <label className="block text-zinc-400 font-bold">ملاحظات وتوصيات المنسق (تظهر في أسفل التقرير):</label>
+                <textarea
+                  value={printRemarks}
+                  onChange={(e) => setPrintRemarks(e.target.value)}
+                  className="w-full p-2.5 bg-black border border-zinc-900 focus:border-indigo-600 text-xs text-zinc-200 rounded resize-none outline-none"
+                  placeholder="اكتب أي ملاحظات ترغب في طباعتها مع التقرير (مثل: الحضور دون المستوى المطلوب، إلخ)..."
+                  rows={4}
+                />
+              </div>
+
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-zinc-900 pt-3 select-none">
+              <button
+                onClick={() => {
+                  setShowPrintModal(false);
+                  setTimeout(() => {
+                    window.print();
+                  }, 300);
+                }}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-550 text-white rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                تأكيد وبدء الطباعة (حفظ PDF)
+              </button>
+              <button
+                onClick={() => setShowPrintModal(false)}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 rounded-lg text-xs cursor-pointer"
+              >
+                إلغاء التراجع
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 

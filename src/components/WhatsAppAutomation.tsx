@@ -108,6 +108,7 @@ export default function WhatsAppAutomation({
   const [queueIndex, setQueueIndex] = useState(0);
   const [isQueueActive, setIsQueueActive] = useState(false);
   const [isAutoSending, setIsAutoSending] = useState(false);
+  const [showExtensionInstructions, setShowExtensionInstructions] = useState(false);
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Groq AI states
@@ -441,13 +442,28 @@ export default function WhatsAppAutomation({
     let url = '';
     if (whatsappPlatform === 'web') {
       url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+      if (isAutoSending) {
+        url += '&automate=1';
+      }
     } else {
       // Both 'standard' and 'desktop' will use the api.whatsapp.com link for bulk dispatch
       url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
     }
 
     if (whatsappPlatform === 'web') {
-      // For WhatsApp Web: Reuse the same window reference to prevent reloading the client
+      if (isAutoSending) {
+        // For auto-sending via extension: open in new tab since extension will close it
+        const newWin = window.open(url, '_blank');
+        whatsappWindowRef.current = newWin;
+        if (!newWin) {
+          setPopupBlockerTriggered(true);
+          return false;
+        }
+        setPopupBlockerTriggered(false);
+        return true;
+      }
+
+      // For WhatsApp Web manual sending: Reuse the same window reference
       if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
         whatsappWindowRef.current.location.href = url;
         try { whatsappWindowRef.current.focus(); } catch (_) {}
@@ -464,7 +480,6 @@ export default function WhatsAppAutomation({
       }
     } else {
       // For Desktop/Standard: Close previous window to avoid clutter, and open a new tab.
-      // This is the ONLY way to bypass the browser's strict security restrictions on automatic protocol launches.
       if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
         try { whatsappWindowRef.current.close(); } catch (_) {}
       }
@@ -519,7 +534,7 @@ export default function WhatsAppAutomation({
       return;
     }
 
-    // Update status
+    // Update status to opening
     setQueue(prev => prev.map((item, idx) => {
       if (idx === currentIndex) {
         return { ...item, status: 'opening' };
@@ -532,7 +547,6 @@ export default function WhatsAppAutomation({
     const opened = openWhatsAppLink(currentItem);
     
     if (!opened) {
-      // Pause auto-sending if popup is blocked by the browser
       setIsAutoSending(false);
       setCountdown(null);
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
@@ -545,7 +559,59 @@ export default function WhatsAppAutomation({
       [currentItem.student.id]: 'success'
     }));
 
-    // Update to success after short delay
+    // If using WhatsApp Web and Auto-Sending (Extension mode)
+    if (whatsappPlatform === 'web' && isAutoSending) {
+      console.log('[DEBUG] Chrome Extension Auto-send mode active. Monitoring tab closure...');
+      let elapsedSeconds = 0;
+      const maxWaitSeconds = 25; // fail-safe timeout
+
+      const checkClosed = setInterval(() => {
+        elapsedSeconds += 0.5;
+        
+        if (!isAutoSendingRef.current) {
+          clearInterval(checkClosed);
+          return;
+        }
+
+        const isClosed = !whatsappWindowRef.current || whatsappWindowRef.current.closed;
+        
+        if (isClosed || elapsedSeconds >= maxWaitSeconds) {
+          clearInterval(checkClosed);
+          
+          if (elapsedSeconds >= maxWaitSeconds) {
+            console.log('[DEBUG] Tab closing timed out. Advancing anyway.');
+            try { whatsappWindowRef.current?.close(); } catch (_) {}
+          } else {
+            console.log('[DEBUG] Tab closed. Advancing queue...');
+          }
+
+          // Mark current item as success
+          setQueue(prev => prev.map((item, idx) => {
+            if (idx === currentIndex) {
+              return { ...item, status: 'success' };
+            }
+            return item;
+          }));
+
+          const nextIdx = currentIndex + 1;
+          setQueueIndex(nextIdx);
+
+          if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
+            // Wait 1.5 seconds for safety before next dispatch
+            autoSendTimerRef.current = setTimeout(() => {
+              processCurrentQueueItem();
+            }, 1500);
+          } else {
+            setIsAutoSending(false);
+            setCountdown(null);
+          }
+        }
+      }, 500);
+
+      return;
+    }
+
+    // Default Fallback Mode (Manual / Standard / Desktop or non-web Auto-Send)
     setTimeout(() => {
       console.log('[DEBUG] setTimeout firing for currentIndex:', currentIndex);
       setQueue(prev => prev.map((item, idx) => {
@@ -566,7 +632,6 @@ export default function WhatsAppAutomation({
         console.log('[DEBUG] Queue fully processed.');
         setIsAutoSending(false);
         setCountdown(null);
-        // Close the helper window after a small delay once finished
         setTimeout(() => {
           if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
             try { whatsappWindowRef.current.close(); } catch (_) {}
@@ -1860,6 +1925,30 @@ export default function WhatsAppAutomation({
                     {/* Popup Blocker Notice */}
                     <div className="p-3 bg-amber-955/20 border border-amber-900/30 rounded-lg text-[10px] text-amber-400 leading-relaxed font-sans text-right">
                       ⚠️ <strong>ملاحظة للمتصفح:</strong> إذا توقف النظام عن فتح التابات تلقائياً، قم بالسماح بالنوافذ المنبثقة (Popups) من إعدادات المتصفح، أو استمر بالضغط على زر <strong>"افتح شات الطالب"</strong> الأخضر بشكل متتالي لمتابعة الإرسال بسرعة وسلاسة.
+                    </div>
+
+                    {/* Chrome Extension Instructions (Feature: Auto-Click & Auto-Close) */}
+                    <div className="p-3 bg-zinc-950 border border-zinc-900 rounded-xl space-y-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setShowExtensionInstructions(!showExtensionInstructions)}
+                        className="text-indigo-400 hover:text-indigo-300 font-bold text-[10px] flex items-center gap-1 cursor-pointer font-sans"
+                      >
+                        ⚙️ {showExtensionInstructions ? 'إخفاء تعليمات التثبيت التلقائي ✕' : 'اضغط هنا لتفعيل المراسلة الآلية بالخلفية مجاناً (إضافة كروم) 🔗'}
+                      </button>
+                      
+                      {showExtensionInstructions && (
+                        <div className="text-[10px] text-zinc-400 leading-relaxed space-y-2 font-sans pt-1.5 border-t border-zinc-900/60">
+                          <p className="text-white font-bold">خطوات تشغيل الإرسال الآلي بدون مجهود وبشكل مجاني تماماً:</p>
+                          <ol className="list-decimal list-inside space-y-1 text-zinc-450 mr-1.5">
+                            <li>افتح مجلد المشروع واذهب للمجلد المسمى <code className="text-indigo-350 font-mono bg-zinc-900/60 px-1 py-0.5 rounded">whatsapp-extension</code>.</li>
+                            <li>افتح متصفح جوجل كروم واذهب للرابط التالي: <code className="text-emerald-400 font-mono bg-zinc-900/60 px-1.5 py-0.5 rounded select-all">chrome://extensions</code>.</li>
+                            <li>قم بتفعيل خيار **"وضع مطور البرامج (Developer Mode)"** في أعلى يسار الصفحة.</li>
+                            <li>اضغط على زر **"تحميل حزمة غير مغلفة (Load Unpacked)"** واختر مجلد <code className="text-indigo-350 font-mono bg-zinc-900/60 px-1 py-0.5 rounded">whatsapp-extension</code>.</li>
+                            <li>الآن، اضبط خيار المنصة بالأسفل على **"واتساب ويب (WhatsApp Web) 🌐"** وقم بتشغيل خيار **"الإرسال التلقائي"**، وسيقوم النظام بالإرسال وإغلاق التبويبات تلقائياً بالخلفية دون تدخل منك!</li>
+                          </ol>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (

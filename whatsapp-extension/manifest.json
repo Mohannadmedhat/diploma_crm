@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "مساعد أتمتة واتساب الأكاديمية",
+  "version": "1.0",
+  "description": "إضافة كروم مخصصة لأتمتة إرسال رسائل الواتساب وإغلاق التبويبات تلقائياً.",
+  "permissions": ["activeTab"],
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Student, Diploma, Session, Announcement, MessageTemplate, DiplomaType, CommunicationLog } from '../types';
+import { Student, Diploma, Session, Announcement, MessageTemplate, DiplomaType, Task, CommunicationLog } from '../types';
 import {
   calculateStudentDiplomaAttendance,
   calculateDiplomaSummary,
@@ -32,7 +32,11 @@ import {
   Search,
   Check,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ShieldCheck,
+  Coins,
+  ShieldAlert,
+  ClipboardEdit
 } from 'lucide-react';
 import { parseTemplate, formatWhatsAppLink } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -47,6 +51,8 @@ interface OperationsDashboardProps {
   onSaveDiplomas: (diplomas: Diploma[]) => void;
   onSaveStudents: (students: Student[]) => void;
   onSaveSessions: (sessions: Session[]) => void;
+  tasks?: Task[];
+  onSaveTasks?: (tasks: Task[]) => void;
 }
 
 export default function OperationsDashboard({
@@ -58,11 +64,13 @@ export default function OperationsDashboard({
   diplomaTypes,
   onSaveDiplomas,
   onSaveStudents,
-  onSaveSessions
+  onSaveSessions,
+  tasks = [],
+  onSaveTasks = () => {}
 }: OperationsDashboardProps) {
   
   // --- Active Tab for Dashboard Navigation ---
-  const [dashTab, setDashTab] = useState<'overview' | 'my-diplomas' | 'attendance-followup' | 'student-import'>('overview');
+  const [dashTab, setDashTab] = useState<'overview' | 'my-diplomas' | 'attendance-followup' | 'student-import' | 'sla-radar' | 'finance'>('overview');
   
   // Custom date selection to test or check different days (Defaults to today)
   const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
@@ -87,6 +95,140 @@ export default function OperationsDashboard({
     const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     return days[dayIndex];
   }, [selectedDateStr]);
+
+  // --- SLA Violations Calculations (Feature 3) ---
+  const slaViolations = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Missing recordings: held/past sessions without uploaded recording (older than 24 hours)
+    const missingRecordings = sessions.filter(s => 
+      s.date < todayStr && 
+      s.sessionStatus !== 'Cancelled' && 
+      !s.recordingUploaded
+    );
+
+    // 2. Unreviewed attendance: held/past sessions without attendance check/reviewed flag
+    const unreviewedAttendance = sessions.filter(s => 
+      s.date < todayStr && 
+      s.sessionStatus !== 'Cancelled' && 
+      !s.attendanceReviewed
+    );
+
+    // 3. Overdue pending tasks
+    const overdueTasks = tasks.filter(t => 
+      t.dueDate < todayStr && 
+      t.status !== 'Completed'
+    );
+
+    // 4. Past sessions with absentees but no follow-up done (within last 14 days)
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const twoWeeksAgoStr = twoWeeksAgo.toISOString().split('T')[0];
+
+    const missingFollowups = sessions.filter(s => 
+      s.date >= twoWeeksAgoStr && 
+      s.date < todayStr && 
+      s.sessionStatus !== 'Cancelled' && 
+      !s.absenteesFollowedUp &&
+      Object.values(s.attendance || {}).some(r => r.status === 'Absent')
+    );
+
+    const totalViolations = missingRecordings.length + unreviewedAttendance.length + overdueTasks.length + missingFollowups.length;
+    
+    // Compliance rate
+    const totalChecks = sessions.filter(s => s.date < todayStr && s.sessionStatus !== 'Cancelled').length * 2 + tasks.length;
+    const complianceRate = totalChecks > 0 
+      ? Math.max(0, Math.min(100, Math.round(((totalChecks - totalViolations) / totalChecks) * 100))) 
+      : 100;
+
+    return {
+      missingRecordings,
+      unreviewedAttendance,
+      overdueTasks,
+      missingFollowups,
+      totalViolations,
+      complianceRate
+    };
+  }, [sessions, tasks]);
+
+  // --- Financial Statistics & Calculations (Feature 5) ---
+  const financeStats = useMemo(() => {
+    let totalOutstanding = 0;
+    let totalCollected = 0;
+    let debtorCount = 0;
+
+    students.forEach(st => {
+      const remaining = st.remainingAmount || 0;
+      const paid = st.payedAmount || 0;
+      
+      totalOutstanding += remaining;
+      totalCollected += paid;
+      if (remaining > 0) {
+        debtorCount++;
+      }
+    });
+
+    return {
+      totalOutstanding,
+      totalCollected,
+      debtorCount
+    };
+  }, [students]);
+
+  // Payment Recording States
+  const [activePaymentStudent, setActivePaymentStudent] = useState<Student | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentMethodSelect, setPaymentMethodSelect] = useState<string>('تحويل بنكي');
+
+  const handleRecordPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activePaymentStudent) return;
+    
+    const paid = Number(paymentAmount);
+    if (isNaN(paid) || paid <= 0) {
+      alert('يرجى إدخال مبلغ دفع صحيح أكبر من صفر.');
+      return;
+    }
+
+    const currentPaid = activePaymentStudent.payedAmount || 0;
+    const currentRemaining = activePaymentStudent.remainingAmount || 0;
+
+    const updatedStudents = students.map(st => {
+      if (st.id === activePaymentStudent.id) {
+        const newPaid = currentPaid + paid;
+        const newRemaining = Math.max(0, currentRemaining - paid);
+        return {
+          ...st,
+          payedAmount: newPaid,
+          remainingAmount: newRemaining,
+          paymentMethod: paymentMethodSelect
+        };
+      }
+      return st;
+    });
+
+    // Add a log to the student history
+    const freshLog = {
+      id: `log-payment-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      text: `تم رصد دفعة مالية بقيمة ${paid} ر.س عبر ${paymentMethodSelect}.`
+    };
+    
+    const withLog = updatedStudents.map(st => {
+      if (st.id === activePaymentStudent.id) {
+        return {
+          ...st,
+          communicationLogs: [...(st.communicationLogs || []), freshLog]
+        };
+      }
+      return st;
+    });
+    
+    onSaveStudents(withLog);
+    setActivePaymentStudent(null);
+    setPaymentAmount(0);
+    alert('تم رصد الدفعة المالية وتحديث قيود الطالب المالية بنجاح! ✓');
+  };
 
   // --- 1. Daily Persistent Tasks System ---
   const [dailyTaskCompletion, setDailyTaskCompletion] = useState<Record<string, boolean>>(() => {
@@ -694,6 +836,8 @@ export default function OperationsDashboard({
             { id: 'overview', label: 'اللوحة الرئيسية والمهام اليومية', icon: ClipboardList },
             { id: 'my-diplomas', label: `الدبلومات التي أتابعها (${trackedDiplomas.length})`, icon: BookOpen },
             { id: 'attendance-followup', label: 'متابعة الغياب والاتصال الموثق', icon: UserCheck },
+            { id: 'sla-radar', label: 'رادار الأخطاء والتأخيرات (SLA)', icon: ShieldAlert },
+            { id: 'finance', label: 'التحصيل والأقساط المالية', icon: Coins },
             { id: 'student-import', label: 'استيراد الطلاب السريع', icon: Upload }
           ].map(tab => {
             const TabIcon = tab.icon;
@@ -726,8 +870,8 @@ export default function OperationsDashboard({
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            {/* Quick Five operational answers dashboard blocks */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Quick Six operational answers dashboard blocks */}
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               
               <div className="p-4 bg-[#0F0F12] border border-[#23232D] rounded-xl flex flex-col justify-between">
                 <span className="text-indigo-400 text-[10px] font-black tracking-wider uppercase">1. دبلومات أتابعها</span>
@@ -752,11 +896,13 @@ export default function OperationsDashboard({
               </div>
 
               <div className="p-4 bg-[#0F0F12] border border-[#23232D] rounded-xl flex flex-col justify-between">
-                <span className="text-emerald-500 text-[10px] font-black tracking-wider uppercase">4. المهام المتأخرة</span>
-                <span className={`text-3xl font-mono font-black mt-2 ${overdueOperations.length > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>
-                  {overdueOperations.length} <span className="text-xs font-sans text-zinc-550 font-normal">إنذار معلق</span>
+                <span className="text-rose-400 text-[10px] font-black tracking-wider uppercase">4. رادار التأخيرات (SLA)</span>
+                <span className={`text-3xl font-mono font-black mt-2 ${slaViolations.totalViolations > 0 ? 'text-rose-400 font-bold' : 'text-zinc-500'}`}>
+                  {slaViolations.totalViolations} <span className="text-xs font-sans text-zinc-500 font-normal">تنبيه</span>
                 </span>
-                <span className="text-[10px] text-zinc-400 font-sans mt-3">مستخرجة من الحصص السابقة</span>
+                <button onClick={() => setDashTab('sla-radar')} className="text-[10px] text-zinc-400 text-right hover:text-white mt-3 flex items-center gap-1 font-sans cursor-pointer">
+                  افتح رادار الـ SLA ←
+                </button>
               </div>
 
               <div className="p-4 bg-[#0F0F12] border border-[#23232D] rounded-xl flex flex-col justify-between">
@@ -768,6 +914,16 @@ export default function OperationsDashboard({
                   }
                 </span>
                 <span className="text-[10px] text-zinc-500 font-sans mt-3">تحضير لوجستي مسبق</span>
+              </div>
+
+              <div className="p-4 bg-[#0F0F12] border border-[#23232D] rounded-xl flex flex-col justify-between">
+                <span className="text-emerald-400 text-[10px] font-black tracking-wider uppercase">6. مستحقات التحصيل</span>
+                <span className="text-3xl font-mono text-emerald-400 font-black mt-2">
+                  {financeStats.debtorCount} <span className="text-xs font-sans text-zinc-500 font-normal">مطالبة</span>
+                </span>
+                <button onClick={() => setDashTab('finance')} className="text-[10px] text-zinc-400 text-right hover:text-white mt-3 flex items-center gap-1 font-sans cursor-pointer">
+                  مراجعة الأقساط والمالية ←
+                </button>
               </div>
 
             </div>
@@ -1268,6 +1424,378 @@ export default function OperationsDashboard({
           </motion.div>
         )}
 
+        {/* TAB 5: SLA RADAR (Feature 3) */}
+        {dashTab === 'sla-radar' && (
+          <motion.div
+            key="sla-radar"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6 text-right"
+            dir="rtl"
+          >
+            <div className="border-b border-zinc-900 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-rose-500" />
+                  رادار الأخطاء والتأخيرات التشغيلية (SLA Radar)
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans mt-0.5">تتبع الالتزام بالمعايير التشغيلية المحددة ومهلة الـ 24 ساعة لرفع المحاضرات ورصد الحضور.</p>
+              </div>
+              <div className="flex items-center gap-2 bg-[#0F0F12] border border-zinc-900 px-3 py-1.5 rounded-lg font-sans self-start">
+                <span className="text-[10px] text-zinc-400 font-bold">مؤشر جودة الالتزام (SLA):</span>
+                <span className={`text-xs font-black ${
+                  slaViolations.complianceRate >= 90 ? 'text-emerald-400' : slaViolations.complianceRate >= 75 ? 'text-amber-400' : 'text-rose-400'
+                }`}>{slaViolations.complianceRate}%</span>
+              </div>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-[#0F0F12] border border-zinc-900 rounded-xl">
+                <span className="text-[10px] text-zinc-500 block">تسجيلات مفقودة (&gt;24 س)</span>
+                <span className="text-2xl font-black text-rose-450 mt-1 block font-mono">{slaViolations.missingRecordings.length}</span>
+              </div>
+              <div className="p-4 bg-[#0F0F12] border border-zinc-900 rounded-xl">
+                <span className="text-[10px] text-zinc-500 block">غيابات بلا متابعة</span>
+                <span className="text-2xl font-black text-amber-500 mt-1 block font-mono">{slaViolations.missingFollowups.length}</span>
+              </div>
+              <div className="p-4 bg-[#0F0F12] border border-zinc-900 rounded-xl">
+                <span className="text-[10px] text-zinc-500 block">حضور غير مراجع</span>
+                <span className="text-2xl font-black text-amber-400 mt-1 block font-mono">{slaViolations.unreviewedAttendance.length}</span>
+              </div>
+              <div className="p-4 bg-[#0F0F12] border border-zinc-900 rounded-xl">
+                <span className="text-[10px] text-zinc-500 block">مهام إدارية متأخرة</span>
+                <span className="text-2xl font-black text-rose-500 mt-1 block font-mono">{slaViolations.overdueTasks.length}</span>
+              </div>
+            </div>
+
+            {/* SLA Alert Sections */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Box 1: Missing Recordings */}
+              <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  محاضرات بدون تسجيلات مرفوعة (أكثر من 24 ساعة)
+                </h4>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {slaViolations.missingRecordings.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-zinc-500">لا توجد محاضرات متأخرة التسجيل حالياً. ✓</div>
+                  ) : (
+                    slaViolations.missingRecordings.map(ses => {
+                      const dip = diplomas.find(d => d.id === ses.diplomaId);
+                      return (
+                        <div key={ses.id} className="p-3 bg-[#09090C] border border-zinc-900 rounded-lg flex items-center justify-between text-xs font-sans">
+                          <div>
+                            <span className="font-bold text-zinc-200 block">{ses.title}</span>
+                            <span className="text-[10px] text-zinc-500 block mt-0.5">{dip?.name} · {ses.date}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (dip?.whatsappGroupUrl) {
+                                window.open(dip.whatsappGroupUrl, '_blank');
+                              } else {
+                                alert('لا يوجد رابط مجموعة واتساب مسجل لهذا الدبلوم.');
+                              }
+                            }}
+                            className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 font-bold rounded-lg text-[10px] cursor-pointer"
+                          >
+                            تنبيه المدرب
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Box 2: Missing Follow-ups */}
+              <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  متابعة الغيابات المطلوبة (في آخر 14 يوم)
+                </h4>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {slaViolations.missingFollowups.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-zinc-500">تم الانتهاء من جميع متابعات الغياب المطلوبة. ✓</div>
+                  ) : (
+                    slaViolations.missingFollowups.map(ses => {
+                      const dip = diplomas.find(d => d.id === ses.diplomaId);
+                      return (
+                        <div key={ses.id} className="p-3 bg-[#09090C] border border-zinc-900 rounded-lg flex items-center justify-between text-xs font-sans">
+                          <div>
+                            <span className="font-bold text-zinc-200 block">{ses.title}</span>
+                            <span className="text-[10px] text-zinc-500 block mt-0.5">{dip?.name} · {ses.date}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setDashTab('attendance-followup');
+                            }}
+                            className="px-2.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 font-bold rounded-lg text-[10px] cursor-pointer"
+                          >
+                            صفحة المتابعة
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Box 3: Unreviewed Attendance */}
+              <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  جلسات لم يتم مراجعة وتحضير طلابها
+                </h4>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {slaViolations.unreviewedAttendance.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-zinc-500">تمت مراجعة وتحضير كافة الجلسات بنجاح. ✓</div>
+                  ) : (
+                    slaViolations.unreviewedAttendance.map(ses => {
+                      const dip = diplomas.find(d => d.id === ses.diplomaId);
+                      return (
+                        <div key={ses.id} className="p-3 bg-[#09090C] border border-zinc-900 rounded-lg flex items-center justify-between text-xs font-sans">
+                          <div>
+                            <span className="font-bold text-zinc-200 block">{ses.title}</span>
+                            <span className="text-[10px] text-zinc-500 block mt-0.5">{dip?.name} · {ses.date}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (dip?.googleSheetUrl) {
+                                window.open(dip.googleSheetUrl, '_blank');
+                              } else {
+                                alert('لا يوجد رابط شيت مسجل لهذا الدبلوم.');
+                              }
+                            }}
+                            className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 font-bold rounded-lg text-[10px] cursor-pointer"
+                          >
+                            فتح الشيت للتأكد
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Box 4: Overdue Tasks */}
+              <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5 border-b border-zinc-900 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  مهام إدارية تجاوزت موعد استحقاقها
+                </h4>
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                  {slaViolations.overdueTasks.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-zinc-500">لا توجد مهام إدارية متأخرة. ✓</div>
+                  ) : (
+                    slaViolations.overdueTasks.map(task => {
+                      const dip = diplomas.find(d => d.id === task.diplomaId);
+                      return (
+                        <div key={task.id} className="p-3 bg-[#09090C] border border-zinc-900 rounded-lg flex items-center justify-between text-xs font-sans">
+                          <div>
+                            <span className="font-bold text-zinc-200 block text-right">{task.title}</span>
+                            <span className="text-[10px] text-zinc-500 block mt-0.5">تاريخ الاستحقاق: {task.dueDate} {dip && `· ${dip.name}`}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const updated = tasks.map(t => t.id === task.id ? { ...t, status: 'Completed' as const } : t);
+                              onSaveTasks(updated);
+                              alert('تم تحديد المهمة كمكتملة بنجاح! ✓');
+                            }}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-[10px] cursor-pointer"
+                          >
+                            إنجاز الآن
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+
+        {/* TAB 6: FINANCE & PAYMENT REMINDERS (Feature 5) */}
+        {dashTab === 'finance' && (
+          <motion.div
+            key="finance"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6 text-right"
+            dir="rtl"
+          >
+            <div className="border-b border-zinc-900 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Coins className="w-5 h-5 text-emerald-400" />
+                إدارة التحصيل وأقساط الطلاب المستحقة
+              </h3>
+              <p className="text-xs text-zinc-400 font-sans mt-0.5">رصد الأقساط المدفوعة والمتبقية وتوليد رسائل التذكير المالية لأولياء الأمور بنقرة واحدة.</p>
+            </div>
+
+            {/* Financial Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-5 bg-[#0F0F12] border border-zinc-900 rounded-xl text-right">
+                <span className="text-[10px] text-zinc-500 block font-bold font-sans">إجمالي المبالغ المحصّلة</span>
+                <span className="text-2xl font-black text-emerald-400 mt-1 block font-mono">{financeStats.totalCollected.toLocaleString()} <span className="text-xs font-sans text-zinc-500 font-normal">ر.س</span></span>
+              </div>
+              <div className="p-5 bg-[#0F0F12] border border-zinc-900 rounded-xl text-right">
+                <span className="text-[10px] text-zinc-500 block font-bold font-sans">إجمالي المبالغ المستحقة (المتبقية)</span>
+                <span className="text-2xl font-black text-rose-400 mt-1 block font-mono">{financeStats.totalOutstanding.toLocaleString()} <span className="text-xs font-sans text-zinc-500 font-normal">ر.س</span></span>
+              </div>
+              <div className="p-5 bg-[#0F0F12] border border-zinc-900 rounded-xl text-right">
+                <span className="text-[10px] text-zinc-500 block font-bold font-sans">عدد الطلاب الذين لديهم متبقي مالي</span>
+                <span className="text-2xl font-black text-amber-500 mt-1 block font-mono">{financeStats.debtorCount} <span className="text-xs font-sans text-zinc-500 font-normal">طالب متعثر</span></span>
+              </div>
+            </div>
+
+            {/* Search and List */}
+            <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                <h4 className="text-xs font-bold text-white">تفاصيل كشف حسابات الطلاب المسجلين بالدبلومات</h4>
+              </div>
+
+              <div className="overflow-x-auto border border-zinc-900 rounded-xl">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-[#0A0A0C] text-zinc-400 border-b border-zinc-900 font-sans">
+                    <tr>
+                      <th className="p-3">اسم الطالب</th>
+                      <th className="p-3">الدبلومة المسجل بها</th>
+                      <th className="p-3">رسوم الدورة</th>
+                      <th className="p-3">المحصّل</th>
+                      <th className="p-3">المتبقي</th>
+                      <th className="p-3">الحالة المالية</th>
+                      <th className="p-3 text-left">العمليات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-900/60 text-zinc-300">
+                    {students.map((st) => {
+                      const activeDips = diplomas.filter(d => st.diplomaIds.includes(d.id));
+                      const totalFee = st.coursePrice || 0;
+                      const paid = st.payedAmount || 0;
+                      const remaining = st.remainingAmount || 0;
+
+                      const statusText = remaining === 0 ? 'خالص' : remaining > totalFee * 0.5 ? 'متأخر حرج' : 'متبقي قسط';
+                      const statusColor = remaining === 0 
+                        ? 'text-emerald-400 border-emerald-950/40 bg-emerald-950/10'
+                        : remaining > totalFee * 0.5
+                        ? 'text-rose-400 border-rose-955/30 bg-rose-955/10'
+                        : 'text-amber-400 border-amber-950/30 bg-amber-950/10';
+
+                      return (
+                        <tr key={st.id} className="hover:bg-zinc-900/10">
+                          <td className="p-3 font-bold text-white">{st.name}</td>
+                          <td className="p-3 text-zinc-400">
+                            {activeDips.map(d => d.name).join(', ') || 'لا يوجد'}
+                          </td>
+                          <td className="p-3 font-mono">{totalFee.toLocaleString()} ر.س</td>
+                          <td className="p-3 font-mono text-emerald-400 font-bold">{paid.toLocaleString()} ر.س</td>
+                          <td className="p-3 font-mono text-rose-400 font-bold">{remaining.toLocaleString()} ر.س</td>
+                          <td className="p-3 font-sans">
+                            <span className={`px-2 py-0.5 rounded border text-[10px] font-black ${statusColor}`}>
+                              {statusText}
+                            </span>
+                          </td>
+                          <td className="p-3 text-left font-sans">
+                            <div className="flex justify-end gap-2">
+                              {remaining > 0 && (
+                                <button
+                                  onClick={() => {
+                                    const dipNames = activeDips.map(d => d.name).join(' و');
+                                    const msg = `السلام عليكم ورحمة الله وبركاته ${st.parentName}، نود تذكيركم بلطف بقيمة القسط المستحق والمتبقي من رسوم الطالب ${st.name} في ${dipNames} بقيمة ${remaining} ر.س. يرجى التكرم بالسداد عبر الحساب البنكي المعتمد. شاكرين ومقدرين لكم تعاونكم الدائم.`;
+                                    window.open(formatWhatsAppLink(st.phone, msg), '_blank');
+                                  }}
+                                  className="px-2 py-1 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/20 text-amber-400 rounded text-[11px] font-bold cursor-pointer font-sans"
+                                >
+                                  تذكير السداد
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setActivePaymentStudent(st);
+                                  setPaymentAmount(remaining);
+                                }}
+                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-550 text-white rounded text-[11px] font-bold cursor-pointer font-sans"
+                              >
+                                رصد دفعة مالية
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
+
+      {/* --- MODAL 5: RECORD STUDENT PAYMENT --- */}
+      <AnimatePresence>
+        {activePaymentStudent && (
+          <div className="fixed inset-0 z-50 bg-[#000]/60 flex items-center justify-center p-4 backdrop-blur-xs select-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0f0f11] border border-zinc-800 rounded-2xl p-5 w-full max-w-md text-right space-y-4 shadow-2xl"
+              dir="rtl"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                <span className="text-xs font-black text-emerald-400 flex items-center gap-1 font-sans">
+                  <Coins className="w-4 h-4 text-emerald-500" />
+                  رصد وتحصيل دفعة مالية جديدة للطالب
+                </span>
+                <button onClick={() => setActivePaymentStudent(null)} className="text-zinc-500 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
+              </div>
+
+              <form onSubmit={handleRecordPayment} className="space-y-4 font-sans text-xs">
+                <div className="p-3 bg-[#050505] rounded-lg border border-zinc-900 text-zinc-300 text-right">
+                  <div>اسم الطالب: <strong>{activePaymentStudent.name}</strong></div>
+                  <div className="mt-1 font-mono">الرسوم الإجمالية: {activePaymentStudent.coursePrice} ر.س | المتبقي: {activePaymentStudent.remainingAmount} ر.س</div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-zinc-400 font-bold">المبلغ المدفوع (ر.س):</label>
+                  <input
+                    type="number"
+                    value={paymentAmount || ''}
+                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-black border border-zinc-900 focus:border-emerald-500 text-xs text-white rounded font-mono text-right outline-none"
+                    placeholder="مثال: 500"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-zinc-400 font-bold">طريقة الدفع:</label>
+                  <select
+                    value={paymentMethodSelect}
+                    onChange={(e) => setPaymentMethodSelect(e.target.value)}
+                    className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded cursor-pointer text-right outline-none"
+                  >
+                    <option value="تحويل بنكي">تحويل بنكي</option>
+                    <option value="نقدي (Cash)">نقدي (Cash)</option>
+                    <option value="شبكة مدى / بطاقة ائتمانية">شبكة مدى / بطاقة ائتمانية</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-zinc-900 pt-3 select-none">
+                  <button type="submit" className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs font-semibold cursor-pointer">
+                    تأكيد رصد الدفعة ✓
+                  </button>
+                  <button type="button" onClick={() => setActivePaymentStudent(null)} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 rounded text-xs cursor-pointer">
+                    إلغاء التراجع
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
       {/* --- MODAL 1: ADD NEW DIPLOMA --- */}

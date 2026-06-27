@@ -823,3 +823,62 @@ body.light ::-webkit-scrollbar-thumb {
 body.light ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8 !important;
 }
+
+/* -------------------------------------------------------------
+   OFFICIAL PDF PRINT STYLING (Feature 4)
+   ------------------------------------------------------------- */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Inter', sans-serif !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  /* Hide main app navigation, sidebars, headers, and dashboard controllers */
+  aside, 
+  header,
+  nav,
+  button,
+  .select-none,
+  input,
+  select,
+  textarea {
+    display: none !important;
+  }
+  /* Force printable container to occupy full page */
+  #printable-report-body {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Enforce clean official table look */
+  #printable-report-body table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 15px !important;
+  }
+  #printable-report-body th,
+  #printable-report-body td {
+    border: 1px solid #000000 !important;
+    padding: 8px 10px !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+  #printable-report-body th {
+    background-color: #f1f5f9 !important;
+    font-weight: bold !important;
+    text-align: right !important;
+  }
+  /* Ensure proper pagination and avoid breaking rows mid-page */
+  tr {
+    page-break-inside: avoid !important;
+  }
+}
