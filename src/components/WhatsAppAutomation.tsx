@@ -50,8 +50,8 @@ export default function WhatsAppAutomation({
   templates,
   config
 }: WhatsAppAutomationProps) {
-  // Tabs: 'absence' | 'class-reminder' | 'custom-message'
-  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message'>('absence');
+  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster'
+  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster'>('absence');
 
   // Search/Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +80,29 @@ export default function WhatsAppAutomation({
   const customTextAreaRef = useRef<HTMLTextAreaElement>(null);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
 
+  // 4️⃣ BROADCASTER STATE
+  const [broadcastMessageText, setBroadcastMessageText] = useState(
+    'السلام عليكم وأهلاً بكم جميعاً 👋\nنود إحاطتكم بخصوص دبلومة {اسم_الدبلومة} بأن...'
+  );
+  const [selectedBroadcastDiplomas, setSelectedBroadcastDiplomas] = useState<Record<string, boolean>>({});
+  const [copiedBroadcasts, setCopiedBroadcasts] = useState<Record<string, boolean>>({});
+  const [sentBroadcasts, setSentBroadcasts] = useState<Record<string, boolean>>({});
+  const [polishingBroadcast, setPolishingBroadcast] = useState(false);
+  const broadcastTextAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [broadcastSelectionStart, setBroadcastSelectionStart] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (diplomas.length > 0 && Object.keys(selectedBroadcastDiplomas).length === 0) {
+      const initial: Record<string, boolean> = {};
+      diplomas.forEach(d => {
+        if (d.status === 'Active' || d.status === 'Upcoming') {
+          initial[d.id] = true;
+        }
+      });
+      setSelectedBroadcastDiplomas(initial);
+    }
+  }, [diplomas]);
+
   // --- QUEUE MODAL STATES ---
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
@@ -91,19 +114,23 @@ export default function WhatsAppAutomation({
   const [polishingAbsence, setPolishingAbsence] = useState(false);
   const [polishingCustom, setPolishingCustom] = useState(false);
 
-  const handlePolishMessage = async (type: 'absence' | 'custom', tone: 'friendly' | 'warning' | 'formal') => {
+  const handlePolishMessage = async (type: 'absence' | 'custom' | 'broadcaster', tone: 'friendly' | 'warning' | 'formal') => {
     const activeApiKey = config?.groqApiKey || (import.meta as any).env.VITE_GROQ_API_KEY || '';
     if (!activeApiKey) {
       alert('الرجاء تهيئة مفتاح Groq API في الإعدادات أولاً لتفعيل تحسين الرسائل بالذكاء الاصطناعي.');
       return;
     }
     
-    const isAbsence = type === 'absence';
-    const currentText = isAbsence ? absenceCustomText : customMessageText;
+    let currentText = '';
+    if (type === 'absence') currentText = absenceCustomText;
+    else if (type === 'custom') currentText = customMessageText;
+    else currentText = broadcastMessageText;
+
     if (!currentText.trim()) return;
 
-    if (isAbsence) setPolishingAbsence(true);
-    else setPolishingCustom(true);
+    if (type === 'absence') setPolishingAbsence(true);
+    else if (type === 'custom') setPolishingCustom(true);
+    else setPolishingBroadcast(true);
 
     try {
       const improved = await improveWhatsAppMessage(
@@ -112,16 +139,19 @@ export default function WhatsAppAutomation({
         currentText,
         tone
       );
-      if (isAbsence) {
+      if (type === 'absence') {
         setAbsenceCustomText(improved);
-      } else {
+      } else if (type === 'custom') {
         setCustomMessageText(improved);
+      } else {
+        setBroadcastMessageText(improved);
       }
     } catch (e: any) {
       alert(`فشل تحسين الصياغة: ${e.message}`);
     } finally {
       setPolishingAbsence(false);
       setPolishingCustom(false);
+      setPolishingBroadcast(false);
     }
   };
 
@@ -637,7 +667,8 @@ export default function WhatsAppAutomation({
         {[
           { id: 'absence', label: 'متابعة الغائبين (Absence Tracking)', icon: Search, color: 'text-rose-500 bg-rose-500/5' },
           { id: 'class-reminder', label: 'تذكير المحاضرة (Class Reminder)', icon: Clock, color: 'text-indigo-400 bg-indigo-500/5' },
-          { id: 'custom-message', label: 'رسالة خاصة (Custom Message)', icon: FileText, color: 'text-emerald-400 bg-emerald-500/5' }
+          { id: 'custom-message', label: 'رسالة خاصة (Custom Message)', icon: FileText, color: 'text-emerald-400 bg-emerald-500/5' },
+          { id: 'broadcaster', label: 'مرسل التعميمات الموحد (Unified Broadcaster)', icon: Users, color: 'text-amber-400 bg-amber-500/5' }
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -1242,6 +1273,302 @@ export default function WhatsAppAutomation({
               </div>
             </div>
           </>
+        )}
+
+        {/* ==========================================
+            TAB 4: UNIFIED BROADCASTER
+            ========================================== */}
+        {activeTab === 'broadcaster' && (
+          <div className="lg:col-span-12 space-y-6 animate-fadeIn" dir="rtl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Right Column: Writing & Selecting target groups */}
+              <div className="lg:col-span-7 space-y-6">
+                
+                {/* Message Editor Card */}
+                <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-xs font-bold text-white">صياغة التعميم الموحد</h3>
+                    </div>
+                    
+                    {/* AI Polishing Buttons */}
+                    <div className="flex items-center gap-1.5 font-sans">
+                      <span className="text-[10px] text-zinc-500 ml-1">تحسين الذكاء الاصطناعي:</span>
+                      <button
+                        disabled={polishingBroadcast}
+                        onClick={() => handlePolishMessage('broadcaster', 'friendly')}
+                        className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/20 text-amber-400 text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        {polishingBroadcast ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-amber-400" />}
+                        ودي
+                      </button>
+                      <button
+                        disabled={polishingBroadcast}
+                        onClick={() => handlePolishMessage('broadcaster', 'formal')}
+                        className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/20 text-amber-400 text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        رسمي
+                      </button>
+                      <button
+                        disabled={polishingBroadcast}
+                        onClick={() => handlePolishMessage('broadcaster', 'warning')}
+                        className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 text-rose-400 text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        تنبيه
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[11px] text-zinc-400 font-sans font-bold">نص التعميم:</label>
+                    <textarea
+                      ref={broadcastTextAreaRef}
+                      value={broadcastMessageText}
+                      onChange={(e) => setBroadcastMessageText(e.target.value)}
+                      onSelect={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        setBroadcastSelectionStart(target.selectionStart);
+                      }}
+                      className="w-full h-44 px-3 py-2 bg-black border border-zinc-800 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 text-xs text-white rounded-xl outline-none resize-y font-sans leading-relaxed text-right"
+                      placeholder="اكتب رسالة التعميم هنا..."
+                    />
+                  </div>
+
+                  {/* Variable Injection Chips */}
+                  <div className="space-y-1.5">
+                    <span className="block text-[10px] text-zinc-500 font-sans font-bold">انقر لإدراج متغيرات مخصصة لكل دبلومة:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { token: '{اسم_الدبلومة}', label: '🎓 اسم الدبلوم' },
+                        { token: '{رابط_المجموعة}', label: '🔗 رابط مجموعة الواتساب' },
+                        { token: '{اسم_المدرب}', label: '👨‍🏫 اسم المدرب' },
+                        { token: '{وقت_المحاضرة}', label: '⏰ وقت المحاضرة' }
+                      ].map((item) => (
+                        <button
+                          key={item.token}
+                          type="button"
+                          onClick={() => {
+                            const txtArea = broadcastTextAreaRef.current;
+                            if (txtArea) {
+                              const pos = broadcastSelectionStart !== null ? broadcastSelectionStart : broadcastMessageText.length;
+                              const before = broadcastMessageText.substring(0, pos);
+                              const after = broadcastMessageText.substring(pos);
+                              const newText = before + item.token + after;
+                              setBroadcastMessageText(newText);
+                              // Refocus
+                              setTimeout(() => {
+                                txtArea.focus();
+                                const newPos = pos + item.token.length;
+                                txtArea.setSelectionRange(newPos, newPos);
+                                setBroadcastSelectionStart(newPos);
+                              }, 50);
+                            } else {
+                              setBroadcastMessageText(prev => prev + item.token);
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-[10px] font-semibold rounded-lg transition-all cursor-pointer font-sans"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Target Groups Selector Card */}
+                <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-xs font-bold text-white">المجموعات والجروبات المستهدفة</h3>
+                    </div>
+                    <div className="flex items-center gap-2 font-sans">
+                      <button
+                        onClick={() => {
+                          const initial: Record<string, boolean> = {};
+                          diplomas.forEach(d => {
+                            if (d.status === 'Active' || d.status === 'Upcoming') {
+                              initial[d.id] = true;
+                            }
+                          });
+                          setSelectedBroadcastDiplomas(initial);
+                        }}
+                        className="text-[10px] text-amber-400 hover:underline cursor-pointer font-bold"
+                      >
+                        تحديد النشطة
+                      </button>
+                      <span className="text-zinc-700">|</span>
+                      <button
+                        onClick={() => setSelectedBroadcastDiplomas({})}
+                        className="text-[10px] text-zinc-500 hover:underline cursor-pointer font-bold"
+                      >
+                        إلغاء الكل
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {diplomas.map((d) => {
+                      const isSelected = !!selectedBroadcastDiplomas[d.id];
+                      const totalSt = students.filter(s => s.diplomaIds.includes(d.id)).length;
+                      
+                      return (
+                        <div
+                          key={d.id}
+                          onClick={() => {
+                            setSelectedBroadcastDiplomas(prev => ({
+                              ...prev,
+                              [d.id]: !prev[d.id]
+                            }));
+                          }}
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-amber-500/30 bg-amber-955/5'
+                              : 'border-zinc-900 bg-zinc-950/20 hover:border-zinc-800'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}} // handled by div onClick
+                              className="w-3.5 h-3.5 rounded border-zinc-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 bg-black cursor-pointer"
+                            />
+                            <div>
+                              <span className="text-xs font-bold text-zinc-200 block text-right">{d.name}</span>
+                              <span className="text-[10px] text-zinc-500 font-sans block mt-0.5 text-right">
+                                {d.whatsappGroupUrl ? '🔗 الرابط متاح' : '⚠️ لا يوجد رابط مجموعة'} · عدد الطلاب: {totalSt}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border font-sans ${
+                            d.status === 'Active'
+                              ? 'text-emerald-400 border-emerald-950/40 bg-emerald-950/10'
+                              : d.status === 'Upcoming'
+                              ? 'text-amber-400 border-amber-950/30 bg-amber-950/10'
+                              : 'text-zinc-500 border-zinc-800/40 bg-zinc-900/10'
+                          }`}>
+                            {d.status === 'Active' ? 'نشط' : d.status === 'Upcoming' ? 'قادم' : 'مكتمل'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Left Column: Action Pipeline & Customized Message Preview */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-2.5">
+                    <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Send className="w-4 h-4 text-emerald-400" />
+                      خطوات الإرسال المخصصة
+                    </h3>
+                    <span className="text-[10px] text-zinc-500 font-sans font-bold">
+                      المجموعات المحددة: {Object.values(selectedBroadcastDiplomas).filter(Boolean).length}
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] text-zinc-400 leading-relaxed font-sans text-right">
+                    يتيح لك البث كتابة رسالة موحدة وتكييفها لكل مجموعة تلقائياً. انسخ النص المناسب ثم افتح رابط المجموعة للصقه فوراً.
+                  </p>
+
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    {diplomas
+                      .filter(d => !!selectedBroadcastDiplomas[d.id])
+                      .map((d) => {
+                        const isCopied = !!copiedBroadcasts[d.id];
+                        const isSent = !!sentBroadcasts[d.id];
+                        
+                        // Local replace helper
+                        const customMsg = broadcastMessageText
+                          .replace(/{اسم_الدبلومة}/g, d.name || '')
+                          .replace(/{رابط_المجموعة}/g, d.whatsappGroupUrl || 'لا يوجد رابط')
+                          .replace(/{اسم_المدرب}/g, d.instructorName || 'غير محدد')
+                          .replace(/{وقت_المحاضرة}/g, d.sessionTime || 'غير محدد');
+
+                        return (
+                          <div
+                            key={d.id}
+                            className={`p-4 rounded-xl border space-y-3 transition-all ${
+                              isSent
+                                ? 'border-emerald-900/40 bg-emerald-950/5'
+                                : 'border-zinc-900 bg-zinc-950/40'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between border-b border-zinc-900/60 pb-2">
+                              <div>
+                                <span className="text-xs font-black text-zinc-200 block text-right">{d.name}</span>
+                              </div>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-sans ${
+                                isSent
+                                  ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-900/40'
+                                  : 'text-zinc-500 bg-zinc-900/30 border border-zinc-800'
+                              }`}>
+                                {isSent ? '✓ تم الفتح' : 'انتظار'}
+                              </span>
+                            </div>
+
+                            {/* Message Preview */}
+                            <div className="p-2.5 bg-black/60 rounded-lg border border-zinc-900 text-[10px] text-zinc-300 font-sans whitespace-pre-wrap leading-relaxed text-right">
+                              {customMsg}
+                            </div>
+
+                            {/* Actions Row */}
+                            <div className="flex items-center gap-2 pt-1 font-sans">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(customMsg).then(() => {
+                                    setCopiedBroadcasts(prev => ({ ...prev, [d.id]: true }));
+                                    setTimeout(() => {
+                                      setCopiedBroadcasts(prev => ({ ...prev, [d.id]: false }));
+                                    }, 2000);
+                                  });
+                                }}
+                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                                  isCopied
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300'
+                                }`}
+                              >
+                                <Check className={`w-3 h-3 ${isCopied ? 'block' : 'hidden'}`} />
+                                {isCopied ? 'تم النسخ!' : 'نسخ النص'}
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setSentBroadcasts(prev => ({ ...prev, [d.id]: true }));
+                                  if (d.whatsappGroupUrl) {
+                                    window.open(d.whatsappGroupUrl, '_blank');
+                                  } else {
+                                    // Fallback to main WhatsApp Web
+                                    window.open('https://web.whatsapp.com/', '_blank');
+                                  }
+                                }}
+                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-550 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                فتح المجموعة
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {Object.values(selectedBroadcastDiplomas).filter(Boolean).length === 0 && (
+                      <div className="p-8 text-center text-zinc-600 text-xs font-sans">
+                        يرجى تحديد مجموعة واحدة على الأقل من القائمة لبدء الإرسال.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
         )}
       </div>
 

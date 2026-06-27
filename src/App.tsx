@@ -59,6 +59,11 @@ import WhatsAppAutomation from './components/WhatsAppAutomation';
 import AIAssistant from './components/AIAssistant';
 import { testGroqConnection } from './services/groq';
 import {
+  parseSessionTimeTo24h,
+  getSessionDurationHours,
+  addHoursToTime
+} from './services/business';
+import {
   isCloudConfigured,
   downloadCloudData,
   uploadCloudData,
@@ -101,6 +106,124 @@ type MainTab =
 
 // Admin username — only this user sees the Admin Panel button
 const ADMIN_USERNAME = 'mohannad';
+
+function getStudyDaysNumbers(studyDays?: string): number[] {
+  if (!studyDays) return [];
+  return studyDays.split(/[،,\s]+/)
+    .map(d => {
+      const day = d.trim();
+      if (day.includes('أحد') || day.includes('الاحد')) return 0;
+      if (day.includes('اثنين') || day.includes('الاثنين')) return 1;
+      if (day.includes('ثلاثاء') || day.includes('الثلاثاء')) return 2;
+      if (day.includes('أربعاء') || day.includes('الاربعاء')) return 3;
+      if (day.includes('خميس') || day.includes('الخميس')) return 4;
+      if (day.includes('جمعة') || day.includes('الجمعة')) return 5;
+      if (day.includes('سبت') || day.includes('السبت')) return 6;
+      return -1;
+    })
+    .filter(n => n !== -1);
+}
+
+function findNearestStudyDay(startDateStr: string, studyDaysNumbers: number[]): string {
+  if (studyDaysNumbers.length === 0) return startDateStr;
+  const d = new Date(startDateStr);
+  for (let i = 0; i < 14; i++) {
+    const checkDate = new Date(d);
+    checkDate.setDate(d.getDate() + i);
+    if (studyDaysNumbers.includes(checkDate.getDay())) {
+      return checkDate.toISOString().split('T')[0];
+    }
+  }
+  return startDateStr;
+}
+
+function generateSessionsForDiploma(
+  diploma: Diploma,
+  existingSessions: Session[]
+): Session[] {
+  if (!diploma.startDate || !diploma.endDate || !diploma.studyDays) {
+    return existingSessions;
+  }
+
+  const start = new Date(diploma.startDate);
+  const end = new Date(diploma.endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+    return existingSessions;
+  }
+
+  const studyDaysNumbers = getStudyDaysNumbers(diploma.studyDays);
+  if (studyDaysNumbers.length === 0) return existingSessions;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  
+  // Filter out sessions that belong to other diplomas
+  const otherSessions = existingSessions.filter(s => s.diplomaId !== diploma.id);
+  
+  // Existing sessions of this diploma
+  const thisDiplomaSessions = existingSessions.filter(s => s.diplomaId === diploma.id);
+  
+  // Preserved sessions (held, cancelled, postponed, or in the past)
+  const preservedSessions = thisDiplomaSessions.filter(s => 
+    s.date < todayStr || s.sessionStatus === 'Held' || s.sessionStatus === 'Cancelled' || s.sessionStatus === 'Postponed'
+  );
+
+  // Generate all study dates between start and end
+  const generatedDates: string[] = [];
+  let curr = new Date(start);
+  while (curr <= end) {
+    if (studyDaysNumbers.includes(curr.getDay())) {
+      generatedDates.push(curr.toISOString().split('T')[0]);
+    }
+    curr.setDate(curr.getDate() + 1);
+  }
+
+  // Parse time
+  const start24h = parseSessionTimeTo24h(diploma.sessionTime);
+  const durationHours = getSessionDurationHours(diploma.studyDays);
+  const end24h = addHoursToTime(start24h, durationHours);
+
+  // Re-build the sessions list for this diploma
+  const newSessions: Session[] = [];
+  
+  generatedDates.forEach((dateStr, index) => {
+    // Check if we have a preserved session on this date
+    const existing = preservedSessions.find(s => s.date === dateStr);
+    if (existing) {
+      newSessions.push(existing);
+    } else {
+      // Create a new scheduled session
+      newSessions.push({
+        id: `ses-gen-${diploma.id}-${dateStr}`,
+        diplomaId: diploma.id,
+        title: `المحاضرة رقم ${index + 1}`,
+        instructor: diploma.instructorName || 'غير محدد',
+        date: dateStr,
+        startTime: start24h,
+        endTime: end24h,
+        notes: 'مجدولة تلقائياً بناءً على تاريخ نهاية الدبلومة',
+        attendance: {},
+        sessionStatus: 'Scheduled'
+      });
+    }
+  });
+
+  // Keep preserved sessions that might not fall on the new study days
+  preservedSessions.forEach(ps => {
+    if (!newSessions.some(ns => ns.id === ps.id)) {
+      newSessions.push(ps);
+    }
+  });
+
+  // Sort by date and correct lecture titles sequentially
+  newSessions.sort((a, b) => a.date.localeCompare(b.date));
+  newSessions.forEach((s, idx) => {
+    if (s.title.startsWith('المحاضرة رقم')) {
+      s.title = `المحاضرة رقم ${idx + 1}`;
+    }
+  });
+
+  return [...otherSessions, ...newSessions];
+}
 
 export default function App() {
   // --- Global Application States ---
@@ -226,12 +349,26 @@ export default function App() {
     const loadData = async () => {
       // 1. Load local cache first (personal data) — instant UI
       const loadedDips = loadDiplomas();
+      const activeDipIds = new Set(loadedDips.map(d => d.id));
+
+      const loadedStudents = loadStudents().map(st => ({
+        ...st,
+        diplomaIds: (st.diplomaIds || []).filter(id => activeDipIds.has(id))
+      }));
+      const loadedSessions = loadSessions().filter(s => activeDipIds.has(s.diplomaId));
+      const loadedTasks = loadTasks().filter(t => !t.diplomaId || activeDipIds.has(t.diplomaId));
+
       setDiplomas(loadedDips);
-      setStudents(loadStudents());
-      setSessions(loadSessions());
+      setStudents(loadedStudents);
+      setSessions(loadedSessions);
       setAnnouncements(loadAnnouncements());
-      setTasks(loadTasks());
+      setTasks(loadedTasks);
       setConfig(loadConfig());
+
+      // Save back cleaned data
+      saveStudents(loadedStudents);
+      saveSessions(loadedSessions);
+      saveTasks(loadedTasks);
 
       // Load shared data from local cache
       setDiplomaTypes(loadDiplomaTypes());
@@ -254,33 +391,43 @@ export default function App() {
 
           // --- Personal data from cloud ---
           if (cloudData) {
-            setDiplomas(cloudData.diplomas || []);
-            setStudents(cloudData.students || []);
-            setSessions(cloudData.sessions || []);
+            const cloudDips = cloudData.diplomas || [];
+            const cloudActiveDipIds = new Set(cloudDips.map(d => d.id));
+
+            const cloudStudents = (cloudData.students || []).map(st => ({
+              ...st,
+              diplomaIds: (st.diplomaIds || []).filter(id => cloudActiveDipIds.has(id))
+            }));
+            const cloudSessions = (cloudData.sessions || []).filter(s => cloudActiveDipIds.has(s.diplomaId));
+            const cloudTasks = (cloudData.tasks || []).filter(t => !t.diplomaId || cloudActiveDipIds.has(t.diplomaId));
+
+            setDiplomas(cloudDips);
+            setStudents(cloudStudents);
+            setSessions(cloudSessions);
             setAnnouncements(cloudData.announcements || []);
-            setTasks(cloudData.tasks || []);
+            setTasks(cloudTasks);
             setConfig(cloudData.config || null);
 
             // Cache locally
-            saveDiplomas(cloudData.diplomas || []);
-            saveStudents(cloudData.students || []);
-            saveSessions(cloudData.sessions || []);
+            saveDiplomas(cloudDips);
+            saveStudents(cloudStudents);
+            saveSessions(cloudSessions);
             saveAnnouncements(cloudData.announcements || []);
-            saveTasks(cloudData.tasks || []);
+            saveTasks(cloudTasks);
             if (cloudData.config) saveConfig(cloudData.config);
 
-            if (cloudData.diplomas?.length > 0) {
-              setSelectedDiplomaId(cloudData.diplomas[0].id);
+            if (cloudDips.length > 0) {
+              setSelectedDiplomaId(cloudDips[0].id);
             }
           } else {
             // First time: upload current local/demo data to cloud
             const personalPayload = {
               username: currentUser,
               diplomas: loadedDips,
-              students: loadStudents(),
-              sessions: loadSessions(),
+              students: loadedStudents,
+              sessions: loadedSessions,
               announcements: loadAnnouncements(),
-              tasks: loadTasks(),
+              tasks: loadedTasks,
               config: loadConfig(),
               backupDate: new Date().toISOString()
             };
@@ -494,21 +641,92 @@ export default function App() {
     const newIds = new Set(newDiplomas.map((d) => d.id));
     const removedIds = diplomas.map((d) => d.id).filter((id) => !newIds.has(id));
 
+    // Also detect which diplomas had their studyDays/schedule changed
+    let sessionsUpdated = false;
+    let tasksUpdated = false;
+    let updatedSessions = [...sessions];
+    let updatedTasks = [...tasks];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    newDiplomas.forEach((newDip) => {
+      const oldDip = diplomas.find((d) => d.id === newDip.id);
+      
+      const isNew = !oldDip;
+      const isScheduleChanged = oldDip && (
+        oldDip.startDate !== newDip.startDate ||
+        oldDip.endDate !== newDip.endDate ||
+        oldDip.studyDays !== newDip.studyDays ||
+        oldDip.sessionTime !== newDip.sessionTime ||
+        oldDip.instructorName !== newDip.instructorName
+      );
+
+      if (isNew || isScheduleChanged) {
+        if (newDip.startDate && newDip.endDate && newDip.studyDays) {
+          const generated = generateSessionsForDiploma(newDip, updatedSessions);
+          updatedSessions = generated;
+          sessionsUpdated = true;
+        }
+
+        // Also shift future tasks if study days changed
+        if (oldDip && oldDip.studyDays !== newDip.studyDays) {
+          const newDaysNumbers = getStudyDaysNumbers(newDip.studyDays);
+          if (newDaysNumbers.length > 0) {
+            updatedTasks = updatedTasks.map((t) => {
+              if (t.diplomaId === newDip.id && t.dueDate >= todayStr && t.status !== 'Completed') {
+                const newDate = findNearestStudyDay(t.dueDate, newDaysNumbers);
+                if (newDate !== t.dueDate) {
+                  tasksUpdated = true;
+                  return { ...t, dueDate: newDate };
+                }
+              }
+              return t;
+            });
+          }
+        }
+      }
+    });
+
     setDiplomas(newDiplomas);
     saveDiplomas(newDiplomas);
     syncPersonalToCloud({ diplomas: newDiplomas });
 
+    // Clean up student enrollment references for removed diplomas
+    const cleanedStudents = students.map((st) => {
+      const filtered = (st.diplomaIds || []).filter((id) => !removedIds.includes(id));
+      if (filtered.length !== (st.diplomaIds || []).length) {
+        return { ...st, diplomaIds: filtered };
+      }
+      return st;
+    });
+    const studentsChanged = cleanedStudents.some((st, idx) => st !== students[idx]);
+    if (studentsChanged) {
+      setStudents(cleanedStudents);
+      saveStudents(cleanedStudents);
+      syncPersonalToCloud({ students: cleanedStudents });
+    }
+
     // Cascade delete: remove sessions & tasks linked to removed diplomas
     if (removedIds.length > 0) {
-      const cleanedSessions = sessions.filter((s) => !removedIds.includes(s.diplomaId));
+      const cleanedSessions = updatedSessions.filter((s) => !removedIds.includes(s.diplomaId));
       setSessions(cleanedSessions);
       saveSessions(cleanedSessions);
       syncPersonalToCloud({ sessions: cleanedSessions });
 
-      const cleanedTasks = tasks.filter((t) => !t.diplomaId || !removedIds.includes(t.diplomaId));
+      const cleanedTasks = updatedTasks.filter((t) => !t.diplomaId || !removedIds.includes(t.diplomaId));
       setTasks(cleanedTasks);
       saveTasks(cleanedTasks);
-      syncSharedToCloud({ tasks: cleanedTasks });
+      syncPersonalToCloud({ tasks: cleanedTasks });
+    } else {
+      if (sessionsUpdated) {
+        setSessions(updatedSessions);
+        saveSessions(updatedSessions);
+        syncPersonalToCloud({ sessions: updatedSessions });
+      }
+      if (tasksUpdated) {
+        setTasks(updatedTasks);
+        saveTasks(updatedTasks);
+        syncPersonalToCloud({ tasks: updatedTasks });
+      }
     }
   };
 
