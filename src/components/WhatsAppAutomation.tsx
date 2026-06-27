@@ -623,82 +623,54 @@ export default function WhatsAppAutomation({
     }, 600);
   };
 
-  // Listen for the custom DOM event from the Chrome extension bridge to advance the queue
+  // Listen for messages from the Chrome extension bridge (via window.postMessage)
   useEffect(() => {
-    const handleExtensionSuccess = () => {
-      console.log('[DEBUG] WA_SENT_SUCCESS event received from Chrome extension.');
-      
-      if (whatsappPlatform === 'web' && isAutoSendingRef.current) {
-        // Clear fail-safe timer
-        if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
-        
-        const currentIndex = queueIndexRef.current;
-        const currentQueue = queueRef.current;
-        
-        if (currentIndex < currentQueue.length) {
-          // Mark current item as success
-          setQueue(prev => prev.map((item, idx) => {
-            if (idx === currentIndex) {
-              return { ...item, status: 'success' };
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== 'object') return;
+
+      if (event.data.type === 'WA_EXTENSION_LOADED') {
+        console.log('[WA-Extension] Detected via postMessage!');
+        setExtensionInstalled(true);
+      }
+
+      if (event.data.type === 'WA_SENT_SUCCESS') {
+        console.log('[WA-Extension] WA_SENT_SUCCESS received via postMessage.');
+
+        if (whatsappPlatform === 'web' && isAutoSendingRef.current) {
+          if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
+
+          const currentIndex = queueIndexRef.current;
+          const currentQueue = queueRef.current;
+
+          if (currentIndex < currentQueue.length) {
+            setQueue(prev => prev.map((item, idx) => {
+              if (idx === currentIndex) return { ...item, status: 'success' };
+              return item;
+            }));
+
+            const nextIdx = currentIndex + 1;
+            setQueueIndex(nextIdx);
+
+            if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
+              autoSendTimerRef.current = setTimeout(() => {
+                processCurrentQueueItem();
+              }, 1500);
+            } else {
+              setIsAutoSending(false);
+              setCountdown(null);
             }
-            return item;
-          }));
-
-          const nextIdx = currentIndex + 1;
-          setQueueIndex(nextIdx);
-
-          if (nextIdx < currentQueue.length && isAutoSendingRef.current) {
-            // Wait 1.5 seconds safety margin before opening the next tab
-            autoSendTimerRef.current = setTimeout(() => {
-              processCurrentQueueItem();
-            }, 1500);
-          } else {
-            setIsAutoSending(false);
-            setCountdown(null);
           }
         }
       }
     };
 
-    window.addEventListener('WA_SENT_SUCCESS', handleExtensionSuccess);
+    window.addEventListener('message', handleMessage);
     return () => {
-      window.removeEventListener('WA_SENT_SUCCESS', handleExtensionSuccess);
+      window.removeEventListener('message', handleMessage);
     };
   }, [whatsappPlatform]);
 
-  // Detect if the Chrome extension is installed on mount/loaded
-  useEffect(() => {
-    // Check immediately if already set by the bridge script
-    if ((window as any).isWAExtensionInstalled) {
-      setExtensionInstalled(true);
-      return;
-    }
-
-    // Listen for the WA_EXTENSION_LOADED event dispatched by bridge.js
-    const handleLoaded = () => {
-      console.log('[WA-Extension] Connection established via event!');
-      setExtensionInstalled(true);
-    };
-    window.addEventListener('WA_EXTENSION_LOADED', handleLoaded);
-
-    // Also poll every 500ms for up to 10 seconds in case the event already fired
-    let pollCount = 0;
-    const poll = setInterval(() => {
-      pollCount++;
-      if ((window as any).isWAExtensionInstalled) {
-        console.log('[WA-Extension] Detected via polling!');
-        setExtensionInstalled(true);
-        clearInterval(poll);
-      } else if (pollCount >= 20) { // 20 x 500ms = 10 seconds
-        clearInterval(poll);
-      }
-    }, 500);
-
-    return () => {
-      window.removeEventListener('WA_EXTENSION_LOADED', handleLoaded);
-      clearInterval(poll);
-    };
-  }, []);
+  // Extension detection is now handled inside the postMessage useEffect above
 
   // Toggle Auto-Send Timer
   useEffect(() => {
