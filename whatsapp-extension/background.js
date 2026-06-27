@@ -1,13 +1,10 @@
 // background.js - Service Worker
 console.log("[WA-Extension] Background service worker started.");
 
-// When a WhatsApp tab is created from our CRM, store its ID mapped to the CRM tab ID
-// We use chrome.storage.session to track: { waTabId -> crmTabId }
-
+// Store opener tab mapping: when a new tab is created, record who opened it
 chrome.tabs.onCreated.addListener((tab) => {
-  // When a new tab is created, if it has an opener, record the mapping
   if (tab.openerTabId) {
-    console.log("[WA-Extension] New tab created:", tab.id, "opened by:", tab.openerTabId);
+    console.log("[WA-Extension] New tab:", tab.id, "opened by:", tab.openerTabId);
     chrome.storage.session.set({ [`opener_${tab.id}`]: tab.openerTabId });
   }
 });
@@ -16,8 +13,8 @@ chrome.tabs.onCreated.addListener((tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "wa_automation_done") {
     const waTabId = sender.tab?.id;
-    console.log("[WA-Extension] Automation done signal from tab:", waTabId);
-    
+    console.log("[WA-Extension] Automation done from tab:", waTabId);
+
     if (!waTabId) {
       sendResponse({ ok: false });
       return;
@@ -26,53 +23,77 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Look up which CRM tab opened this WhatsApp tab
     chrome.storage.session.get(`opener_${waTabId}`, (result) => {
       const crmTabId = result[`opener_${waTabId}`];
-      console.log("[WA-Extension] CRM tab ID:", crmTabId);
+      console.log("[WA-Extension] Stored CRM tab ID:", crmTabId);
 
       // Close the WhatsApp tab first
       chrome.tabs.remove(waTabId, () => {
-        console.log("[WA-Extension] WhatsApp tab closed.");
-        
+        if (chrome.runtime.lastError) {
+          console.warn("[WA-Extension] Could not close tab:", chrome.runtime.lastError.message);
+        } else {
+          console.log("[WA-Extension] WhatsApp tab closed.");
+        }
+
+        // Try to notify the stored opener tab first
         if (crmTabId) {
-          // Notify the CRM tab
           chrome.tabs.sendMessage(crmTabId, { action: "wa_sent_success" }, (response) => {
             if (chrome.runtime.lastError) {
-              console.warn("[WA-Extension] Could not notify CRM tab:", chrome.runtime.lastError.message);
-              // Fallback: find localhost tab and notify it
-              notifyAnyLocalhostTab();
+              console.warn("[WA-Extension] Could not notify stored CRM tab:", chrome.runtime.lastError.message);
+              // Fallback: search all CRM tabs
+              notifyCRMTab();
             } else {
-              console.log("[WA-Extension] CRM tab notified successfully.");
+              console.log("[WA-Extension] Notified stored CRM tab successfully.");
             }
           });
         } else {
-          // No stored opener - search for localhost tabs
-          console.log("[WA-Extension] No stored opener. Searching for localhost tab...");
-          notifyAnyLocalhostTab();
+          // No stored opener (COOP severed the reference) - search all CRM tabs
+          console.log("[WA-Extension] No stored opener. Searching all CRM tabs...");
+          notifyCRMTab();
         }
 
-        // Cleanup storage
+        // Cleanup
         chrome.storage.session.remove(`opener_${waTabId}`);
       });
     });
 
     sendResponse({ ok: true });
-    return true; // Keep message channel open for async
+    return true;
   }
 });
 
-function notifyAnyLocalhostTab() {
-  chrome.tabs.query({ url: ["http://localhost/*", "http://127.0.0.1/*"] }, (tabs) => {
-    if (tabs && tabs.length > 0) {
-      tabs.forEach(tab => {
-        chrome.tabs.sendMessage(tab.id, { action: "wa_sent_success" }, () => {
-          if (chrome.runtime.lastError) {
-            console.warn("[WA-Extension] Could not send to tab", tab.id, ":", chrome.runtime.lastError.message);
-          } else {
-            console.log("[WA-Extension] Notified localhost tab:", tab.id);
-          }
-        });
-      });
-    } else {
-      console.warn("[WA-Extension] No localhost tabs found to notify.");
+// Search for any open CRM tab (localhost OR Vercel) and notify it
+function notifyCRMTab() {
+  // Search across all possible CRM URLs
+  const crmPatterns = [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://diploma-crm.vercel.app/*"
+  ];
+
+  chrome.tabs.query({}, (allTabs) => {
+    const crmTabs = allTabs.filter(tab => {
+      const url = tab.url || "";
+      return (
+        url.startsWith("http://localhost") ||
+        url.startsWith("http://127.0.0.1") ||
+        url.startsWith("https://diploma-crm.vercel.app")
+      );
+    });
+
+    console.log("[WA-Extension] Found CRM tabs:", crmTabs.map(t => t.url));
+
+    if (crmTabs.length === 0) {
+      console.warn("[WA-Extension] No CRM tabs found!");
+      return;
     }
+
+    crmTabs.forEach(tab => {
+      chrome.tabs.sendMessage(tab.id, { action: "wa_sent_success" }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn("[WA-Extension] Could not send to tab", tab.id, ":", chrome.runtime.lastError.message);
+        } else {
+          console.log("[WA-Extension] Successfully notified CRM tab:", tab.url);
+        }
+      });
+    });
   });
 }
