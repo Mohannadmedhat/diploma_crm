@@ -32,3 +32,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ ok: true });
   }
 });
+
+// Listen for updates from the CRM page to sync schedules
+window.addEventListener("message", (event) => {
+  if (!event.data || typeof event.data !== 'object') return;
+  
+  if (event.data.type === "SAYED_UPDATE_SCHEDULES") {
+    console.log("[WA-Extension] Bridge received schedules update:", event.data.schedules);
+    chrome.storage.local.set({ scheduledMessages: event.data.schedules });
+  }
+});

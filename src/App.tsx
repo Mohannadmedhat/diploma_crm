@@ -342,6 +342,16 @@ export default function App() {
     return () => clearInterval(interval);
   }, [config?.scheduledMessages]);
 
+  // Sync scheduled messages to the Chrome extension background worker
+  useEffect(() => {
+    if (config?.scheduledMessages) {
+      window.postMessage({
+        type: 'SAYED_UPDATE_SCHEDULES',
+        schedules: config.scheduledMessages
+      }, '*');
+    }
+  }, [config?.scheduledMessages]);
+
   const handleTestAIConnection = async () => {
     if (!tempApiKey.trim()) return;
     setAiError('');

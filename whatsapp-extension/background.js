@@ -9,6 +9,88 @@ chrome.tabs.onCreated.addListener((tab) => {
   }
 });
 
+// Setup background alarms for checking scheduled messages
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create("check_schedules", { periodInMinutes: 0.5 });
+  console.log("[WA-Extension] Registered check_schedules alarm.");
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "check_schedules") {
+    checkDueSchedules();
+  }
+});
+
+function checkDueSchedules() {
+  chrome.storage.local.get(["scheduledMessages", "lastNotifiedScheduleId"], (result) => {
+    const schedules = result.scheduledMessages || [];
+    const lastNotified = result.lastNotifiedScheduleId || "";
+    const now = new Date();
+    
+    const due = schedules.find(s => {
+      if (s.status !== 'pending') return false;
+      const scheduledTime = new Date(s.scheduledAt);
+      const diffMs = now.getTime() - scheduledTime.getTime();
+      // Due if scheduled time is reached, and not older than 15 minutes, and not the last notified one
+      return diffMs >= 0 && diffMs < 15 * 60 * 1000 && s.id !== lastNotified;
+    });
+
+    if (due) {
+      chrome.tabs.query({}, (allTabs) => {
+        const crmOpen = allTabs.some(tab => {
+          const url = tab.url || "";
+          return (
+            url.includes("localhost") ||
+            url.includes("127.0.0.1") ||
+            url.includes("diploma-crm.vercel.app")
+          );
+        });
+
+        // Only notify if CRM tab is closed
+        if (!crmOpen) {
+          console.log("[WA-Extension] Due schedule found and CRM closed, showing notification for:", due.id);
+          chrome.notifications.create(due.id, {
+            type: "basic",
+            iconUrl: "logo.png",
+            title: "سيد | SAYED CRM ⏰",
+            message: `حان موعد إرسال الرسائل المجدولة لدبلوم "${due.diplomaName}". يرجى فتح لوحة التحكم للبدء.`,
+            priority: 2
+          });
+          
+          // Save notified schedule ID so we don't notify again
+          chrome.storage.local.set({ lastNotifiedScheduleId: due.id });
+        }
+      });
+    }
+  });
+}
+
+// When clicking the notification, open/focus CRM tab
+chrome.notifications.onClicked.addListener((notificationId) => {
+  chrome.tabs.query({}, (allTabs) => {
+    const crmTab = allTabs.find(tab => {
+      const url = tab.url || "";
+      return (
+        url.includes("localhost") ||
+        url.includes("127.0.0.1") ||
+        url.includes("diploma-crm.vercel.app")
+      );
+    });
+
+    if (crmTab) {
+      chrome.tabs.update(crmTab.id, { active: true });
+      if (crmTab.windowId) {
+        chrome.windows.update(crmTab.windowId, { focused: true });
+      }
+    } else {
+      // Default fallback link
+      chrome.tabs.create({ url: "https://diploma-crm.vercel.app/" });
+    }
+  });
+  
+  chrome.notifications.clear(notificationId);
+});
+
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "wa_automation_done") {
@@ -62,20 +144,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Search for any open CRM tab (localhost OR Vercel) and notify it
 function notifyCRMTab() {
-  // Search across all possible CRM URLs
-  const crmPatterns = [
-    "http://localhost/*",
-    "http://127.0.0.1/*",
-    "https://diploma-crm.vercel.app/*"
-  ];
-
   chrome.tabs.query({}, (allTabs) => {
     const crmTabs = allTabs.filter(tab => {
       const url = tab.url || "";
       return (
-        url.startsWith("http://localhost") ||
-        url.startsWith("http://127.0.0.1") ||
-        url.startsWith("https://diploma-crm.vercel.app")
+        url.includes("localhost") ||
+        url.includes("127.0.0.1") ||
+        url.includes("diploma-crm.vercel.app")
       );
     });
 
