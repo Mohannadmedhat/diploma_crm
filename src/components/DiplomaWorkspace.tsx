@@ -515,6 +515,31 @@ export default function DiplomaWorkspace({
   const [requiredAttendanceRateForm, setRequiredAttendanceRateForm] = useState<number>(diploma?.requiredAttendanceRate ?? 75);
   const [allowedAbsencesForm, setAllowedAbsencesForm] = useState<number>(diploma?.allowedAbsences ?? 3);
 
+  // Dynamic calculator helpers
+  const handleAllowedAbsencesChange = (absences: number) => {
+    setAllowedAbsencesForm(absences);
+    if (numberOfSessionsPlanned > 0) {
+      const calculatedRate = Math.max(0, Math.round(((numberOfSessionsPlanned - absences) / numberOfSessionsPlanned) * 100));
+      setRequiredAttendanceRateForm(calculatedRate);
+    }
+  };
+
+  const handleRequiredRateChange = (rate: number) => {
+    setRequiredAttendanceRateForm(rate);
+    if (numberOfSessionsPlanned > 0) {
+      const calculatedAbsences = Math.max(0, Math.round(numberOfSessionsPlanned * (1 - rate / 100)));
+      setAllowedAbsencesForm(calculatedAbsences);
+    }
+  };
+
+  const handlePlannedSessionsChange = (planned: number) => {
+    setNumberOfSessionsPlanned(planned);
+    if (planned > 0) {
+      const calculatedAbsences = Math.max(0, Math.round(planned * (1 - requiredAttendanceRateForm / 100)));
+      setAllowedAbsencesForm(calculatedAbsences);
+    }
+  };
+
   const handleUpdateDiplomaSettings = (e: React.FormEvent) => {
     e.preventDefault();
     const updatedDiplomas = diplomas.map(d => {
@@ -2164,64 +2189,90 @@ export default function DiplomaWorkspace({
                   </div>
                 </div>
 
-                {/* Integration URLs */}
-                <div className="space-y-2 bg-zinc-950/40 p-3 rounded-lg border border-zinc-900 text-xs">
-                  <span className="font-bold text-zinc-300 block">روابط وقنوات التزامن والتعليم:</span>
+                {/* Integration URLs Grid */}
+                <div className="space-y-3 bg-[#0B0B0E] p-5 rounded-2xl border border-zinc-900 text-xs">
+                  <div className="flex items-center gap-2 border-b border-zinc-900 pb-2.5">
+                    <Link className="w-4 h-4 text-indigo-400" />
+                    <span className="font-bold text-zinc-200">روابط وقنوات التزامن والتعليم المعتمدة</span>
+                  </div>
                   
-                  <div className="space-y-2">
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">رابط نموذج الحضور (Google Form URL):</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    {/* Google Form */}
+                    <div className="bg-[#050508]/80 border border-zinc-900 hover:border-purple-900/30 rounded-xl p-3.5 space-y-2 focus-within:border-purple-650 transition-all font-sans">
+                      <div className="flex items-center gap-2 text-[10px] text-purple-400 font-bold">
+                        <span className="w-6 h-6 rounded-lg bg-purple-950/20 flex items-center justify-center border border-purple-900/20 text-xs">📋</span>
+                        <span>رابط نموذج الحضور للطلاب (Google Form):</span>
+                      </div>
                       <input
                         type="url"
                         value={linkForm}
                         onChange={(e) => setLinkForm(e.target.value)}
-                        className="w-full px-3 py-1 bg-[#0A0A0A] border border-zinc-900 text-zinc-300 rounded text-left font-sans outline-hidden"
+                        placeholder="https://docs.google.com/forms/..."
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 focus:border-purple-900/40 text-xs text-zinc-300 rounded-lg outline-hidden text-left"
                         dir="ltr"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">رابط جدول تدوينات الردود المرفق (Google Sheet URL (CSV)):</label>
+                    {/* Google Sheet */}
+                    <div className="bg-[#050508]/80 border border-zinc-900 hover:border-emerald-900/30 rounded-xl p-3.5 space-y-2 focus-within:border-emerald-650 transition-all font-sans">
+                      <div className="flex items-center gap-2 text-[10px] text-emerald-400 font-bold">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-950/20 flex items-center justify-center border border-emerald-900/20 text-xs">📊</span>
+                        <span>رابط شيت الحضور المرفق (Google Sheet):</span>
+                      </div>
                       <input
                         type="url"
                         value={linkSheet}
                         onChange={(e) => setLinkSheet(e.target.value)}
-                        className="w-full px-3 py-1 bg-[#0A0A0A] border border-zinc-900 text-zinc-305 rounded text-left font-sans outline-hidden"
+                        placeholder="https://docs.google.com/spreadsheets/..."
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 focus:border-emerald-900/40 text-xs text-zinc-300 rounded-lg outline-hidden text-left"
                         dir="ltr"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">مجموعة واتساب المحادثات للطلاب (WhatsApp Group URL):</label>
+                    {/* WhatsApp Group */}
+                    <div className="bg-[#050508]/80 border border-zinc-900 hover:border-green-900/30 rounded-xl p-3.5 space-y-2 focus-within:border-green-650 transition-all font-sans">
+                      <div className="flex items-center gap-2 text-[10px] text-green-400 font-bold">
+                        <span className="w-6 h-6 rounded-lg bg-green-950/20 flex items-center justify-center border border-green-900/20 text-xs">💬</span>
+                        <span>مجموعة واتساب الطلابية (WhatsApp Group):</span>
+                      </div>
                       <input
                         type="url"
                         value={linkWhatsapp}
                         onChange={(e) => setLinkWhatsapp(e.target.value)}
-                        className="w-full px-3 py-1 bg-[#0A0A0A] border border-zinc-900 text-zinc-305 rounded text-left font-sans outline-hidden"
+                        placeholder="https://chat.whatsapp.com/..."
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 focus:border-green-900/40 text-xs text-zinc-300 rounded-lg outline-hidden text-left"
                         dir="ltr"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">رابط مجلد الحقيبة والملفات (Google Drive / Doc URL):</label>
+                    {/* Google Drive */}
+                    <div className="bg-[#050508]/80 border border-zinc-900 hover:border-blue-900/30 rounded-xl p-3.5 space-y-2 focus-within:border-blue-650 transition-all font-sans">
+                      <div className="flex items-center gap-2 text-[10px] text-blue-400 font-bold">
+                        <span className="w-6 h-6 rounded-lg bg-blue-955 flex items-center justify-center border border-blue-900/20 text-xs">📁</span>
+                        <span>رابط مجلد الحقيبة والملفات (Google Drive):</span>
+                      </div>
                       <input
                         type="url"
                         value={linkDrive}
                         onChange={(e) => setLinkDrive(e.target.value)}
                         placeholder="https://drive.google.com/..."
-                        className="w-full px-3 py-1 bg-[#0A0A0A] border border-zinc-900 text-zinc-305 rounded text-left font-sans outline-hidden"
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 focus:border-blue-900/40 text-xs text-zinc-300 rounded-lg outline-hidden text-left"
                         dir="ltr"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">رابط الفصول التفاعلية (Google Classroom URL):</label>
+                    {/* Google Classroom */}
+                    <div className="bg-[#050508]/80 border border-zinc-900 hover:border-teal-900/30 rounded-xl p-3.5 space-y-2 focus-within:border-teal-650 transition-all font-sans col-span-1 sm:col-span-2">
+                      <div className="flex items-center gap-2 text-[10px] text-teal-400 font-bold">
+                        <span className="w-6 h-6 rounded-lg bg-teal-950/20 flex items-center justify-center border border-teal-900/20 text-xs">🏫</span>
+                        <span>رابط الفصول التفاعلية (Google Classroom):</span>
+                      </div>
                       <input
                         type="url"
                         value={linkClassroom}
                         onChange={(e) => setLinkClassroom(e.target.value)}
                         placeholder="https://classroom.google.com/..."
-                        className="w-full px-3 py-1 bg-[#0A0A0A] border border-zinc-900 text-zinc-305 rounded text-left font-sans outline-hidden"
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 focus:border-teal-900/40 text-xs text-zinc-300 rounded-lg outline-hidden text-left"
                         dir="ltr"
                       />
                     </div>
@@ -2229,115 +2280,137 @@ export default function DiplomaWorkspace({
                 </div>
 
                 {/* Local Attendance Rules */}
-                <div className="bg-zinc-950/40 p-3 rounded-lg border border-zinc-900 text-xs space-y-3">
-                  <span className="font-bold text-zinc-300 block">شروط وأرقام الأهلية والتشغيل (Section 8 Settings):</span>
+                <div className="bg-[#0B0B0E] p-5 rounded-2xl border border-zinc-900 text-xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-zinc-900 pb-2.5">
+                    <Sliders className="w-4 h-4 text-indigo-400" />
+                    <span className="font-bold text-zinc-200">شروط وأرقام الأهلية والتشغيل الأكاديمي</span>
+                  </div>
                   
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">محاضرات مخططة:</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Planned Sessions */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] text-zinc-400 font-bold">عدد المحاضرات المخططة للدبلومة:</label>
                       <input
                         type="number"
                         min={1}
                         value={numberOfSessionsPlanned}
-                        onChange={(e) => setNumberOfSessionsPlanned(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-[#0A0A0A] border border-zinc-900 text-zinc-205 rounded text-center outline-hidden"
+                        onChange={(e) => handlePlannedSessionsChange(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 text-zinc-105 rounded-lg text-center font-sans font-bold outline-hidden"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <div>
-                        <label className="block text-[10px] text-zinc-500 mb-1">نمط أيام الدراسة الأسبوعية:</label>
-                        <select
-                          value={presetId}
-                          onChange={(e) => {
-                            const pId = e.target.value;
-                            setPresetId(pId);
-                            if (pId !== 'custom') {
-                              const preset = STUDY_DAYS_PRESETS.find(p => p.id === pId);
-                              if (preset) {
-                                setSelectedDays(preset.days);
-                              }
-                            }
-                          }}
-                          className="w-full px-3 py-1.5 bg-[#0A0A0A] border border-zinc-900 text-zinc-205 rounded outline-hidden cursor-pointer text-right"
-                        >
-                          {STUDY_DAYS_PRESETS.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.labelEn} ({p.labelAr})
-                            </option>
-                          ))}
-                          <option value="custom">أيام مخصصة (تحديد يدوي)...</option>
-                        </select>
-                      </div>
-
-                      {presetId === 'custom' && (
-                        <div>
-                          <label className="block text-[10px] text-zinc-500 mb-2">اختر الأيام المخصصة:</label>
-                          <div className="flex flex-wrap gap-1.5 justify-end">
-                            {ALL_WEEK_DAYS.map(day => (
-                              <button
-                                key={day}
-                                type="button"
-                                onClick={() => toggleDay(day)}
-                                className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
-                                  selectedDays.includes(day)
-                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
-                                    : 'bg-[#0A0A0A] border-zinc-900 text-zinc-500 hover:border-zinc-700 hover:text-zinc-350'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">وقت وتوقيت البث:</label>
-                      <input
-                        type="text"
-                        value={sessionTime}
-                        onChange={(e) => setSessionTime(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-[#0A0A0A] border border-zinc-900 text-zinc-205 rounded outline-hidden text-right"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">مقر ومكان التدريس:</label>
+                    {/* Study Location */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] text-zinc-400 font-bold">مقر ومكان التدريس (أونلاين / حضوري):</label>
                       <input
                         type="text"
                         value={studyLocation}
                         onChange={(e) => setStudyLocation(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-[#0A0A0A] border border-zinc-900 text-zinc-205 rounded outline-hidden text-right"
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 text-zinc-200 rounded-lg text-right font-sans outline-hidden"
                       />
+                    </div>
+
+                    {/* Lecture Time */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] text-zinc-400 font-bold">موعد وتوقيت البث (المحاضرة):</label>
+                      <input
+                        type="text"
+                        value={sessionTime}
+                        onChange={(e) => setSessionTime(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 text-zinc-200 rounded-lg text-right font-sans outline-hidden"
+                      />
+                    </div>
+
+                    {/* Study Days Preset */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] text-zinc-400 font-bold">نمط أيام الدراسة الأسبوعية:</label>
+                      <select
+                        value={presetId}
+                        onChange={(e) => {
+                          const pId = e.target.value;
+                          setPresetId(pId);
+                          if (pId !== 'custom') {
+                            const preset = STUDY_DAYS_PRESETS.find(p => p.id === pId);
+                            if (preset) {
+                              setSelectedDays(preset.days);
+                            }
+                          }
+                        }}
+                        className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 text-zinc-205 rounded-lg outline-hidden cursor-pointer text-right font-sans"
+                      >
+                        {STUDY_DAYS_PRESETS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.labelEn} ({p.labelAr})
+                          </option>
+                        ))}
+                        <option value="custom">أيام مخصصة (تحديد يدوي)...</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">الحد الأدنى الأكاديمي للحضور (%):</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={requiredAttendanceRateForm}
-                        onChange={(e) => setRequiredAttendanceRateForm(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-[#0A0A0A] border border-zinc-900 text-zinc-205 rounded text-center outline-hidden"
-                      />
+                  {/* Custom Days Selector */}
+                  {presetId === 'custom' && (
+                    <div className="bg-[#050508]/80 border border-zinc-900 p-3.5 rounded-xl space-y-2">
+                      <label className="block text-[10px] text-zinc-455 font-bold">اختر الأيام الدراسية الأسبوعية المخصصة:</label>
+                      <div className="flex flex-wrap gap-2 justify-end font-sans">
+                        {ALL_WEEK_DAYS.map(day => {
+                          const active = selectedDays.includes(day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => toggleDay(day)}
+                              className={`px-3.5 py-1.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer shadow-sm ${
+                                active
+                                  ? 'bg-gradient-to-r from-violet-600 to-indigo-650 border-violet-500 text-white shadow-violet-500/10'
+                                  : 'bg-[#08080C] border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attendance Eligibility & Smart Calculator Block */}
+                  <div className="bg-[#050508]/80 border border-zinc-900 p-4 rounded-xl space-y-4">
+                    <span className="block text-[10px] text-zinc-400 font-bold border-b border-zinc-900 pb-1.5">شروط احتساب الحضور والغياب الأكاديمي</span>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Allowed Absences */}
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-zinc-400 font-bold">الغيابات المسموحة كحد أقصى:</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={allowedAbsencesForm}
+                          onChange={(e) => handleAllowedAbsencesChange(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 text-zinc-205 rounded-lg text-center font-sans font-bold outline-hidden"
+                        />
+                      </div>
+
+                      {/* Required Attendance Rate */}
+                      <div className="space-y-1">
+                        <label className="block text-[10px] text-zinc-400 font-bold">الحد الأدنى الأكاديمي للحضور (%):</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={requiredAttendanceRateForm}
+                          onChange={(e) => handleRequiredRateChange(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-[#08080C] border border-zinc-800 text-zinc-205 rounded-lg text-center font-sans font-bold outline-hidden"
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">الغيابات المسموحة كحد أقصى:</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={allowedAbsencesForm}
-                        onChange={(e) => setAllowedAbsencesForm(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-[#0A0A0A] border border-zinc-900 text-zinc-205 rounded text-center outline-hidden"
-                      />
+                    {/* Dynamic Calculation Notice Card */}
+                    <div className="p-3 bg-indigo-950/20 border border-indigo-900/30 rounded-xl text-[10px] text-indigo-400 font-sans leading-relaxed text-right flex items-start gap-2">
+                      <span className="text-sm shrink-0 leading-none">💡</span>
+                      <span>
+                        حسب المعايير المدخلة: غياب <strong>{allowedAbsencesForm}</strong> محاضرة من أصل <strong>{numberOfSessionsPlanned}</strong> محاضرة مخططة يمثل نسبة غياب قدرها <strong>{numberOfSessionsPlanned > 0 ? Math.round((allowedAbsencesForm / numberOfSessionsPlanned) * 100) : 0}%</strong>. وبالتالي، يتطلب من الطالب نسبة حضور لا تقل عن <strong>{requiredAttendanceRateForm}%</strong> لتجنب الحرمان.
+                      </span>
                     </div>
                   </div>
                 </div>

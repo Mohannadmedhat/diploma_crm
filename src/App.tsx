@@ -1232,22 +1232,38 @@ export default function App() {
                 )}
 
                 {activeTab === 'ai-assistant' && (
-                  <AIAssistant
-                    currentUser={currentUser}
-                    students={students}
-                    diplomas={diplomas}
-                    sessions={sessions}
-                    tasks={tasks}
-                    config={config}
-                    instructors={instructors}
-                    diplomaTypes={diplomaTypes}
-                    onNavigateToSettings={() => setActiveTab('settings')}
-                    onSaveDiplomas={handleSaveDiplomas}
-                    onSaveStudents={handleSaveStudents}
-                    onSaveSessions={handleSaveSessions}
-                    onSaveTasks={handleSaveTasks}
-                    onSaveConfig={handleSaveConfig}
-                  />
+                  <div className="bg-[#0B0B0E] p-8 rounded-2xl border border-zinc-900 text-right space-y-6 max-w-2xl mx-auto font-sans shadow-xl">
+                    <div className="w-16 h-16 rounded-2xl bg-indigo-950/40 border border-indigo-900/30 flex items-center justify-center text-indigo-400 mx-auto animate-bounce">
+                      <Sparkles className="w-8 h-8" />
+                    </div>
+                    <div className="space-y-2 text-center">
+                      <h2 className="text-lg font-black text-white">مساعد سيد الذكي العائم نشط الآن 🤖</h2>
+                      <p className="text-xs text-zinc-400 leading-relaxed max-w-md mx-auto">
+                        لقد قمنا بترقية المساعد الذكي ليصبح عائماً بالكامل! يمكنك الآن استخدامه من أي شاشة أو مساحة عمل داخل النظام دون أن تفقد مكانك.
+                      </p>
+                    </div>
+
+                    <div className="bg-[#050508]/60 border border-zinc-900 p-4 rounded-xl space-y-3 text-xs leading-relaxed text-zinc-350">
+                      <span className="font-bold text-indigo-400 block">⚡ ماذا يمكنك أن تفعل به؟</span>
+                      <ul className="space-y-1.5 pr-4 list-disc list-inside">
+                        <li>توليد شهادات تخرّج احترافية بالإنجليزية فوراً.</li>
+                        <li>جدولة تذكيرات المحاضرات ورسائل الغياب التلقائية على الواتساب.</li>
+                        <li>تلخيص المهام التشغيلية وقوائم العمل اليومية للمنسقين.</li>
+                        <li>جدولة المحاضرات وتوليد السجلات الأكاديمية بنقرة زر.</li>
+                      </ul>
+                    </div>
+
+                    <div className="flex justify-center pt-2">
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('TOGGLE_SAYED_AI'));
+                        }}
+                        className="px-6 py-3 bg-indigo-650 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                      >
+                        افتح لوحة المحادثة العائمة الآن 💬
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {activeTab === 'settings' && (
@@ -1403,6 +1419,27 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {/* Global Floating AI Copilot Assistant */}
+      <AIAssistant
+        currentUser={currentUser}
+        students={students}
+        diplomas={diplomas}
+        sessions={sessions}
+        tasks={tasks}
+        config={config}
+        instructors={instructors}
+        diplomaTypes={diplomaTypes}
+        onNavigateToSettings={() => {
+          setActiveTab('settings');
+          window.dispatchEvent(new CustomEvent('TOGGLE_SAYED_AI')); // Close chat after routing
+        }}
+        onSaveDiplomas={handleSaveDiplomas}
+        onSaveStudents={handleSaveStudents}
+        onSaveSessions={handleSaveSessions}
+        onSaveTasks={handleSaveTasks}
+        onSaveConfig={handleSaveConfig}
+      />
 
     </div>
   );
