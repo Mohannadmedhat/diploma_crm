@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mentor, Diploma } from '../types';
+import { Mentor, Diploma, Session } from '../types';
 import { User, Plus, Edit2, Trash2, ShieldAlert, Phone, Mail, Award, BookOpen, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -8,9 +8,10 @@ interface MentorsProps {
   onSaveMentors: (mentors: Mentor[]) => void;
   isAdmin?: boolean;
   diplomas: Diploma[];
+  sessions: Session[];
 }
 
-export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false, diplomas }: MentorsProps) {
+export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false, diplomas, sessions }: MentorsProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -20,6 +21,8 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
   const [email, setEmail] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
+  const [hourlyRate, setHourlyRate] = useState<number | ''>('');
+  const [rating, setRating] = useState<number>(5);
   const [error, setError] = useState('');
 
   const handleStartAdd = () => {
@@ -29,6 +32,8 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
     setEmail('');
     setSpecialty('');
     setStatus('Active');
+    setHourlyRate('');
+    setRating(5);
     setShowForm(true);
     setError('');
   };
@@ -40,6 +45,8 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
     setEmail(ment.email);
     setSpecialty(ment.specialty || '');
     setStatus(ment.status);
+    setHourlyRate(ment.hourlyRate !== undefined ? ment.hourlyRate : '');
+    setRating(ment.rating !== undefined ? ment.rating : 5);
     setShowForm(true);
     setError('');
   };
@@ -63,7 +70,9 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
       phone: phone.trim(),
       email: email.trim(),
       specialty: specialty.trim() || undefined,
-      status: status
+      status: status,
+      hourlyRate: hourlyRate !== '' ? Number(hourlyRate) : undefined,
+      rating: Number(rating)
     };
 
     let updatedList: Mentor[];
@@ -211,6 +220,38 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
                   className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-teal-500 text-xs text-zinc-100 rounded-lg outline-hidden text-left font-sans"
                   dir="ltr"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
+                  سعر ساعة الإشراف/التدريب المقدرة (EGP)
+                </label>
+                <input
+                  type="number"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(e.target.value !== '' ? Number(e.target.value) : '')}
+                  placeholder="مثال: 150"
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-teal-500 text-xs text-zinc-100 rounded-lg outline-hidden text-right font-sans font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
+                  تقييم الأداء الحالي (من 1 إلى 5)
+                </label>
+                <select
+                  value={rating}
+                  onChange={(e) => setRating(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-teal-500 text-xs text-zinc-300 rounded-lg outline-hidden cursor-pointer"
+                >
+                  <option value="5">⭐⭐⭐⭐⭐ (ممتاز - 5)</option>
+                  <option value="4">⭐⭐⭐⭐ (جيد جداً - 4)</option>
+                  <option value="3">⭐⭐⭐ (جيد - 3)</option>
+                  <option value="2">⭐⭐ (مقبول - 2)</option>
+                  <option value="1">⭐ (ضعيف - 1)</option>
+                </select>
               </div>
             </div>
 

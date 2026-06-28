@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Instructor, Diploma } from '../types';
+import { Instructor, Diploma, Session } from '../types';
 import { User, Plus, Edit2, Trash2, ShieldAlert, Phone, Mail, Award, BookOpen, ExternalLink, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -8,9 +8,10 @@ interface InstructorsProps {
   onSaveInstructors: (instructors: Instructor[]) => void;
   isAdmin?: boolean;
   diplomas: Diploma[];
+  sessions: Session[];
 }
 
-export default function InstructorsManager({ instructors, onSaveInstructors, isAdmin = false, diplomas }: InstructorsProps) {
+export default function InstructorsManager({ instructors, onSaveInstructors, isAdmin = false, diplomas, sessions }: InstructorsProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -20,6 +21,8 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
   const [email, setEmail] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
+  const [hourlyRate, setHourlyRate] = useState<number | ''>('');
+  const [rating, setRating] = useState<number>(5);
   const [error, setError] = useState('');
 
   const handleStartAdd = () => {
@@ -29,6 +32,8 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
     setEmail('');
     setSpecialty('');
     setStatus('Active');
+    setHourlyRate('');
+    setRating(5);
     setShowForm(true);
     setError('');
   };
@@ -40,6 +45,8 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
     setEmail(inst.email);
     setSpecialty(inst.specialty || '');
     setStatus(inst.status);
+    setHourlyRate(inst.hourlyRate !== undefined ? inst.hourlyRate : '');
+    setRating(inst.rating !== undefined ? inst.rating : 5);
     setShowForm(true);
     setError('');
   };
@@ -63,7 +70,9 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
       phone: phone.trim(),
       email: email.trim(),
       specialty: specialty.trim() || undefined,
-      status: status
+      status: status,
+      hourlyRate: hourlyRate !== '' ? Number(hourlyRate) : undefined,
+      rating: Number(rating)
     };
 
     let updatedList: Instructor[];
@@ -214,6 +223,38 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
+                  سعر ساعة التدريس المقدرة (EGP)
+                </label>
+                <input
+                  type="number"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(e.target.value !== '' ? Number(e.target.value) : '')}
+                  placeholder="مثال: 250"
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-right font-sans font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
+                  تقييم الأداء الحالي (من 1 إلى 5)
+                </label>
+                <select
+                  value={rating}
+                  onChange={(e) => setRating(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-[#050508] border border-zinc-800 focus:border-indigo-500 text-xs text-zinc-300 rounded-lg outline-hidden cursor-pointer"
+                >
+                  <option value="5">⭐⭐⭐⭐⭐ (ممتاز - 5)</option>
+                  <option value="4">⭐⭐⭐⭐ (جيد جداً - 4)</option>
+                  <option value="3">⭐⭐⭐ (جيد - 3)</option>
+                  <option value="2">⭐⭐ (مقبول - 2)</option>
+                  <option value="1">⭐ (ضعيف - 1)</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-[10px] font-bold text-zinc-400 mb-1.5">
                 حالة المحاضر الحالية
@@ -268,6 +309,21 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
         {instructors.map((ins) => {
           const instructorDips = diplomas.filter(d => d.instructorId === ins.id);
           const activeDips = instructorDips.filter(d => d.status === 'Active');
+
+          const instructorDipIds = instructorDips.map(d => d.id);
+          const instructorSessions = sessions.filter(s => instructorDipIds.includes(s.diplomaId) || s.instructor === ins.name);
+          const totalHours = instructorSessions.reduce((sum, s) => {
+            if (!s.startTime || !s.endTime) return sum + 2;
+            try {
+              const [sh, sm] = s.startTime.split(':').map(Number);
+              const [eh, em] = s.endTime.split(':').map(Number);
+              const diffMin = (eh * 60 + em) - (sh * 60 + sm);
+              return sum + (diffMin > 0 ? diffMin / 60 : 2);
+            } catch (e) {
+              return sum + 2;
+            }
+          }, 0);
+          const totalEarnings = totalHours * (ins.hourlyRate || 0);
 
           return (
             <div
@@ -332,6 +388,39 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                         : 'لا توجد دبلومات نشطة حالياً'
                       }
                     </span>
+                  </div>
+
+                  {/* Financial & Performance Stats */}
+                  <div className="mt-3.5 pt-2.5 border-t border-zinc-900 grid grid-cols-2 gap-2 text-[10px] font-sans">
+                    <div className="p-2 bg-zinc-950/50 border border-zinc-900 rounded-lg">
+                      <span className="text-zinc-500 block text-[9px]">سعر الساعة:</span>
+                      <span className="text-zinc-200 font-bold font-mono">
+                        {ins.hourlyRate !== undefined ? `${ins.hourlyRate} EGP` : 'غير محدد'}
+                      </span>
+                    </div>
+                    <div className="p-2 bg-zinc-950/50 border border-zinc-900 rounded-lg">
+                      <span className="text-zinc-500 block text-[9px]">مستحقات المحاضر:</span>
+                      <span className="text-emerald-400 font-bold font-mono">
+                        {totalEarnings > 0 ? `${totalEarnings.toLocaleString()} EGP` : '0 EGP'}
+                      </span>
+                    </div>
+                    <div className="p-2 bg-zinc-950/50 border border-zinc-900 rounded-lg">
+                      <span className="text-zinc-500 block text-[9px]">إجمالي الساعات:</span>
+                      <span className="text-zinc-200 font-bold font-mono">{totalHours.toFixed(1)} ساعة</span>
+                    </div>
+                    <div className="p-2 bg-zinc-950/50 border border-zinc-900 rounded-lg">
+                      <span className="text-zinc-500 block text-[9px]">المحاضرات المنجزة:</span>
+                      <span className="text-indigo-400 font-bold font-mono">{instructorSessions.length} محاضرة</span>
+                    </div>
+                  </div>
+
+                  {/* Rating Badge */}
+                  <div className="mt-2.5 flex items-center justify-between text-[10px] bg-zinc-950/30 border border-zinc-900 p-1.5 px-2.5 rounded-lg">
+                    <span className="text-zinc-500 font-bold">تقييم أداء المحاضر:</span>
+                    <div className="flex items-center gap-0.5 text-amber-500 font-bold font-mono">
+                      <span>{ins.rating || 5}</span>
+                      <span className="text-xs">★</span>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -1205,6 +1205,7 @@ export default function App() {
                             onSaveInstructors={handleSaveInstructors}
                             isAdmin={isAdmin}
                             diplomas={diplomas}
+                            sessions={sessions}
                           />
                         ) : (
                           <MentorsManager
@@ -1212,6 +1213,7 @@ export default function App() {
                             onSaveMentors={handleSaveMentors}
                             isAdmin={isAdmin}
                             diplomas={diplomas}
+                            sessions={sessions}
                           />
                         )}
                       </div>

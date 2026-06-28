@@ -13,6 +13,8 @@ export interface Instructor {
   email: string;
   status: 'Active' | 'Inactive';
   specialty?: string;
+  hourlyRate?: number;
+  rating?: number;
 }
 
 export interface Mentor {
@@ -22,6 +24,8 @@ export interface Mentor {
   email: string;
   status: 'Active' | 'Inactive';
   specialty?: string;
+  hourlyRate?: number;
+  rating?: number;
 }
 
 export interface Diploma {
