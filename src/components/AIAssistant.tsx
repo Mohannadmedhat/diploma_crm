@@ -35,6 +35,7 @@ interface AIAssistantProps {
   onSaveSessions: (data: Session[]) => void;
   onSaveTasks: (data: Task[]) => void;
   onSaveConfig: (data: AppConfig) => void;
+  mode?: 'floating' | 'embedded';
 }
 
 interface ChatMessage {
@@ -90,10 +91,17 @@ export default function AIAssistant({
   onSaveStudents,
   onSaveSessions,
   onSaveTasks,
-  onSaveConfig
+  onSaveConfig,
+  mode = 'floating'
 }: AIAssistantProps) {
   const [editedParams, setEditedParams] = useState<any>({});
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(mode === 'embedded');
+
+  useEffect(() => {
+    if (mode === 'embedded') {
+      setIsOpen(true);
+    }
+  }, [mode]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1055,35 +1063,41 @@ ${crmContext}
   return (
     <>
       {/* Floating Trigger Button */}
-      <div className="fixed bottom-6 right-6 z-[9999] print:hidden select-none font-sans">
-        <button
-          onClick={() => setIsOpen(prev => !prev)}
-          className={`w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-650 to-purple-650 hover:from-indigo-600 hover:to-purple-600 text-white flex items-center justify-center cursor-pointer shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 border border-indigo-400/20 relative group`}
-          title="مساعد سيد الذكي"
-        >
-          {isOpen ? (
-            <X className="w-5 h-5" />
-          ) : (
-            <div className="relative">
-              <Sparkles className="w-5 h-5 text-white group-hover:animate-pulse" />
-              <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-550"></span>
-              </span>
-            </div>
-          )}
-        </button>
-      </div>
+      {mode === 'floating' && (
+        <div className="fixed bottom-6 right-6 z-[9999] print:hidden select-none font-sans">
+          <button
+            onClick={() => setIsOpen(prev => !prev)}
+            className={`w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-650 to-purple-650 hover:from-indigo-600 hover:to-purple-600 text-white flex items-center justify-center cursor-pointer shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 border border-indigo-400/20 relative group`}
+            title="مساعد سيد الذكي"
+          >
+            {isOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <div className="relative">
+                <Sparkles className="w-5 h-5 text-white group-hover:animate-pulse" />
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-550"></span>
+                </span>
+              </div>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Floating Expandable Chat Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            initial={mode === 'floating' ? { opacity: 0, y: 30, scale: 0.95 } : { opacity: 1, y: 0, scale: 1 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            exit={mode === 'floating' ? { opacity: 0, y: 30, scale: 0.95 } : undefined}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed bottom-24 right-6 z-[9999] w-96 h-[550px] bg-[#0A0A0D]/95 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-md font-sans text-right select-none"
+            className={
+              mode === 'embedded'
+                ? "w-full h-[75vh] bg-[#0A0A0D]/55 border border-zinc-800 rounded-2xl flex flex-col overflow-hidden text-right font-sans"
+                : "fixed bottom-24 right-6 z-[9999] w-[450px] h-[600px] bg-[#0A0A0D]/95 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-md font-sans text-right select-none"
+            }
             dir="rtl"
           >
             {/* Header of Chatbox */}
@@ -1111,13 +1125,15 @@ ${crmContext}
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-500 hover:text-white transition-all cursor-pointer"
-                  title="تصغير"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                {mode === 'floating' && (
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-500 hover:text-white transition-all cursor-pointer"
+                    title="تصغير"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
