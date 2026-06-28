@@ -57,6 +57,24 @@ export interface Diploma {
   studyLocation?: string; // e.g. "المنصة أونلاين"
   requiredAttendanceRate?: number; // e.g. 75
   allowedAbsences?: number; // e.g. 3
+  assignments?: Assignment[];
+}
+
+export interface AssignmentSubmission {
+  submitted: boolean;
+  submittedAt?: string;
+  grade?: number;
+  notes?: string;
+}
+
+export interface Assignment {
+  id: string;
+  diplomaId: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  maxGrade: number;
+  submissions: Record<string, AssignmentSubmission>;
 }
 
 export interface DiplomaTemplate {
