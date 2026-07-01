@@ -1737,59 +1737,92 @@ export default function OperationsDashboard({
       {/* --- MODAL 5: RECORD STUDENT PAYMENT --- */}
       <AnimatePresence>
         {activePaymentStudent && (
-          <div className="fixed inset-0 z-50 bg-[#000]/60 flex items-center justify-center p-4 backdrop-blur-xs select-none">
+          <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-md select-none">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#0f0f11] border border-zinc-800 rounded-2xl p-5 w-full max-w-md text-right space-y-4 shadow-2xl"
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-gradient-to-br from-[#121216] to-[#0a0a0c] border border-zinc-800/80 rounded-2xl p-6 w-full max-w-md text-right space-y-5 shadow-2xl"
               dir="rtl"
             >
-              <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
-                <span className="text-xs font-black text-emerald-400 flex items-center gap-1 font-sans">
-                  <Coins className="w-4 h-4 text-emerald-500" />
-                  رصد وتحصيل دفعة مالية جديدة للطالب
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
+                <span className="text-sm font-bold text-emerald-400 flex items-center gap-2 font-sans">
+                  <Coins className="w-5 h-5 text-emerald-500 animate-pulse" />
+                  رصد وتحصيل دفعة مالية جديدة
                 </span>
-                <button onClick={() => setActivePaymentStudent(null)} className="text-zinc-500 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
+                <button
+                  type="button"
+                  onClick={() => setActivePaymentStudent(null)}
+                  className="w-7 h-7 rounded-lg bg-zinc-900/80 border border-zinc-800/50 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <form onSubmit={handleRecordPayment} className="space-y-4 font-sans text-xs">
-                <div className="p-3 bg-[#050505] rounded-lg border border-zinc-900 text-zinc-300 text-right">
-                  <div>اسم الطالب: <strong>{activePaymentStudent.name}</strong></div>
-                  <div className="mt-1 font-mono">الرسوم الإجمالية: {activePaymentStudent.coursePrice} ر.س | المتبقي: {activePaymentStudent.remainingAmount} ر.س</div>
+              <form onSubmit={handleRecordPayment} className="space-y-5 font-sans text-xs">
+                {/* Student Info Card */}
+                <div className="p-4 bg-gradient-to-br from-zinc-900/90 to-zinc-950/90 rounded-xl border border-zinc-800/60 text-zinc-300 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-400">اسم الطالب:</span>
+                    <strong className="text-sm text-white font-bold">{activePaymentStudent.name}</strong>
+                  </div>
+                  <div className="h-px bg-zinc-800/40 my-1" />
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-400">الرسوم الإجمالية:</span>
+                    <span className="font-mono text-zinc-200 font-bold">{activePaymentStudent.coursePrice ?? 0} ر.س</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-400">المتبقي المطلوب:</span>
+                    <span className="font-mono text-rose-400 font-bold">{activePaymentStudent.remainingAmount ?? 0} ر.س</span>
+                  </div>
                 </div>
 
+                {/* Amount Input */}
                 <div className="space-y-2">
-                  <label className="block text-zinc-400 font-bold">المبلغ المدفوع (ر.س):</label>
-                  <input
-                    type="number"
-                    value={paymentAmount || ''}
-                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-black border border-zinc-900 focus:border-emerald-500 text-xs text-white rounded font-mono text-right outline-none"
-                    placeholder="مثال: 500"
-                    required
-                  />
+                  <label className="block text-zinc-300 font-bold text-xs">المبلغ المدفوع حالياً (ر.س):</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={paymentAmount || ''}
+                      onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-black/60 border border-zinc-800 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 text-sm text-white rounded-xl font-mono text-right outline-none transition-all"
+                      placeholder="مثال: 500"
+                      required
+                      min="1"
+                    />
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 font-bold">ر.س</span>
+                  </div>
                 </div>
 
+                {/* Payment Method Select */}
                 <div className="space-y-2">
-                  <label className="block text-zinc-400 font-bold">طريقة الدفع:</label>
+                  <label className="block text-zinc-300 font-bold text-xs">طريقة الدفع:</label>
                   <select
                     value={paymentMethodSelect}
                     onChange={(e) => setPaymentMethodSelect(e.target.value)}
-                    className="w-full px-3 py-2 bg-black border border-zinc-900 text-xs text-white rounded cursor-pointer text-right outline-none"
+                    className="w-full px-4 py-3 bg-black/60 border border-zinc-800 focus:border-emerald-500/80 text-xs text-zinc-200 rounded-xl cursor-pointer text-right outline-none transition-all"
                   >
-                    <option value="تحويل بنكي">تحويل بنكي</option>
-                    <option value="نقدي (Cash)">نقدي (Cash)</option>
-                    <option value="شبكة مدى / بطاقة ائتمانية">شبكة مدى / بطاقة ائتمانية</option>
+                    <option value="تحويل بنكي" className="bg-[#0f0f11] text-zinc-300">تحويل بنكي</option>
+                    <option value="نقدي (Cash)" className="bg-[#0f0f11] text-zinc-300">نقدي (Cash)</option>
+                    <option value="شبكة مدى / بطاقة ائتمانية" className="bg-[#0f0f11] text-zinc-300">شبكة مدى / بطاقة ائتمانية</option>
                   </select>
                 </div>
 
-                <div className="flex justify-end gap-2 border-t border-zinc-900 pt-3 select-none">
-                  <button type="submit" className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs font-semibold cursor-pointer">
+                {/* Footer Buttons */}
+                <div className="flex gap-2.5 border-t border-zinc-800/40 pt-4 select-none">
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all duration-200 shadow-md shadow-emerald-950/20 active:scale-[0.98]"
+                  >
                     تأكيد رصد الدفعة ✓
                   </button>
-                  <button type="button" onClick={() => setActivePaymentStudent(null)} className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 rounded text-xs cursor-pointer">
-                    إلغاء التراجع
+                  <button
+                    type="button"
+                    onClick={() => setActivePaymentStudent(null)}
+                    className="px-4 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 rounded-xl text-xs font-bold cursor-pointer transition-colors border border-zinc-800/50"
+                  >
+                    إلغاء / تراجع
                   </button>
                 </div>
               </form>
@@ -1797,6 +1830,7 @@ export default function OperationsDashboard({
           </div>
         )}
       </AnimatePresence>
+
 
       {/* --- MODAL 1: ADD NEW DIPLOMA --- */}
       <AnimatePresence>

@@ -31,7 +31,7 @@ function checkDueSchedules() {
       if (s.status !== 'pending') return false;
       const scheduledTime = new Date(s.scheduledAt);
       const diffMs = now.getTime() - scheduledTime.getTime();
-      return diffMs >= 0 && diffMs < 15 * 60 * 1000 && s.id !== lastNotified;
+      return diffMs >= 0 && diffMs < 30 * 60 * 1000 && s.id !== lastNotified;
     });
 
     if (due) {

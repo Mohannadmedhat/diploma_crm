@@ -154,7 +154,7 @@ export default function WhatsAppAutomation({
       alert('الرجاء تهيئة مفتاح Groq API في الإعدادات أولاً لتفعيل تحسين الرسائل بالذكاء الاصطناعي.');
       return;
     }
-    
+
     let currentText = '';
     if (type === 'absence') currentText = absenceCustomText;
     else if (type === 'custom') currentText = customMessageText;
@@ -199,7 +199,7 @@ export default function WhatsAppAutomation({
 
   const [copied, setCopied] = useState(false);
   const [sentLogs, setSentLogs] = useState<Record<string, 'success' | 'skipped'>>({});
-  
+
   const [delaySeconds, setDelaySeconds] = useState<number>(() => {
     return Number(localStorage.getItem('whatsapp_delay_seconds')) || 10;
   });
@@ -328,7 +328,7 @@ export default function WhatsAppAutomation({
     setCopied(false);
     setIsQueueActive(true);
     setWhatsappPlatform('web');
-    setIsAutoSending(true);
+    setIsAutoSending(false);
 
     if (onClearAutoTrigger) onClearAutoTrigger();
   }, [autoTriggerOptions, students, sessions, diplomas]);
@@ -464,7 +464,7 @@ export default function WhatsAppAutomation({
   // Helper: compile individual message
   const compileMessage = (templateText: string, student: Student, diploma?: Diploma, session?: Session) => {
     const absenceCount = studentAbsencesCountMap[student.id] || 0;
-    
+
     // Extrapolate date/time
     const dateStr = session ? session.date : (upcomingSessions[0]?.date || new Date().toISOString().split('T')[0]);
     const timeStr = session ? `${session.startTime} - ${session.endTime}` : (upcomingSessions[0] ? `${upcomingSessions[0].startTime} - ${upcomingSessions[0].endTime}` : '');
@@ -493,7 +493,7 @@ export default function WhatsAppAutomation({
 
     const newText = before + tag + after;
     setCustomMessageText(newText);
-    
+
     // Focus back and set cursor position
     setTimeout(() => {
       textArea.focus();
@@ -560,7 +560,7 @@ export default function WhatsAppAutomation({
   const getWhatsAppLink = (phone: string, text: string) => {
     let cleanPhone = phone.replace(/[^\d+]/g, '');
     const encodedText = encodeURIComponent(text);
-    
+
     if (whatsappPlatform === 'desktop') {
       return `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
     } else if (whatsappPlatform === 'web') {
@@ -573,7 +573,7 @@ export default function WhatsAppAutomation({
   const openWhatsAppLink = (item: QueueItem): boolean => {
     let cleanPhone = item.phone.replace(/[^\d+]/g, '');
     const encodedText = encodeURIComponent(item.message);
-    
+
     let url = '';
     if (whatsappPlatform === 'web') {
       url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
@@ -601,7 +601,7 @@ export default function WhatsAppAutomation({
       // For WhatsApp Web manual sending: Reuse the same window reference
       if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
         whatsappWindowRef.current.location.href = url;
-        try { whatsappWindowRef.current.focus(); } catch (_) {}
+        try { whatsappWindowRef.current.focus(); } catch (_) { }
         return true;
       } else {
         const newWin = window.open(url, 'whatsapp_auto_dispatch');
@@ -616,17 +616,17 @@ export default function WhatsAppAutomation({
     } else {
       // For Desktop/Standard: Close previous window to avoid clutter, and open a new tab.
       if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
-        try { whatsappWindowRef.current.close(); } catch (_) {}
+        try { whatsappWindowRef.current.close(); } catch (_) { }
       }
-      
+
       const newWin = window.open(
-        url, 
-        '_blank', 
+        url,
+        '_blank',
         whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
       );
-      
+
       whatsappWindowRef.current = newWin;
-      
+
       if (!newWin) {
         setPopupBlockerTriggered(true);
         return false;
@@ -680,7 +680,7 @@ export default function WhatsAppAutomation({
     // Trigger open
     const currentItem = currentQueue[currentIndex];
     const opened = openWhatsAppLink(currentItem);
-    
+
     if (!opened) {
       setIsAutoSending(false);
       setCountdown(null);
@@ -697,14 +697,14 @@ export default function WhatsAppAutomation({
     // If using WhatsApp Web and Auto-Sending (Extension mode)
     if (whatsappPlatform === 'web' && isAutoSending) {
       console.log('[DEBUG] Chrome Extension Auto-send mode active. Waiting for WA_SENT_SUCCESS event...');
-      
+
       // Clear any previous timers
       if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
-      
+
       // Set a 45-second fail-safe timeout in case the extension isn't loaded or fails to send
       autoSendTimerRef.current = setTimeout(() => {
         console.log('[DEBUG] Fail-safe timer fired. Advancing queue...');
-        
+
         setQueue(prev => prev.map((item, idx) => {
           if (idx === currentIndex) {
             return { ...item, status: 'skipped' };
@@ -752,7 +752,7 @@ export default function WhatsAppAutomation({
         }
         setTimeout(() => {
           if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
-            try { whatsappWindowRef.current.close(); } catch (_) {}
+            try { whatsappWindowRef.current.close(); } catch (_) { }
             whatsappWindowRef.current = null;
           }
         }, 3000);
@@ -860,10 +860,10 @@ export default function WhatsAppAutomation({
       const status = queueIndex >= queue.length ? 'sent' : 'cancelled';
       updateScheduleStatus(status);
     }
-    
+
     // Close any remaining opened window
     if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
-      try { whatsappWindowRef.current.close(); } catch (_) {}
+      try { whatsappWindowRef.current.close(); } catch (_) { }
     }
     whatsappWindowRef.current = null; // Reset so next session opens a fresh window
     setPopupBlockerTriggered(false);
@@ -917,7 +917,7 @@ export default function WhatsAppAutomation({
 
   return (
     <div className="space-y-6 text-right select-text relative" id="whatsapp-automation-control-center" dir="rtl">
-      
+
       {/* Upper Module Banner */}
       <div className="bg-gradient-to-l from-emerald-950/20 via-zinc-950 to-zinc-950 p-5 rounded-2xl border border-zinc-900 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="space-y-1">
@@ -948,12 +948,12 @@ export default function WhatsAppAutomation({
       {/* Main Tabs Selection Row — pill style */}
       <div className="flex flex-wrap gap-2 select-none font-sans py-1">
         {[
-          { id: 'smart',          label: 'إشعارات ذكية',   icon: Zap,         activeGrad: 'from-violet-600 to-purple-600',  activeTxt: 'text-white' },
-          { id: 'absence',        label: 'الغائبون',        icon: Search,      activeGrad: 'from-rose-600 to-pink-600',       activeTxt: 'text-white' },
-          { id: 'class-reminder', label: 'تذكير الجلسة',   icon: Clock,       activeGrad: 'from-indigo-600 to-blue-600',     activeTxt: 'text-white' },
-          { id: 'custom-message', label: 'رسالة خاصة',     icon: FileText,    activeGrad: 'from-emerald-600 to-teal-600',    activeTxt: 'text-white' },
-          { id: 'broadcaster',    label: 'تعميم موحد',     icon: Users,       activeGrad: 'from-amber-500 to-orange-500',    activeTxt: 'text-white' },
-          { id: 'schedules',      label: 'الجدولة',         icon: Calendar,    activeGrad: 'from-purple-600 to-fuchsia-600',  activeTxt: 'text-white' }
+          { id: 'smart', label: 'إشعارات ذكية', icon: Zap, activeGrad: 'from-violet-600 to-purple-600', activeTxt: 'text-white' },
+          { id: 'absence', label: 'الغائبون', icon: Search, activeGrad: 'from-rose-600 to-pink-600', activeTxt: 'text-white' },
+          { id: 'class-reminder', label: 'تذكير الجلسة', icon: Clock, activeGrad: 'from-indigo-600 to-blue-600', activeTxt: 'text-white' },
+          { id: 'custom-message', label: 'رسالة خاصة', icon: FileText, activeGrad: 'from-emerald-600 to-teal-600', activeTxt: 'text-white' },
+          { id: 'broadcaster', label: 'تعميم موحد', icon: Users, activeGrad: 'from-amber-500 to-orange-500', activeTxt: 'text-white' },
+          { id: 'schedules', label: 'الجدولة', icon: Calendar, activeGrad: 'from-purple-600 to-fuchsia-600', activeTxt: 'text-white' }
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -964,11 +964,10 @@ export default function WhatsAppAutomation({
                 setActiveTab(tab.id as any);
                 setSearchQuery('');
               }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200 shrink-0 ${
-                isSelected
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200 shrink-0 ${isSelected
                   ? `bg-gradient-to-r ${tab.activeGrad} ${tab.activeTxt} shadow-lg shadow-black/30`
                   : 'bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 border border-zinc-800/60'
-              }`}
+                }`}
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
               <span>{tab.label}</span>
@@ -1163,9 +1162,8 @@ export default function WhatsAppAutomation({
                   return (
                     <div
                       key={`abs-st-${st.id}`}
-                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${
-                        isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
-                      }`}
+                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
+                        }`}
                     >
                       <div className="flex items-start gap-3 flex-1">
                         <input
@@ -1189,11 +1187,10 @@ export default function WhatsAppAutomation({
                               الهاتف: {st.phone}
                             </span>
                             {sentLogs[st.id] && (
-                              <span className={`text-[9px] px-2 py-0.5 rounded border ${
-                                sentLogs[st.id] === 'success'
+                              <span className={`text-[9px] px-2 py-0.5 rounded border ${sentLogs[st.id] === 'success'
                                   ? 'bg-emerald-955 text-emerald-450 border-emerald-900/30'
                                   : 'bg-amber-955 text-amber-500 border-amber-900/30'
-                              }`}>
+                                }`}>
                                 {sentLogs[st.id] === 'success' ? 'تم الفتح بنجاح ✅' : 'تم التخطي ⏩'}
                               </span>
                             )}
@@ -1342,9 +1339,8 @@ export default function WhatsAppAutomation({
                   return (
                     <div
                       key={`rem-st-${st.id}`}
-                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${
-                        isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
-                      }`}
+                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
+                        }`}
                     >
                       <div className="flex items-start gap-3 flex-1">
                         <input
@@ -1365,11 +1361,10 @@ export default function WhatsAppAutomation({
                               هاتف: {st.phone}
                             </span>
                             {sentLogs[st.id] && (
-                              <span className={`text-[9px] px-2 py-0.5 rounded border ${
-                                sentLogs[st.id] === 'success'
+                              <span className={`text-[9px] px-2 py-0.5 rounded border ${sentLogs[st.id] === 'success'
                                   ? 'bg-emerald-955 text-emerald-450 border-emerald-900/30'
                                   : 'bg-amber-955 text-amber-500 border-amber-900/30'
-                              }`}>
+                                }`}>
                                 {sentLogs[st.id] === 'success' ? 'تم الفتح بنجاح ✅' : 'تم التخطي ⏩'}
                               </span>
                             )}
@@ -1524,9 +1519,8 @@ export default function WhatsAppAutomation({
                   return (
                     <div
                       key={`cust-st-${st.id}`}
-                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${
-                        isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
-                      }`}
+                      className={`p-3 bg-[#07070A] border rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-all ${isChecked ? 'border-zinc-800' : 'border-zinc-950 opacity-60'
+                        }`}
                     >
                       <div className="flex items-start gap-3 flex-1">
                         <input
@@ -1547,11 +1541,10 @@ export default function WhatsAppAutomation({
                               هاتف: {st.phone}
                             </span>
                             {sentLogs[st.id] && (
-                              <span className={`text-[9px] px-2 py-0.5 rounded border ${
-                                sentLogs[st.id] === 'success'
+                              <span className={`text-[9px] px-2 py-0.5 rounded border ${sentLogs[st.id] === 'success'
                                   ? 'bg-emerald-955 text-emerald-450 border-emerald-900/30'
                                   : 'bg-amber-955 text-amber-500 border-amber-900/30'
-                              }`}>
+                                }`}>
                                 {sentLogs[st.id] === 'success' ? 'تم الفتح بنجاح ✅' : 'تم التخطي ⏩'}
                               </span>
                             )}
@@ -1597,10 +1590,10 @@ export default function WhatsAppAutomation({
         {activeTab === 'broadcaster' && (
           <div className="lg:col-span-12 space-y-6 animate-fadeIn" dir="rtl">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
+
               {/* Right Column: Writing & Selecting target groups */}
               <div className="lg:col-span-7 space-y-6">
-                
+
                 {/* Message Editor Card */}
                 <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-4">
                   <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
@@ -1608,7 +1601,7 @@ export default function WhatsAppAutomation({
                       <MessageSquare className="w-5 h-5 text-amber-400" />
                       <h3 className="text-xs font-bold text-white">صياغة التعميم الموحد</h3>
                     </div>
-                    
+
                     {/* AI Polishing Buttons */}
                     <div className="flex items-center gap-1.5 font-sans">
                       <span className="text-[10px] text-zinc-500 ml-1">تحسين الذكاء الاصطناعي:</span>
@@ -1729,7 +1722,7 @@ export default function WhatsAppAutomation({
                     {diplomas.map((d) => {
                       const isSelected = !!selectedBroadcastDiplomas[d.id];
                       const totalSt = students.filter(s => s.diplomaIds.includes(d.id)).length;
-                      
+
                       return (
                         <div
                           key={d.id}
@@ -1739,17 +1732,16 @@ export default function WhatsAppAutomation({
                               [d.id]: !prev[d.id]
                             }));
                           }}
-                          className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                            isSelected
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${isSelected
                               ? 'border-amber-500/30 bg-amber-955/5'
                               : 'border-zinc-900 bg-zinc-950/20 hover:border-zinc-800'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => {}} // handled by div onClick
+                              onChange={() => { }} // handled by div onClick
                               className="w-3.5 h-3.5 rounded border-zinc-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 bg-black cursor-pointer"
                             />
                             <div>
@@ -1759,13 +1751,12 @@ export default function WhatsAppAutomation({
                               </span>
                             </div>
                           </div>
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border font-sans ${
-                            d.status === 'Active'
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border font-sans ${d.status === 'Active'
                               ? 'text-emerald-400 border-emerald-950/40 bg-emerald-950/10'
                               : d.status === 'Upcoming'
-                              ? 'text-amber-400 border-amber-950/30 bg-amber-950/10'
-                              : 'text-zinc-500 border-zinc-800/40 bg-zinc-900/10'
-                          }`}>
+                                ? 'text-amber-400 border-amber-950/30 bg-amber-950/10'
+                                : 'text-zinc-500 border-zinc-800/40 bg-zinc-900/10'
+                            }`}>
                             {d.status === 'Active' ? 'نشط' : d.status === 'Upcoming' ? 'قادم' : 'مكتمل'}
                           </span>
                         </div>
@@ -1799,7 +1790,7 @@ export default function WhatsAppAutomation({
                       .map((d) => {
                         const isCopied = !!copiedBroadcasts[d.id];
                         const isSent = !!sentBroadcasts[d.id];
-                        
+
                         // Local replace helper
                         const customMsg = broadcastMessageText
                           .replace(/{اسم_الدبلومة}/g, d.name || '')
@@ -1810,21 +1801,19 @@ export default function WhatsAppAutomation({
                         return (
                           <div
                             key={d.id}
-                            className={`p-4 rounded-xl border space-y-3 transition-all ${
-                              isSent
+                            className={`p-4 rounded-xl border space-y-3 transition-all ${isSent
                                 ? 'border-emerald-900/40 bg-emerald-950/5'
                                 : 'border-zinc-900 bg-zinc-950/40'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center justify-between border-b border-zinc-900/60 pb-2">
                               <div>
                                 <span className="text-xs font-black text-zinc-200 block text-right">{d.name}</span>
                               </div>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-sans ${
-                                isSent
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-sans ${isSent
                                   ? 'text-emerald-400 bg-emerald-950/30 border border-emerald-900/40'
                                   : 'text-zinc-500 bg-zinc-900/30 border border-zinc-800'
-                              }`}>
+                                }`}>
                                 {isSent ? '✓ تم الفتح' : 'انتظار'}
                               </span>
                             </div>
@@ -1845,11 +1834,10 @@ export default function WhatsAppAutomation({
                                     }, 2000);
                                   });
                                 }}
-                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                                  isCopied
+                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${isCopied
                                     ? 'bg-emerald-600 text-white'
                                     : 'bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300'
-                                }`}
+                                  }`}
                               >
                                 <Check className={`w-3 h-3 ${isCopied ? 'block' : 'hidden'}`} />
                                 {isCopied ? 'تم النسخ!' : 'نسخ النص'}
@@ -1893,7 +1881,7 @@ export default function WhatsAppAutomation({
         {activeTab === 'schedules' && (
           <div className="lg:col-span-12 space-y-6 animate-fadeIn" dir="rtl">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
+
               {/* Right Column: Active Scheduled Items */}
               <div className="lg:col-span-7 space-y-4">
                 <div className="bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
@@ -1970,7 +1958,7 @@ export default function WhatsAppAutomation({
 
               {/* Left Column: Create Manual Schedule Form + History Logs */}
               <div className="lg:col-span-5 space-y-6">
-                
+
                 {/* Manual Schedule Form */}
                 <div className="bg-[#0B0B0E] border border-zinc-900 rounded-xl p-5 space-y-4">
                   <div className="border-b border-zinc-900 pb-2.5 flex items-center gap-2">
@@ -2085,13 +2073,12 @@ export default function WhatsAppAutomation({
                         <div key={schedule.id} className="p-3 bg-[#07070A]/50 border border-zinc-950 rounded-lg space-y-1.5 text-right">
                           <div className="flex justify-between items-center text-[10px]">
                             <span className="font-bold text-zinc-400 truncate max-w-[120px]">{schedule.diplomaName}</span>
-                            <span className={`px-1.5 py-0.5 rounded font-sans font-bold text-[8px] ${
-                              schedule.status === 'sent'
+                            <span className={`px-1.5 py-0.5 rounded font-sans font-bold text-[8px] ${schedule.status === 'sent'
                                 ? 'bg-emerald-950/20 text-emerald-450 border border-emerald-900/35'
                                 : schedule.status === 'cancelled'
-                                ? 'bg-zinc-900 text-zinc-400 border border-zinc-800'
-                                : 'bg-rose-955/20 text-rose-400 border border-rose-900/35'
-                            }`}>
+                                  ? 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+                                  : 'bg-rose-955/20 text-rose-400 border border-rose-900/35'
+                              }`}>
                               {schedule.status === 'sent' ? 'تم الإرسال' : schedule.status === 'cancelled' ? 'ملغي' : 'فشل'}
                             </span>
                           </div>
@@ -2129,7 +2116,7 @@ export default function WhatsAppAutomation({
               transition={{ duration: 0.15 }}
               className="bg-zinc-950/80 backdrop-blur-xl border border-white/5 rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.85)]"
             >
-              
+
               {/* Header */}
               <div className="p-5 border-b border-zinc-900 flex items-center justify-between">
                 <div>
@@ -2151,7 +2138,7 @@ export default function WhatsAppAutomation({
 
               {/* Progress Panel */}
               <div className="p-6 space-y-6 font-sans">
-                
+
                 {/* Stats Bar */}
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="p-3 bg-zinc-950/40 border border-zinc-900 rounded-xl">
@@ -2177,7 +2164,7 @@ export default function WhatsAppAutomation({
                 {/* Current Student Preview Card */}
                 {queueIndex < queue.length ? (
                   <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-4">
-                    
+
                     {/* Student Business Card Header */}
                     <div className="flex items-center justify-between border-b border-zinc-900/60 pb-2.5">
                       <div className="flex items-center gap-2.5">
@@ -2229,7 +2216,7 @@ export default function WhatsAppAutomation({
 
                     {/* Controller Triggers */}
                     <div className="flex flex-col gap-4 pt-1 border-t border-zinc-900/50">
-                      
+
                       {/* Top Row: Auto Send Switch, Delay & Platform Selector */}
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-zinc-950/50 p-3 rounded-xl border border-zinc-900 font-sans">
                         <div className="flex flex-wrap items-center gap-3">
@@ -2247,9 +2234,8 @@ export default function WhatsAppAutomation({
                               className="w-3.5 h-3.5 text-emerald-500 rounded border-zinc-800 bg-[#07070A] focus:ring-0 cursor-pointer"
                             />
                             <span>تشغيل الإرسال التلقائي المستمر</span>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold font-sans ${
-                              extensionInstalled ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' : 'bg-amber-955/25 text-amber-500 border border-amber-900/35 animate-pulse'
-                            }`}>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold font-sans ${extensionInstalled ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30' : 'bg-amber-955/25 text-amber-500 border border-amber-900/35 animate-pulse'
+                              }`}>
                               {extensionInstalled ? 'الربط التلقائي متصل بنجاح ✅' : 'الإرسال التلقائي معطل (يتطلب تثبيت الإضافة) ⚠️'}
                             </span>
                           </label>
@@ -2348,7 +2334,7 @@ export default function WhatsAppAutomation({
                             <SkipForward className="w-3.5 h-3.5" />
                             تخطي
                           </button>
-                          
+
                           <button
                             onClick={() => {
                               // Pre-emptively open helper window on user gesture if not open yet
@@ -2363,10 +2349,10 @@ export default function WhatsAppAutomation({
                                   } else {
                                     url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
                                   }
-                                  
+
                                   const newWin = window.open(
-                                    url, 
-                                    'whatsapp_auto_dispatch', 
+                                    url,
+                                    'whatsapp_auto_dispatch',
                                     whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
                                   );
                                   whatsappWindowRef.current = newWin;
@@ -2401,7 +2387,7 @@ export default function WhatsAppAutomation({
                       >
                         ⚙️ {showExtensionInstructions ? 'إخفاء تعليمات التثبيت التلقائي ✕' : 'اضغط هنا لتفعيل المراسلة الآلية بالخلفية مجاناً (إضافة كروم) 🔗'}
                       </button>
-                      
+
                       {showExtensionInstructions && (
                         <div className="text-[10px] text-zinc-400 leading-relaxed space-y-2 font-sans pt-1.5 border-t border-zinc-900/60">
                           <p className="text-white font-bold">خطوات تشغيل الإرسال الآلي بدون مجهود وبشكل مجاني تماماً:</p>

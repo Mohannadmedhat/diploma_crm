@@ -322,8 +322,8 @@ export default function App() {
         if (s.status !== 'pending') return false;
         const scheduledTime = new Date(s.scheduledAt);
         const diffMs = now.getTime() - scheduledTime.getTime();
-        // Trigger if scheduled time is reached or up to 3 minutes past (to avoid missing it)
-        return diffMs >= 0 && diffMs < 3 * 60 * 1000;
+        // Trigger if scheduled time is reached or up to 30 minutes past (to avoid missing it)
+        return diffMs >= 0 && diffMs < 30 * 60 * 1000;
       });
 
       if (due) {
@@ -1381,8 +1381,8 @@ export default function App() {
 
           {/* Footer */}
           <footer className="mt-8 pt-4 border-t border-[#1F1F1F] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[10px] text-zinc-500 select-none print:hidden font-sans">
-            <span>حقوق التعمير والترميز محفوظة للمؤسسة التعليمية © {new Date().getFullYear()}</span>
-            <span>النسخة الحالية جاهزة للترقية وربط واجهة تطبيقات API الخلفية</span>
+            <span>تم التطوير والبرمجة بواسطة م. مهند مدحت 🚀</span>
+            <span>منصة العمليات الأكاديمية وإشعارات WhatsApp الذكية</span>
           </footer>
 
         </section>

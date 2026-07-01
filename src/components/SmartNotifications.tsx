@@ -170,6 +170,7 @@ function ScenarioCard({
   logs,
   onSend
 }: {
+  key?: React.Key;
   scenario: SmartScenario;
   diploma: Diploma;
   students: Student[];
@@ -211,11 +212,14 @@ function ScenarioCard({
     scenario.defaultTemplate(diploma, targetSession)
   );
   const [expanded, setExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selected, setSelected] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     targetStudents.forEach(s => { init[s.id] = true; });
     return init;
   });
+
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     const init: Record<string, boolean> = {};
@@ -230,6 +234,37 @@ function ScenarioCard({
   const chosen = targetStudents.filter(s => selected[s.id]);
   const isEmpty = targetStudents.length === 0;
   const c = colorMap[scenario.color];
+
+  // Filter students based on search input
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return targetStudents;
+    const q = searchQuery.toLowerCase();
+    return targetStudents.filter(s =>
+      s.name.toLowerCase().includes(q) || s.phone.includes(q)
+    );
+  }, [targetStudents, searchQuery]);
+
+  // Insert tag helper
+  const insertTag = (tag: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const newText = text.substring(0, start) + tag + text.substring(end);
+    setTemplate(newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + tag.length, start + tag.length);
+    }, 10);
+  };
+
+  // Generate live preview text for the first chosen student
+  const previewText = useMemo(() => {
+    const sampleStudent = chosen[0] || targetStudents[0];
+    if (!sampleStudent) return '';
+    return template.replace(/\{studentName\}/g, sampleStudent.name);
+  }, [template, chosen, targetStudents]);
 
   return (
     <motion.div
@@ -319,7 +354,7 @@ function ScenarioCard({
               }}
             >
               {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              {expanded ? 'إخفاء التفاصيل' : 'تخصيص الرسالة والمستلمين'}
+              {expanded ? 'إخفاء التفاصيل والتخصيص' : 'تخصيص الرسالة والمستلمين'}
             </button>
 
             <AnimatePresence>
@@ -334,45 +369,82 @@ function ScenarioCard({
                   <div style={{
                     background: 'rgba(255,255,255,0.03)',
                     border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 14, padding: '1rem',
-                    display: 'flex', flexDirection: 'column', gap: '0.875rem'
+                    borderRadius: 14, padding: '1.25rem 1rem 1rem',
+                    display: 'flex', flexDirection: 'column', gap: '1rem'
                   }}>
                     {/* Template editor */}
                     <div>
-                      <label style={{
-                        fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600,
-                        marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6
-                      }}>
-                        <MessageSquare size={12} style={{ color: c.icon }} />
-                        نص الرسالة
-                        <span style={{ opacity: 0.5, fontWeight: 400 }}>· يمكن استخدام {'{studentName}'}</span>
-                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={{
+                          fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 6
+                        }}>
+                          <MessageSquare size={13} style={{ color: c.icon }} />
+                          نص الرسالة
+                        </label>
+                        {/* Quick variables helper */}
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            type="button"
+                            onClick={() => insertTag('{studentName}')}
+                            style={{
+                              fontSize: '0.7rem', color: '#a78bfa', background: 'rgba(167, 139, 250, 0.1)',
+                              border: '1px solid rgba(167, 139, 250, 0.2)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer'
+                            }}
+                          >
+                            + اسم الطالب
+                          </button>
+                        </div>
+                      </div>
                       <textarea
+                        ref={textareaRef}
                         value={template}
                         onChange={e => setTemplate(e.target.value)}
-                        rows={5}
+                        rows={4}
                         style={{
                           width: '100%', resize: 'none', borderRadius: 12,
-                          background: 'rgba(0,0,0,0.25)',
-                          border: `1px solid ${c.border}30`,
+                          background: 'rgba(0,0,0,0.3)',
+                          border: `1px solid rgba(255,255,255,0.08)`,
                           color: '#e2e8f0',
-                          padding: '0.75rem 1rem', fontSize: '0.83rem',
+                          padding: '0.75rem 1rem', fontSize: '0.84rem',
                           direction: 'rtl', fontFamily: 'inherit', lineHeight: 1.7,
-                          outline: 'none', boxSizing: 'border-box',
-                          scrollbarWidth: 'none'
+                          outline: 'none', boxSizing: 'border-box'
                         }}
                       />
                     </div>
+
+                    {/* Live Preview Box */}
+                    {previewText && (
+                      <div style={{
+                        background: 'rgba(34,197,94,0.03)',
+                        border: '1.5px dashed rgba(34,197,94,0.15)',
+                        borderRadius: 12, padding: '0.75rem 1rem'
+                      }}>
+                        <div style={{
+                          fontSize: '0.72rem', color: '#22c55e', fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4
+                        }}>
+                          <Sparkles size={11} />
+                          معاينة حية للرسالة (لأول مستلم):
+                        </div>
+                        <p style={{
+                          margin: 0, fontSize: '0.8rem', color: '#94a3b8',
+                          whiteSpace: 'pre-wrap', lineHeight: 1.6, direction: 'rtl'
+                        }}>
+                          {previewText}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Divider */}
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
 
                     {/* Student checklist */}
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
                         <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
                           <Users size={12} style={{ color: c.icon }} />
-                          المستلمون
+                          المستلمون المحددون
                           <span style={{
                             background: c.bg, color: c.icon,
                             borderRadius: 20, padding: '1px 8px', fontSize: '0.7rem', fontWeight: 700
@@ -380,60 +452,85 @@ function ScenarioCard({
                             {chosen.length}/{targetStudents.length}
                           </span>
                         </label>
-                        <div style={{ display: 'flex', gap: 6 }}>
+
+                        {/* Search bar inside student list */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+                          <input
+                            type="text"
+                            placeholder="بحث في القائمة..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{
+                              background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+                              borderRadius: 6, padding: '3px 8px', fontSize: '0.72rem', color: '#fff',
+                              outline: 'none', width: '100%', maxWidth: 140, direction: 'rtl'
+                            }}
+                          />
                           <button
+                            type="button"
                             onClick={() => { const a: Record<string,boolean> = {}; targetStudents.forEach(s => { a[s.id]=true; }); setSelected(a); }}
                             style={{
                               fontSize: '0.7rem', color: c.icon, background: c.bg,
                               border: `1px solid ${c.border}30`, borderRadius: 6,
-                              padding: '2px 8px', cursor: 'pointer', fontWeight: 600
+                              padding: '2.5px 8px', cursor: 'pointer', fontWeight: 600
                             }}
                           >الكل</button>
                           <button
+                            type="button"
                             onClick={() => setSelected({})}
                             style={{
                               fontSize: '0.7rem', color: '#64748b',
                               background: 'rgba(255,255,255,0.04)',
                               border: '1px solid rgba(255,255,255,0.08)',
-                              borderRadius: 6, padding: '2px 8px', cursor: 'pointer'
+                              borderRadius: 6, padding: '2.5px 8px', cursor: 'pointer'
                             }}
                           >إلغاء</button>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {targetStudents.map(st => {
-                          const initials = st.name.slice(0, 1);
-                          const isChosen = !!selected[st.id];
-                          return (
-                            <label key={st.id} style={{
-                              display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-                              padding: '6px 10px', borderRadius: 10,
-                              background: isChosen ? c.bg : 'rgba(255,255,255,0.02)',
-                              border: `1px solid ${isChosen ? c.border + '30' : 'rgba(255,255,255,0.05)'}`,
-                              transition: 'all 0.15s'
-                            }}>
-                              {/* Avatar */}
-                              <div style={{
-                                width: 28, height: 28, borderRadius: 8,
-                                background: isChosen ? c.btn : 'rgba(255,255,255,0.08)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '0.75rem', fontWeight: 700,
-                                color: isChosen ? '#fff' : '#64748b', flexShrink: 0,
+                      {/* Filtered list with custom slim scrollbar */}
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', gap: 4,
+                        maxHeight: 180, overflowY: 'auto', paddingRight: 4
+                      }} className="custom-scrollbar">
+                        {filteredStudents.length > 0 ? (
+                          filteredStudents.map(st => {
+                            const initials = st.name.slice(0, 1);
+                            const isChosen = !!selected[st.id];
+                            return (
+                              <label key={st.id} style={{
+                                display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                                padding: '6px 10px', borderRadius: 10,
+                                background: isChosen ? c.bg : 'rgba(255,255,255,0.01)',
+                                border: `1px solid ${isChosen ? c.border + '30' : 'rgba(255,255,255,0.04)'}`,
                                 transition: 'all 0.15s'
                               }}>
-                                {initials}
-                              </div>
-                              <span style={{ fontSize: '0.83rem', color: '#e2e8f0', flex: 1 }}>{st.name}</span>
-                              <span style={{ fontSize: '0.72rem', color: '#475569', direction: 'ltr' }}>{st.phone}</span>
-                              <input
-                                type="checkbox" checked={isChosen}
-                                onChange={e => setSelected(p => ({ ...p, [st.id]: e.target.checked }))}
-                                style={{ accentColor: c.icon, width: 14, height: 14, flexShrink: 0 }}
-                              />
-                            </label>
-                          );
-                        })}
+                                {/* Avatar */}
+                                <div style={{
+                                  width: 28, height: 28, borderRadius: 8,
+                                  background: isChosen ? c.btn : 'rgba(255,255,255,0.08)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '0.75rem', fontWeight: 700,
+                                  color: isChosen ? '#fff' : '#64748b', flexShrink: 0,
+                                  transition: 'all 0.15s'
+                                }}>
+                                  {initials}
+                                </div>
+                                <span style={{ fontSize: '0.83rem', color: '#e2e8f0', flex: 1 }}>{st.name}</span>
+                                <span style={{ fontSize: '0.72rem', color: '#475569', direction: 'ltr' }}>{st.phone}</span>
+                                <input
+                                  type="checkbox" checked={isChosen}
+                                  onChange={e => setSelected(p => ({ ...p, [st.id]: e.target.checked }))}
+                                  style={{ accentColor: c.icon, width: 14, height: 14, flexShrink: 0 }}
+                                />
+                              </label>
+                            );
+                          })
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: '1rem', color: '#475569', fontSize: '0.75rem' }}>
+                            لا توجد نتائج مطابقة للبحث
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -478,6 +575,7 @@ function ScenarioCard({
       </div>
     </motion.div>
   );
+
 }
 
 // =====================================================
