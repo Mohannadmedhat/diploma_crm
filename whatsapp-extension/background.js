@@ -15,6 +15,14 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log("[WA-Extension] Registered check_schedules alarm.");
 });
 
+// Startup safety check to ensure alarm is created when service worker wakes up
+chrome.alarms.get("check_schedules", (alarm) => {
+  if (!alarm) {
+    chrome.alarms.create("check_schedules", { periodInMinutes: 0.5 });
+    console.log("[WA-Extension] Alarm created on startup.");
+  }
+});
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "check_schedules") {
     checkDueSchedules();
