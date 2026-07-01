@@ -10,6 +10,7 @@ import {
   Task,
   MessageTemplate,
   AppConfig,
+  SmartNotificationLog,
   DEFAULT_CONFIG,
   DEFAULT_ARABIC_TEMPLATES,
   DEFAULT_DIPLOMA_TEMPLATES,

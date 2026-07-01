@@ -4,6 +4,7 @@ import { improveWhatsAppMessage } from '../services/groq';
 import { parseTemplate, formatWhatsAppLink } from '../utils';
 import { calculateStudentDiplomaAttendance } from '../services/business';
 import { formatScheduledAt } from '../services/scheduler';
+import SmartNotifications from './SmartNotifications';
 import {
   MessageSquare,
   AlertTriangle,
@@ -25,7 +26,8 @@ import {
   SkipForward,
   Sparkles,
   Plus,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -63,8 +65,8 @@ export default function WhatsAppAutomation({
   autoTriggerOptions,
   onClearAutoTrigger
 }: WhatsAppAutomationProps) {
-  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules'
-  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules'>('absence');
+  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart'
+  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart'>('smart');
 
   // Search/Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -943,14 +945,15 @@ export default function WhatsAppAutomation({
         </div>
       </div>
 
-      {/* Main Tabs Selection Row */}
-      <div className="flex border-b border-zinc-900 select-none overflow-x-auto gap-2 pb-px font-sans">
+      {/* Main Tabs Selection Row — pill style */}
+      <div className="flex flex-wrap gap-2 select-none font-sans py-1">
         {[
-          { id: 'absence', label: 'متابعة الغائبين (Absence Tracking)', icon: Search, color: 'text-rose-500 bg-rose-500/5' },
-          { id: 'class-reminder', label: 'تذكير المحاضرة (Class Reminder)', icon: Clock, color: 'text-indigo-400 bg-indigo-500/5' },
-          { id: 'custom-message', label: 'رسالة خاصة (Custom Message)', icon: FileText, color: 'text-emerald-400 bg-emerald-500/5' },
-          { id: 'broadcaster', label: 'مرسل التعميمات الموحد (Unified Broadcaster)', icon: Users, color: 'text-amber-400 bg-amber-500/5' },
-          { id: 'schedules', label: 'إدارة الجدولة والرسائل المجدولة (Schedules)', icon: Calendar, color: 'text-purple-400 bg-purple-500/5' }
+          { id: 'smart',          label: 'إشعارات ذكية',   icon: Zap,         activeGrad: 'from-violet-600 to-purple-600',  activeTxt: 'text-white' },
+          { id: 'absence',        label: 'الغائبون',        icon: Search,      activeGrad: 'from-rose-600 to-pink-600',       activeTxt: 'text-white' },
+          { id: 'class-reminder', label: 'تذكير الجلسة',   icon: Clock,       activeGrad: 'from-indigo-600 to-blue-600',     activeTxt: 'text-white' },
+          { id: 'custom-message', label: 'رسالة خاصة',     icon: FileText,    activeGrad: 'from-emerald-600 to-teal-600',    activeTxt: 'text-white' },
+          { id: 'broadcaster',    label: 'تعميم موحد',     icon: Users,       activeGrad: 'from-amber-500 to-orange-500',    activeTxt: 'text-white' },
+          { id: 'schedules',      label: 'الجدولة',         icon: Calendar,    activeGrad: 'from-purple-600 to-fuchsia-600',  activeTxt: 'text-white' }
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -961,13 +964,13 @@ export default function WhatsAppAutomation({
                 setActiveTab(tab.id as any);
                 setSearchQuery('');
               }}
-              className={`px-4 py-3 cursor-pointer border-b-2 transition-all text-xs font-bold shrink-0 flex items-center gap-2 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200 shrink-0 ${
                 isSelected
-                  ? 'border-emerald-500 text-emerald-400 ' + tab.color
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40'
+                  ? `bg-gradient-to-r ${tab.activeGrad} ${tab.activeTxt} shadow-lg shadow-black/30`
+                  : 'bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 border border-zinc-800/60'
               }`}
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <Icon className="w-3.5 h-3.5 shrink-0" />
               <span>{tab.label}</span>
             </button>
           );
@@ -976,7 +979,37 @@ export default function WhatsAppAutomation({
 
       {/* Main Screen Layout Container */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
+        {/* ==========================================
+            TAB 0: SMART NOTIFICATIONS
+            ========================================== */}
+        {activeTab === 'smart' && (
+          <div className="lg:col-span-12">
+            <SmartNotifications
+              students={students}
+              sessions={sessions}
+              diplomas={diplomas}
+              config={config}
+              onSaveConfig={(newConfig) => { if (onSaveConfig) onSaveConfig(newConfig); }}
+              onSendQueue={(queueStudents, template, diploma) => {
+                // Build queue items and start auto-send
+                const queueItems: QueueItem[] = queueStudents.map(student => ({
+                  student,
+                  message: template.replace(/\{studentName\}/g, student.name),
+                  phone: student.phone,
+                  status: 'pending' as const
+                }));
+                setQueue(queueItems);
+                setQueueIndex(0);
+                setCopied(false);
+                setIsQueueActive(true);
+                setWhatsappPlatform('web');
+                setIsAutoSending(true);
+              }}
+            />
+          </div>
+        )}
+
         {/* ==========================================
             TAB 1: ABSENCE TRACKING
             ========================================== */}
@@ -993,6 +1026,7 @@ export default function WhatsAppAutomation({
                   اختر الجلسة لرؤية الطلاب الذين تغيبوا عنها وتجهيز خطابات أولياء الأمور تلقائياً.
                 </span>
               </div>
+
 
               {/* Session Picker */}
               <div className="space-y-1.5 font-sans">

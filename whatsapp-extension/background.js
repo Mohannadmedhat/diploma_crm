@@ -31,39 +31,38 @@ function checkDueSchedules() {
       if (s.status !== 'pending') return false;
       const scheduledTime = new Date(s.scheduledAt);
       const diffMs = now.getTime() - scheduledTime.getTime();
-      // Due if scheduled time is reached, and not older than 15 minutes, and not the last notified one
       return diffMs >= 0 && diffMs < 15 * 60 * 1000 && s.id !== lastNotified;
     });
 
     if (due) {
-      chrome.tabs.query({}, (allTabs) => {
-        const crmOpen = allTabs.some(tab => {
-          const url = tab.url || "";
-          return (
-            url.includes("localhost") ||
-            url.includes("127.0.0.1") ||
-            url.includes("diploma-crm.vercel.app")
-          );
-        });
-
-        // Only notify if CRM tab is closed
-        if (!crmOpen) {
-          console.log("[WA-Extension] Due schedule found and CRM closed, showing notification for:", due.id);
-          chrome.notifications.create(due.id, {
-            type: "basic",
-            iconUrl: "logo.png",
-            title: "سيد | SAYED CRM ⏰",
-            message: `حان موعد إرسال الرسائل المجدولة لدبلوم "${due.diplomaName}". يرجى فتح لوحة التحكم للبدء.`,
-            priority: 2
-          });
-          
-          // Save notified schedule ID so we don't notify again
-          chrome.storage.local.set({ lastNotifiedScheduleId: due.id });
-        }
+      console.log("[WA-Extension] Due schedule found, showing notification for:", due.id);
+      chrome.notifications.create(due.id, {
+        type: "basic",
+        iconUrl: "logo.png",
+        title: "سيد | SAYED CRM ⏰",
+        message: `حان موعد إرسال الرسائل المجدولة لدبلوم "${due.diplomaName}". يرجى فتح لوحة التحكم للبدء.`,
+        priority: 2
       });
+      chrome.storage.local.set({ lastNotifiedScheduleId: due.id });
     }
   });
 }
+
+// ============================================================
+// SMART NOTIFICATION HELPERS — called from CRM via message
+// ============================================================
+
+/** Show a browser notification for smart scenarios */
+function showSmartNotification(type, title, message, notifId) {
+  chrome.notifications.create(notifId || `smart_${Date.now()}`, {
+    type: "basic",
+    iconUrl: "logo.png",
+    title: title,
+    message: message,
+    priority: 2
+  });
+}
+
 
 // When clicking the notification, open/focus CRM tab
 chrome.notifications.onClicked.addListener((notificationId) => {
@@ -140,7 +139,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
+
+  // ---- Smart Notification: show a browser notification from CRM ----
+  if (message.action === "show_smart_notification") {
+    const { notifType, title, body } = message;
+    console.log("[WA-Extension] Smart notification request:", notifType, title);
+    showSmartNotification(notifType, title || "سيد | SAYED CRM", body || "", `smart_${notifType}_${Date.now()}`);
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  // ---- Send complete summary notification ----
+  if (message.action === "wa_send_complete") {
+    const { totalSent, totalSkipped, diplomaName } = message;
+    console.log("[WA-Extension] Send complete:", totalSent, "sent,", totalSkipped, "skipped");
+    chrome.notifications.create(`complete_${Date.now()}`, {
+      type: "basic",
+      iconUrl: "logo.png",
+      title: "✅ اكتمل الإرسال — سيد CRM",
+      message: `تم إرسال ${totalSent} رسالة بنجاح${totalSkipped > 0 ? ` (تخطي ${totalSkipped})` : ''} لدبلوم "${diplomaName || 'الدبلومة'}".`,
+      priority: 1
+    });
+    sendResponse({ ok: true });
+    return true;
+  }
 });
+
 
 // Search for any open CRM tab (localhost OR Vercel) and notify it
 function notifyCRMTab() {

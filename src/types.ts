@@ -173,6 +173,7 @@ export interface AppConfig {
   groqApiKey?: string;
   groqModel?: string;
   scheduledMessages?: ScheduledMessage[];
+  smartNotificationLogs?: SmartNotificationLog[];
 }
 
 export interface ScheduledMessage {
@@ -190,11 +191,30 @@ export interface ScheduledMessage {
   createdBy?: string;
 }
 
+export type SmartScenarioType =
+  | 'absence_last_session'     // غائبو آخر جلسة
+  | 'repeated_absence'         // تجاوز حد الغياب
+  | 'session_reminder'         // تذكير الجلسة القادمة
+  | 'custom';                  // رسالة مخصصة
+
+export interface SmartNotificationLog {
+  id: string;
+  diplomaId: string;
+  diplomaName: string;
+  scenarioType: SmartScenarioType;
+  studentIds: string[];   // IDs of students messaged
+  sentAt: string;         // ISO datetime
+  totalSent: number;
+  totalSkipped: number;
+  messagePreview: string; // first 100 chars
+}
+
 export const DEFAULT_CONFIG: AppConfig = {
   minAttendanceRate: 75,
   language: 'ar',
   groqModel: 'llama-3.3-70b-versatile',
-  scheduledMessages: []
+  scheduledMessages: [],
+  smartNotificationLogs: []
 };
 
 export const DEFAULT_ARABIC_TEMPLATES: MessageTemplate[] = [
