@@ -9,7 +9,8 @@ import {
   AppConfig,
   DiplomaType,
   Instructor,
-  Mentor
+  Mentor,
+  DEFAULT_DIPLOMA_TYPES
 } from './types';
 
 // Services
@@ -496,13 +497,19 @@ export default function App() {
             const cloudInstructors = sharedData.instructors || [];
             const { merged: mergedInstructors, wasUpdated: instructorsUpdated } = mergeDefaultInstructors(cloudInstructors);
 
-            setDiplomaTypes(sharedData.diplomaTypes || loadDiplomaTypes());
+            // Auto-migrate: if Supabase has old diploma type IDs, reset to new defaults
+            const REMOVED_DTYPE_IDS_APP = new Set(['dtype-ds', 'dtype-cyber', 'dtype-dev', 'dtype-mobile', 'dtype-cloud', 'dtype-pm', 'dtype-marketing']);
+            const cloudTypes: DiplomaType[] = sharedData.diplomaTypes || [];
+            const isStaleCloud = cloudTypes.length === 0 || cloudTypes.some((t: DiplomaType) => REMOVED_DTYPE_IDS_APP.has(t.id));
+            const resolvedTypes = isStaleCloud ? DEFAULT_DIPLOMA_TYPES : cloudTypes;
+
+            setDiplomaTypes(resolvedTypes);
             setInstructors(mergedInstructors);
             setMentors(sharedData.mentors || loadMentors());
             setTemplates(sharedData.templates || loadTemplates());
 
             // Cache locally
-            if (sharedData.diplomaTypes) saveDiplomaTypes(sharedData.diplomaTypes);
+            saveDiplomaTypes(resolvedTypes);
             saveInstructors(mergedInstructors);
             if (sharedData.mentors) saveMentors(sharedData.mentors);
             if (sharedData.templates) saveTemplates(sharedData.templates);
