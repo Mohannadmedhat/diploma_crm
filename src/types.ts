@@ -416,17 +416,22 @@ export const DEFAULT_DIPLOMA_TEMPLATES: DiplomaTemplate[] = [
 ];
 
 export const DEFAULT_DIPLOMA_TYPES: DiplomaType[] = [
-  { id: 'dtype-ai', nameAr: 'دبلومة الذكاء الاصطناعي', nameEn: 'AI Diploma', description: 'دراسة شاملة لتقنيات تعلم الآلة والشبكات العصبية وتطبيقات الذكاء الاصطناعي التوليدي وهندسة البيانات الضخمة.', status: 'Active' },
-  { id: 'dtype-da', nameAr: 'دبلومة تحليل البيانات', nameEn: 'Data Analysis Diploma', description: 'تحليل وتفسير البيانات الإحصائية المعقدة باستخدام لغات الاستعلام وبايثون وتطبيقات ذكاء الأعمال الموزعة.', status: 'Active' },
-  { id: 'dtype-ds', nameAr: 'دبلومة علوم البيانات', nameEn: 'Data Science Diploma', description: 'استكشاف الأنماط المعقدة، التحليل التنبؤي المتطور، وبناء نماذج الاستدلال الرياضي والتعلم للتنبؤ بسلوك الأنظمة.', status: 'Active' },
-  { id: 'dtype-net', nameAr: 'دبلومة الشبكات', nameEn: 'Network Diploma', description: 'دراسة هندسة وتوجيه الشبكات وحمايتها وتأسيس الخوادم ونظم الاتصالات الحديثة.', status: 'Active' },
-  { id: 'dtype-cyber', nameAr: 'دبلومة الأمن السيبراني', nameEn: 'Cyber Security Diploma', description: 'حماية وتأمين البنية التحتية البرمجية، اختبار الاختراق الأخلاقي، وتحليل الثغرات للشبكات والخوادم السحابية.', status: 'Active' },
-  { id: 'dtype-dev', nameAr: 'دبلومة تطوير الويب', nameEn: 'Web Development Diploma', description: 'إتقان بناء وتطوير الواجهات وتصميم قواعد البيانات وبناء واجهات التطبيقات البرمجية المستدامة والمستقلة بالكامل.', status: 'Active' },
-  { id: 'dtype-mobile', nameAr: 'دبلومة تطوير تطبيقات الموبايل', nameEn: 'Mobile App Development Diploma', description: 'تطوير تطبيقات الموبايل الهجين والأصيل باستخدام Flutter و React Native و Swift / Kotlin.', status: 'Active' },
-  { id: 'dtype-uiux', nameAr: 'دبلومة واجهات وتجربة المستخدم', nameEn: 'UI/UX Diploma', description: 'تصميم وبناء رحلات مستخدمين سهلة ومشوقة، تخطيط النماذج السلكية والتفاعلية الاحترافية على فيجما Figma وموائمة الهويات البصرية للشركات.', status: 'Active' },
-  { id: 'dtype-cloud', nameAr: 'دبلومة الحوسبة السحابية', nameEn: 'Cloud Computing Diploma', description: 'إدارة وتطوير وإعداد الخوادم وتطوير خدمات سحابية بالاعتماد على AWS, GCP, Azure.', status: 'Active' },
-  { id: 'dtype-pm', nameAr: 'دبلومة إدارة المشاريع', nameEn: 'Project Management Diploma', description: 'إدارة وهندسة المشاريع التقنية والريادية وتطبيق منهجيات Agile و Scrum.', status: 'Active' },
-  { id: 'dtype-marketing', nameAr: 'دبلومة التسويق الرقمي', nameEn: 'Digital Marketing Diploma', description: 'التسويق بمحركات البحث، ابتكار المزيج الإعلاني الرقمي المتكامل، رصد وتحليل سلوك زوار المواقع والعملاء.', status: 'Active' }
+  { id: 'dtype-ai',           nameAr: 'دبلومة الذكاء الاصطناعي',              nameEn: 'AI Diploma',               description: 'دراسة شاملة لتقنيات تعلم الآلة والشبكات العصبية وتطبيقات الذكاء الاصطناعي التوليدي.', status: 'Active' },
+  { id: 'dtype-da',           nameAr: 'دبلومة تحليل البيانات',                nameEn: 'Data Analysis Diploma',     description: 'تحليل وتفسير البيانات الإحصائية باستخدام Python وSQL وتطبيقات ذكاء الأعمال.', status: 'Active' },
+  { id: 'dtype-ai-adv',       nameAr: 'دبلومة الذكاء الاصطناعي المتقدم',     nameEn: 'AI Advanced Diploma',       description: 'تعمق متقدم في نماذج الـ LLM وهندسة الـ Generative AI وتطبيقات RAG والـ Agents.', status: 'Active' },
+  { id: 'dtype-frontend',     nameAr: 'دبلومة الفرونت إند',                   nameEn: 'Front End Diploma',         description: 'بناء واجهات ويب تفاعلية باستخدام HTML و CSS و JavaScript وأطر العمل الحديثة.', status: 'Active' },
+  { id: 'dtype-backend',      nameAr: 'دبلومة الباك إند',                     nameEn: 'Back End Diploma',          description: 'تطوير خوادم وAPIs وقواعد بيانات قوية باستخدام Node.js وPython وDjango.', status: 'Active' },
+  { id: 'dtype-fullstack',    nameAr: 'دبلومة الفول ستاك',                    nameEn: 'Fullstack Diploma',         description: 'إتقان تطوير الواجهات والخوادم وقواعد البيانات بشكل متكامل من الصفر للنشر.', status: 'Active' },
+  { id: 'dtype-flutter',      nameAr: 'دبلومة فلاتر لتطوير التطبيقات',       nameEn: 'Flutter Diploma',           description: 'تطوير تطبيقات موبايل متعددة المنصات باستخدام Flutter و Dart.', status: 'Active' },
+  { id: 'dtype-instant',      nameAr: 'دبلومة الانطلاق الفوري',              nameEn: 'Instant Start Diploma',     description: 'برنامج مكثف سريع للانطلاق في عالم التقنية باحترافية في أقصر وقت ممكن.', status: 'Active' },
+  { id: 'dtype-uiux',         nameAr: 'دبلومة واجهات وتجربة المستخدم',       nameEn: 'UI/UX Diploma',             description: 'تصميم تجارب مستخدمين احترافية باستخدام Figma ومبادئ تصميم الواجهات.', status: 'Active' },
+  { id: 'dtype-net',          nameAr: 'دبلومة الشبكات',                      nameEn: 'Network Diploma',           description: 'هندسة وتوجيه وإدارة الشبكات وتأسيس الخوادم ونظم الاتصالات الحديثة.', status: 'Active' },
+  { id: 'dtype-soc',          nameAr: 'دبلومة مركز عمليات الأمن',            nameEn: 'SOC Diploma',               description: 'مراقبة التهديدات السيبرانية والاستجابة للحوادث وتحليل السجلات في بيئة SOC.', status: 'Active' },
+  { id: 'dtype-pen',          nameAr: 'دبلومة اختبار الاختراق',              nameEn: 'PEN Diploma',               description: 'اختبار اختراق أخلاقي لأنظمة الويب والشبكات واكتشاف الثغرات ومعالجتها.', status: 'Active' },
+  { id: 'dtype-testing',      nameAr: 'دبلومة اختبار البرمجيات',             nameEn: 'Software Testing Diploma',  description: 'ضمان جودة البرمجيات عبر الاختبار اليدوي والأتمتة باستخدام Selenium وJest.', status: 'Active' },
+  { id: 'dtype-devops',       nameAr: 'دبلومة ديف أوبس',                     nameEn: 'Dev Ops Diploma',           description: 'أتمتة النشر وإدارة البنية التحتية باستخدام Docker وKubernetes وCI/CD Pipelines.', status: 'Active' },
+  { id: 'dtype-ai-auto',      nameAr: 'دبلومة أتمتة الذكاء الاصطناعي',      nameEn: 'AI Automation Diploma',     description: 'بناء وأتمتة سير العمل الذكي باستخدام أدوات No-Code وLLM APIs وAI Agents.', status: 'Active' },
+  { id: 'dtype-de',           nameAr: 'دبلومة هندسة البيانات',               nameEn: 'Data Engineering Diploma',  description: 'بناء خطوط أنابيب البيانات ومعالجتها وتخزينها باستخدام Spark وKafka وAirflow.', status: 'Active' },
 ];
 
 export const DEFAULT_INSTRUCTORS: Instructor[] = [
