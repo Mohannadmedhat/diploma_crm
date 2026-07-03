@@ -401,44 +401,6 @@ export default function DiplomaManager({
   /* ───────────────── STEP 1: Basic Info ───────────────── */
   const Step1 = () => (
     <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-      {/* Template Prefill */}
-      {!editingId && templates.length > 0 && (
-        <div className="p-3.5 bg-amber-950/10 border border-amber-800/20 rounded-xl space-y-2">
-          <label className="flex items-center gap-2 text-xs font-bold text-amber-400">
-            <Zap className="w-4 h-4" />
-            ملء تلقائي من القوالب المعتمدة
-            <span className="text-amber-600 font-normal text-[10px]">(اختياري)</span>
-          </label>
-          <select
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val) {
-                const chosen = templates.find((t) => t.id === val);
-                if (chosen) {
-                  setName(chosen.name);
-                  setDescription(chosen.description);
-                  const matchingType = diplomaTypes.find(
-                    (t) => t.nameAr.toLowerCase().includes(chosen.name.toLowerCase()) || chosen.name.toLowerCase().includes(t.nameAr.toLowerCase())
-                  );
-                  if (matchingType) setTypeId(matchingType.id);
-                  const referenceDate = startDate ? new Date(startDate) : new Date();
-                  if (!isNaN(referenceDate.getTime())) {
-                    referenceDate.setMonth(referenceDate.getMonth() + chosen.estimatedDurationMonths);
-                    setEndDate(referenceDate.toISOString().split('T')[0]);
-                  }
-                }
-              }
-            }}
-            className="w-full px-3 py-2 bg-[#0A0A0A] border border-amber-900/20 text-xs text-amber-200 rounded-lg outline-hidden cursor-pointer"
-            id="select-diploma-template-prefill"
-          >
-            <option value="">-- اختر قالب لملء البيانات تلقائياً --</option>
-            {templates.map((tpl) => (
-              <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* Name */}
       <div>
