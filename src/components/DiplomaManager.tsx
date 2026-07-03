@@ -971,7 +971,10 @@ export default function DiplomaManager({
           <input
             type="range" min={1} max={60} value={numberOfSessionsPlanned}
             onChange={e => setNumberOfSessionsPlanned(Number(e.target.value))}
-            className="flex-1 accent-amber-500 cursor-pointer"
+            className="flex-1 premium-slider"
+            style={{
+              background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((numberOfSessionsPlanned - 1) / (60 - 1)) * 100}%, #27272a ${((numberOfSessionsPlanned - 1) / (60 - 1)) * 100}%, #27272a 100%)`
+            }}
           />
           <div className="w-14 h-10 bg-[#0A0A0A] border border-amber-800/30 rounded-lg flex items-center justify-center">
             <span className="text-amber-400 font-bold text-sm font-mono">{numberOfSessionsPlanned}</span>
@@ -1059,12 +1062,12 @@ export default function DiplomaManager({
               <input
                 type="range" min={1} max={100} value={requiredAttendanceRateForm}
                 onChange={e => setRequiredAttendanceRateForm(Number(e.target.value))}
-                className="flex-1 accent-amber-500 cursor-pointer"
+                className="flex-1 premium-slider"
+                style={{
+                  background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${requiredAttendanceRateForm}%, #27272a ${requiredAttendanceRateForm}%, #27272a 100%)`
+                }}
               />
               <span className="text-amber-300 font-bold text-sm font-mono w-10 text-center">{requiredAttendanceRateForm}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mt-1.5">
-              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${requiredAttendanceRateForm}%` }} />
             </div>
           </div>
           <div>
