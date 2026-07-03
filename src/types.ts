@@ -49,7 +49,7 @@ export interface Diploma {
   googleClassroomUrl?: string; // Google Classroom
   googleFormUrl?: string;
   whatsappGroupUrl?: string;
-  
+
   // Additional settings
   numberOfSessionsPlanned?: number;
   studyDays?: string; // e.g. "الأحد، الثلاثاء"
@@ -416,28 +416,25 @@ export const DEFAULT_DIPLOMA_TEMPLATES: DiplomaTemplate[] = [
 ];
 
 export const DEFAULT_DIPLOMA_TYPES: DiplomaType[] = [
-  { id: 'dtype-ai',           nameAr: 'دبلومة الذكاء الاصطناعي',              nameEn: 'AI Diploma',               description: 'دراسة شاملة لتقنيات تعلم الآلة والشبكات العصبية وتطبيقات الذكاء الاصطناعي التوليدي.', status: 'Active' },
-  { id: 'dtype-da',           nameAr: 'دبلومة تحليل البيانات',                nameEn: 'Data Analysis Diploma',     description: 'تحليل وتفسير البيانات الإحصائية باستخدام Python وSQL وتطبيقات ذكاء الأعمال.', status: 'Active' },
-  { id: 'dtype-ai-adv',       nameAr: 'دبلومة الذكاء الاصطناعي المتقدم',     nameEn: 'AI Advanced Diploma',       description: 'تعمق متقدم في نماذج الـ LLM وهندسة الـ Generative AI وتطبيقات RAG والـ Agents.', status: 'Active' },
-  { id: 'dtype-frontend',     nameAr: 'دبلومة الفرونت إند',                   nameEn: 'Front End Diploma',         description: 'بناء واجهات ويب تفاعلية باستخدام HTML و CSS و JavaScript وأطر العمل الحديثة.', status: 'Active' },
-  { id: 'dtype-backend',      nameAr: 'دبلومة الباك إند',                     nameEn: 'Back End Diploma',          description: 'تطوير خوادم وAPIs وقواعد بيانات قوية باستخدام Node.js وPython وDjango.', status: 'Active' },
-  { id: 'dtype-fullstack',    nameAr: 'دبلومة الفول ستاك',                    nameEn: 'Fullstack Diploma',         description: 'إتقان تطوير الواجهات والخوادم وقواعد البيانات بشكل متكامل من الصفر للنشر.', status: 'Active' },
-  { id: 'dtype-flutter',      nameAr: 'دبلومة فلاتر لتطوير التطبيقات',       nameEn: 'Flutter Diploma',           description: 'تطوير تطبيقات موبايل متعددة المنصات باستخدام Flutter و Dart.', status: 'Active' },
-  { id: 'dtype-instant',      nameAr: 'دبلومة الانطلاق الفوري',              nameEn: 'Instant Start Diploma',     description: 'برنامج مكثف سريع للانطلاق في عالم التقنية باحترافية في أقصر وقت ممكن.', status: 'Active' },
-  { id: 'dtype-uiux',         nameAr: 'دبلومة واجهات وتجربة المستخدم',       nameEn: 'UI/UX Diploma',             description: 'تصميم تجارب مستخدمين احترافية باستخدام Figma ومبادئ تصميم الواجهات.', status: 'Active' },
-  { id: 'dtype-net',          nameAr: 'دبلومة الشبكات',                      nameEn: 'Network Diploma',           description: 'هندسة وتوجيه وإدارة الشبكات وتأسيس الخوادم ونظم الاتصالات الحديثة.', status: 'Active' },
-  { id: 'dtype-soc',          nameAr: 'دبلومة مركز عمليات الأمن',            nameEn: 'SOC Diploma',               description: 'مراقبة التهديدات السيبرانية والاستجابة للحوادث وتحليل السجلات في بيئة SOC.', status: 'Active' },
-  { id: 'dtype-pen',          nameAr: 'دبلومة اختبار الاختراق',              nameEn: 'PEN Diploma',               description: 'اختبار اختراق أخلاقي لأنظمة الويب والشبكات واكتشاف الثغرات ومعالجتها.', status: 'Active' },
-  { id: 'dtype-testing',      nameAr: 'دبلومة اختبار البرمجيات',             nameEn: 'Software Testing Diploma',  description: 'ضمان جودة البرمجيات عبر الاختبار اليدوي والأتمتة باستخدام Selenium وJest.', status: 'Active' },
-  { id: 'dtype-devops',       nameAr: 'دبلومة ديف أوبس',                     nameEn: 'Dev Ops Diploma',           description: 'أتمتة النشر وإدارة البنية التحتية باستخدام Docker وKubernetes وCI/CD Pipelines.', status: 'Active' },
-  { id: 'dtype-ai-auto',      nameAr: 'دبلومة أتمتة الذكاء الاصطناعي',      nameEn: 'AI Automation Diploma',     description: 'بناء وأتمتة سير العمل الذكي باستخدام أدوات No-Code وLLM APIs وAI Agents.', status: 'Active' },
-  { id: 'dtype-de',           nameAr: 'دبلومة هندسة البيانات',               nameEn: 'Data Engineering Diploma',  description: 'بناء خطوط أنابيب البيانات ومعالجتها وتخزينها باستخدام Spark وKafka وAirflow.', status: 'Active' },
+  { id: 'dtype-ai', nameAr: 'دبلومة الذكاء الاصطناعي', nameEn: 'AI Diploma', description: 'دراسة شاملة لتقنيات تعلم الآلة والشبكات العصبية وتطبيقات الذكاء الاصطناعي التوليدي.', status: 'Active' },
+  { id: 'dtype-da', nameAr: 'دبلومة تحليل البيانات', nameEn: 'Data Analysis Diploma', description: 'تحليل وتفسير البيانات الإحصائية باستخدام Python وSQL وتطبيقات ذكاء الأعمال.', status: 'Active' },
+  { id: 'dtype-ai-adv', nameAr: 'دبلومة الذكاء الاصطناعي المتقدم', nameEn: 'AI Advanced Diploma', description: 'تعمق متقدم في نماذج الـ LLM وهندسة الـ Generative AI وتطبيقات RAG والـ Agents.', status: 'Active' },
+  { id: 'dtype-frontend', nameAr: 'دبلومة الفرونت إند', nameEn: 'Front End Diploma', description: 'بناء واجهات ويب تفاعلية باستخدام HTML و CSS و JavaScript وأطر العمل الحديثة.', status: 'Active' },
+  { id: 'dtype-backend', nameAr: 'دبلومة الباك إند', nameEn: 'Back End Diploma', description: 'تطوير خوادم وAPIs وقواعد بيانات قوية باستخدام Node.js وPython وDjango.', status: 'Active' },
+  { id: 'dtype-fullstack', nameAr: 'دبلومة الفول ستاك', nameEn: 'Fullstack Diploma', description: 'إتقان تطوير الواجهات والخوادم وقواعد البيانات بشكل متكامل من الصفر للنشر.', status: 'Active' },
+  { id: 'dtype-flutter', nameAr: 'دبلومة فلاتر لتطوير التطبيقات', nameEn: 'Flutter Diploma', description: 'تطوير تطبيقات موبايل متعددة المنصات باستخدام Flutter و Dart.', status: 'Active' },
+  { id: 'dtype-instant', nameAr: 'دبلومة الانطلاق الفوري', nameEn: 'Instant Start Diploma', description: 'برنامج مكثف سريع للانطلاق في عالم التقنية باحترافية في أقصر وقت ممكن.', status: 'Active' },
+  { id: 'dtype-uiux', nameAr: 'دبلومة واجهات وتجربة المستخدم', nameEn: 'UI/UX Diploma', description: 'تصميم تجارب مستخدمين احترافية باستخدام Figma ومبادئ تصميم الواجهات.', status: 'Active' },
+  { id: 'dtype-net', nameAr: 'دبلومة الشبكات', nameEn: 'Network Diploma', description: 'هندسة وتوجيه وإدارة الشبكات وتأسيس الخوادم ونظم الاتصالات الحديثة.', status: 'Active' },
+  { id: 'dtype-soc', nameAr: 'دبلومة مركز عمليات الأمن', nameEn: 'SOC Diploma', description: 'مراقبة التهديدات السيبرانية والاستجابة للحوادث وتحليل السجلات في بيئة SOC.', status: 'Active' },
+  { id: 'dtype-pen', nameAr: 'دبلومة اختبار الاختراق', nameEn: 'PEN Diploma', description: 'اختبار اختراق أخلاقي لأنظمة الويب والشبكات واكتشاف الثغرات ومعالجتها.', status: 'Active' },
+  { id: 'dtype-testing', nameAr: 'دبلومة اختبار البرمجيات', nameEn: 'Software Testing Diploma', description: 'ضمان جودة البرمجيات عبر الاختبار اليدوي والأتمتة باستخدام Selenium وJest.', status: 'Active' },
+  { id: 'dtype-devops', nameAr: 'دبلومة ديف أوبس', nameEn: 'Dev Ops Diploma', description: 'أتمتة النشر وإدارة البنية التحتية باستخدام Docker وKubernetes وCI/CD Pipelines.', status: 'Active' },
+  { id: 'dtype-ai-auto', nameAr: 'دبلومة أتمتة الذكاء الاصطناعي', nameEn: 'AI Automation Diploma', description: 'بناء وأتمتة سير العمل الذكي باستخدام أدوات No-Code وLLM APIs وAI Agents.', status: 'Active' },
+  { id: 'dtype-de', nameAr: 'دبلومة هندسة البيانات', nameEn: 'Data Engineering Diploma', description: 'بناء خطوط أنابيب البيانات ومعالجتها وتخزينها باستخدام Spark وKafka وAirflow.', status: 'Active' },
 ];
 
 export const DEFAULT_INSTRUCTORS: Instructor[] = [
-  { id: 'inst-1', name: 'د. عادل القحطاني', phone: '+966501111001', email: 'adel.q@platform.edu', status: 'Active' },
-  { id: 'inst-2', name: 'م. أحمد الشمري', phone: '+966501111002', email: 'ahmed.s@platform.edu', status: 'Active' },
-  { id: 'inst-3', name: 'م. ياسر القاضي', phone: '+966501111003', email: 'yasser.q@platform.edu', status: 'Active' },
   { id: 'inst-4', name: 'Eng. Abanoub', phone: '', email: '', status: 'Active' },
   { id: 'inst-5', name: 'Eng. Abdallah Wageh', phone: '', email: '', status: 'Active' },
   { id: 'inst-6', name: 'Eng. Abdelnaby', phone: '', email: '', status: 'Active' },
@@ -539,6 +536,4 @@ export const DEFAULT_INSTRUCTORS: Instructor[] = [
 ];
 
 export const DEFAULT_MENTORS: Mentor[] = [
-  { id: 'ment-1', name: 'م. ممدوح الشمري', phone: '+966502222001', email: 'mamdouh.s@platform.edu', status: 'Active' },
-  { id: 'ment-2', name: 'أ. سارة العتيبي', phone: '+966502222002', email: 'sara.o@platform.edu', status: 'Active' }
 ];
