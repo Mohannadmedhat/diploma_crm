@@ -93,6 +93,8 @@ export default function DiplomaManager({
   const [typeId, setTypeId] = useState('');
   const [round, setRound] = useState<number | null>(null);
   const AVAILABLE_ROUNDS = [33, 34, 35, 36, 37, 38];
+  const [location, setLocation] = useState<'DT' | 'DM' | 'ON' | ''>('');
+  const [isManualName, setIsManualName] = useState(false);
   const [instructorName, setInstructorName] = useState('');
   const [instructorPhone, setInstructorPhone] = useState('');
   const [instructorEmail, setInstructorEmail] = useState('');
@@ -114,6 +116,104 @@ export default function DiplomaManager({
   const [requiredAttendanceRateForm, setRequiredAttendanceRateForm] = useState<number>(75);
   const [allowedAbsencesForm, setAllowedAbsencesForm] = useState<number>(3);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  const activeDiplomaTypes = useMemo(() => {
+    const active = diplomaTypes.filter((t) => t.status === 'Active');
+    return active.length > 0 ? active : diplomaTypes;
+  }, [diplomaTypes]);
+
+  const generateDiplomaName = (
+    typeIdVal: string,
+    selectedDaysVal: string[],
+    roundVal: number | null,
+    instructorNameVal: string,
+    locationVal: 'DT' | 'DM' | 'ON' | ''
+  ): string => {
+    const type = activeDiplomaTypes.find(t => t.id === typeIdVal);
+    if (!type) return '';
+    
+    // 1. Type name without "Diploma"
+    let typeName = type.nameEn || '';
+    typeName = typeName.replace(/\s*diploma\s*/gi, '').trim();
+
+    // 2. Days
+    const DAY_MAP: Record<string, { letter: string; code3: string; order: number }> = {
+      'السبت': { letter: 'S', code3: 'SAT', order: 0 },
+      'الأحد': { letter: 'S', code3: 'SUN', order: 1 },
+      'الاثنين': { letter: 'M', code3: 'MON', order: 2 },
+      'الثلاثاء': { letter: 'T', code3: 'TUE', order: 3 },
+      'الأربعاء': { letter: 'W', code3: 'WED', order: 4 },
+      'الخميس': { letter: 'T', code3: 'THU', order: 5 },
+      'الجمعة': { letter: 'F', code3: 'FRI', order: 6 },
+    };
+
+    const sortedDays = [...selectedDaysVal].sort((a, b) => {
+      return (DAY_MAP[a]?.order ?? 9) - (DAY_MAP[b]?.order ?? 9);
+    });
+
+    let daysPart = '';
+    if (sortedDays.length === 1) {
+      daysPart = DAY_MAP[sortedDays[0]]?.code3 ?? '';
+    } else if (sortedDays.length === 2) {
+      daysPart = (DAY_MAP[sortedDays[0]]?.letter ?? '') + (DAY_MAP[sortedDays[1]]?.letter ?? '');
+    } else if (sortedDays.length > 2) {
+      daysPart = sortedDays.map(d => DAY_MAP[d]?.letter ?? '').join('');
+    }
+
+    // 3. Round
+    const roundPart = roundVal ? `R${roundVal}` : '';
+
+    // 4. Instructor initial
+    let instPart = '';
+    if (instructorNameVal) {
+      let clean = instructorNameVal.trim();
+      const prefixes = ['eng.', 'dr.', 'mr.', 'ms.', 'mrs.', 'د.', 'م.', 'أ.'];
+      for (const p of prefixes) {
+        if (clean.toLowerCase().startsWith(p)) {
+          clean = clean.substring(p.length).trim();
+        }
+      }
+      if (clean) {
+        const char = clean.charAt(0).toUpperCase();
+        const AR_TO_EN_INITIALS: Record<string, string> = {
+          'أ': 'A', 'إ': 'A', 'آ': 'A', 'ا': 'A', 'ع': 'A',
+          'ب': 'B',
+          'ت': 'T', 'ط': 'T',
+          'ث': 'T',
+          'ج': 'J',
+          'ح': 'H', 'ه': 'H', 'هـ': 'H',
+          'خ': 'K', 'ك': 'K',
+          'د': 'D', 'ض': 'D',
+          'ذ': 'Z', 'ز': 'Z', 'ظ': 'Z',
+          'ر': 'R',
+          'س': 'S', 'ص': 'S',
+          'ش': 'S',
+          'ف': 'F',
+          'ق': 'Q',
+          'ل': 'L',
+          'م': 'M',
+          'ن': 'N',
+          'و': 'W',
+          'ي': 'Y'
+        };
+        instPart = AR_TO_EN_INITIALS[char] || char;
+      }
+    }
+
+    // Bracket content
+    const parts = [daysPart, roundPart, instPart].filter(Boolean);
+    const bracket = parts.length > 0 ? `[${parts.join('-')}]` : '';
+
+    return `${typeName}${bracket}${locationVal}`;
+  };
+
+  React.useEffect(() => {
+    if (showForm && !isManualName) {
+      const generated = generateDiplomaName(typeId, selectedDays, round, instructorName, location);
+      setName(generated);
+    }
+  }, [typeId, selectedDays, round, instructorName, location, showForm, isManualName, activeDiplomaTypes]);
+
 
   const existingInstructors = useMemo(() => {
     const list: { name: string; phone: string; email: string }[] = [];
@@ -139,11 +239,6 @@ export default function DiplomaManager({
     return list;
   }, [diplomas]);
 
-  const activeDiplomaTypes = useMemo(() => {
-    const active = diplomaTypes.filter((t) => t.status === 'Active');
-    return active.length > 0 ? active : diplomaTypes;
-  }, [diplomaTypes]);
-
   const resetForm = () => {
     setName(''); setDescription('');
     setStartDate(new Date().toISOString().split('T')[0]);
@@ -153,6 +248,8 @@ export default function DiplomaManager({
     setStatus('Active');
     setTypeId(activeDiplomaTypes[0]?.id || '');
     setRound(null);
+    setLocation('');
+    setIsManualName(false);
     setInstructorName(''); setInstructorPhone(''); setInstructorEmail('');
     setMentorName(''); setMentorPhone(''); setMentorEmail('');
     setGoogleSheetUrl(''); setGoogleFormUrl(''); setWhatsappGroupUrl('');
@@ -179,6 +276,8 @@ export default function DiplomaManager({
     setStartDate(d.startDate); setEndDate(d.endDate); setStatus(d.status);
     setTypeId(d.typeId || '');
     setRound(d.round ?? null);
+    setLocation(d.location ?? '');
+    setIsManualName(true); // Preserve existing name when editing
     setInstructorName(d.instructorName || ''); setInstructorPhone(d.instructorPhone || ''); setInstructorEmail(d.instructorEmail || '');
     setMentorName(d.mentorName || ''); setMentorPhone(d.mentorPhone || ''); setMentorEmail(d.mentorEmail || '');
     setGoogleSheetUrl(d.googleSheetUrl || ''); setGoogleFormUrl(d.googleFormUrl || ''); setWhatsappGroupUrl(d.whatsappGroupUrl || '');
@@ -195,10 +294,12 @@ export default function DiplomaManager({
     setShowForm(true);
   };
 
+
   const validateStep = (step: number): string => {
     if (step === 1) {
-      if (!name.trim()) return 'يرجى إدخال اسم الدبلوم الأكاديمي.';
       if (!typeId) return 'يرجى اختيار نوع الدبلومة.';
+      if (!location) return 'يرجى اختيار مكان انعقاد الدبلومة (Location).';
+      if (!name.trim()) return 'يرجى إدخال اسم الدبلوم الأكاديمي أو التأكد من إدخال كافة الحقول لتوليده تلقائياً.';
       if (!startDate) return 'يرجى تحديد تاريخ بداية التدريس.';
     }
     return '';
@@ -227,6 +328,7 @@ export default function DiplomaManager({
       endDate: endDate || '',
       status, typeId,
       round: round ?? undefined,
+      location: location || undefined,
       instructorName: instructorName.trim(), instructorPhone: instructorPhone.trim(), instructorEmail: instructorEmail.trim(),
       mentorName: mentorName.trim(), mentorPhone: mentorPhone.trim(), mentorEmail: mentorEmail.trim(),
       googleSheetUrl: googleSheetUrl.trim(), googleFormUrl: googleFormUrl.trim(), whatsappGroupUrl: whatsappGroupUrl.trim(),
@@ -345,6 +447,14 @@ export default function DiplomaManager({
           </div>
         )}
 
+        {location && (
+          <div>
+            <div className="text-zinc-600 mb-0.5">الموقع (Branch)</div>
+            <div className="text-emerald-450 font-bold font-mono">{location === 'DT' ? 'Dokki Tahrir (DT)' : location === 'DM' ? 'Dokki Messadk (DM)' : 'Online (ON)'}</div>
+          </div>
+        )}
+
+
         {status && (
           <div>
             <div className="text-zinc-600 mb-0.5">الحالة</div>
@@ -416,18 +526,41 @@ export default function DiplomaManager({
 
       {/* Name */}
       <div>
-        <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-300 mb-2">
-          <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-          اسم الدبلوم الأكاديمي
-          <span className="text-rose-400 text-sm leading-none">*</span>
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-300">
+            <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+            اسم الدبلوم الأكاديمي (توليد تلقائي)
+            <span className="text-rose-400 text-sm leading-none">*</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => setIsManualName(!isManualName)}
+            className={`px-2 py-1 text-[10px] font-bold rounded-md border transition-all cursor-pointer ${
+              isManualName 
+                ? 'bg-amber-955/20 border-amber-800/40 text-amber-400' 
+                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+            }`}
+          >
+            {isManualName ? '✍️ تعديل يدوي نشط' : '⚙️ توليد الاسم تلقائياً'}
+          </button>
+        </div>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="مثال: دبلوم هندسة البرمجيات المتقدمة - الدفعة الثانية"
-          className="w-full px-4 py-2.5 bg-[#0A0A0A] border border-[#262626] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-sm text-zinc-100 rounded-lg outline-hidden text-right transition-all"
+          disabled={!isManualName}
+          placeholder={isManualName ? "اكتب الاسم المخصص..." : "سيتم توليد الاسم تلقائياً..."}
+          className={`w-full px-4 py-2.5 border text-sm rounded-lg outline-hidden text-right transition-all ${
+            isManualName 
+              ? 'bg-[#0A0A0A] border-amber-600/30 text-zinc-100 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20' 
+              : 'bg-[#050505] border-[#1f1f1f] text-zinc-450 cursor-not-allowed select-none'
+          }`}
         />
+        {!isManualName && (
+          <p className="text-[10px] text-zinc-500 mt-1 font-sans">
+            * يتم تكوين الاسم تلقائياً عند اختيار: نوع التخصص، الأيام (خطوة 4)، رقم الدورة، المحاضر (خطوة 2)، ومكان الانعقاد.
+          </p>
+        )}
       </div>
 
       {/* Type */}
@@ -452,11 +585,45 @@ export default function DiplomaManager({
                 {typeId === type.id && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
                 <span className="line-clamp-1">{type.nameAr}</span>
               </div>
-              <div className="text-[10px] text-zinc-600 font-mono mt-0.5">{type.nameEn}</div>
+              <div className="text-[10px] text-zinc-650 font-mono mt-0.5">{type.nameEn}</div>
             </button>
           ))}
         </div>
       </div>
+
+      {/* Location */}
+      <div>
+        <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-300 mb-2">
+          <MapPin className="w-3.5 h-3.5 text-blue-400" />
+          مكان انعقاد الدبلومة (Location)
+          <span className="text-rose-400 text-sm leading-none">*</span>
+        </label>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { v: 'DT', label: 'Dokki Tahrir', code: 'DT' },
+            { v: 'DM', label: 'Dokki Messadk', code: 'DM' },
+            { v: 'ON', label: 'Online', code: 'ON' },
+          ].map((loc) => (
+            <button
+              key={loc.v}
+              type="button"
+              onClick={() => {
+                setLocation(loc.v as any);
+                setStudyLocation(loc.label);
+              }}
+              className={`py-2.5 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center ${
+                location === loc.v
+                  ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg shadow-blue-500/10'
+                  : 'bg-[#0A0A0A] border-[#262626] text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'
+              }`}
+            >
+              <div>{loc.label}</div>
+              <div className="text-[10px] text-zinc-600 font-mono mt-0.5">{loc.code}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
 
       {/* Round Number */}
       <div>
@@ -1121,6 +1288,11 @@ export default function DiplomaManager({
                     {dip.round && (
                       <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-800/40 bg-blue-950/20 text-blue-400 font-mono">
                         R{dip.round}
+                      </span>
+                    )}
+                    {dip.location && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-800/40 bg-emerald-950/20 text-emerald-400 font-mono">
+                        {dip.location}
                       </span>
                     )}
                   </div>

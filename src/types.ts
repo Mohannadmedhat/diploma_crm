@@ -37,6 +37,7 @@ export interface Diploma {
   status: 'Upcoming' | 'Active' | 'Completed'; // 'قادم' | 'نشط' | 'مكتمل'
   typeId?: string; // links to DiplomaType
   round?: number; // رقم الدورة التي بدأت فيها الدبلومة (e.g. 33, 34, ...)
+  location?: 'DT' | 'DM' | 'ON'; // Dokki Tahrir | Dokki Messadk | Online
   instructorId?: string; // links to Instructor
   mentorId?: string; // links to Mentor
   instructorName?: string;
