@@ -196,6 +196,9 @@ export function saveDiplomaTemplates(data: DiplomaTemplate[]): void {
 // DIPLOMA TYPES (Shared)
 // ============================================================
 
+// IDs that belong to old diploma types that were removed — used to detect stale localStorage
+const REMOVED_DTYPE_IDS = new Set(['dtype-ds', 'dtype-cyber', 'dtype-dev', 'dtype-mobile', 'dtype-cloud', 'dtype-pm', 'dtype-marketing']);
+
 export function loadDiplomaTypes(): DiplomaType[] {
   try {
     const raw = localStorage.getItem(KEY_DIPLOMA_TYPES());
@@ -203,12 +206,20 @@ export function loadDiplomaTypes(): DiplomaType[] {
       saveDiplomaTypes(DEFAULT_DIPLOMA_TYPES);
       return DEFAULT_DIPLOMA_TYPES;
     }
-    return JSON.parse(raw);
+    const parsed: DiplomaType[] = JSON.parse(raw);
+    // If stored data contains any removed IDs → stale cache → reset to new defaults
+    const isStale = parsed.some(t => REMOVED_DTYPE_IDS.has(t.id));
+    if (isStale) {
+      saveDiplomaTypes(DEFAULT_DIPLOMA_TYPES);
+      return DEFAULT_DIPLOMA_TYPES;
+    }
+    return parsed;
   } catch (e) {
     console.error('Error loading diploma types', e);
     return DEFAULT_DIPLOMA_TYPES;
   }
 }
+
 
 export function saveDiplomaTypes(data: DiplomaType[]): void {
   try {
