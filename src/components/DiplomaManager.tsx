@@ -973,8 +973,8 @@ export default function DiplomaManager({
             onChange={e => setNumberOfSessionsPlanned(Number(e.target.value))}
             className="flex-1 premium-slider"
             style={{
-              background: `linear-gradient(to left, #f59e0b 0%, #f59e0b ${((numberOfSessionsPlanned - 1) / (60 - 1)) * 100}%, #27272a ${((numberOfSessionsPlanned - 1) / (60 - 1)) * 100}%, #27272a 100%)`
-            }}
+              '--slider-fill-percent': `${((numberOfSessionsPlanned - 1) / (60 - 1)) * 100}%`
+            } as React.CSSProperties}
           />
           <div className="w-14 h-10 bg-[#0A0A0A] border border-amber-800/30 rounded-lg flex items-center justify-center">
             <span className="text-amber-400 font-bold text-sm font-mono">{numberOfSessionsPlanned}</span>
@@ -1064,8 +1064,8 @@ export default function DiplomaManager({
                 onChange={e => setRequiredAttendanceRateForm(Number(e.target.value))}
                 className="flex-1 premium-slider"
                 style={{
-                  background: `linear-gradient(to left, #f59e0b 0%, #f59e0b ${requiredAttendanceRateForm}%, #27272a ${requiredAttendanceRateForm}%, #27272a 100%)`
-                }}
+                  '--slider-fill-percent': `${requiredAttendanceRateForm}%`
+                } as React.CSSProperties}
               />
               <span className="text-amber-300 font-bold text-sm font-mono w-10 text-center">{requiredAttendanceRateForm}%</span>
             </div>

@@ -889,21 +889,17 @@ input[type="range"].premium-slider {
   appearance: none;
   width: 100%;
   height: 24px; /* full interactive height, ensures the thumb is completely clickable */
-  background-size: 100% 8px !important; /* Visual track height */
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  border-radius: 9999px;
+  background: transparent !important;
   outline: none;
   cursor: pointer;
-  background-color: transparent;
 }
 
 /* Webkit Track container centering */
 input[type="range"].premium-slider::-webkit-slider-runnable-track {
   width: 100%;
-  height: 24px; /* Matches full clickable height */
-  background: transparent;
+  height: 8px; /* Fixed visually thin track */
   border-radius: 9999px;
+  background: linear-gradient(to left, #f59e0b var(--slider-fill-percent, 0%), #27272a var(--slider-fill-percent, 0%));
 }
 
 /* Webkit browsers (Chrome, Safari, Edge, Opera) */
@@ -917,7 +913,7 @@ input[type="range"].premium-slider::-webkit-slider-thumb {
   border: 3px solid #0f172a; /* dark indigo/slate border */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.6);
   cursor: grab;
-  margin-top: 1px; /* Align perfectly in the center of the 24px container (1px down matches the center) */
+  margin-top: -7px; /* Centering the thumb: (track_height/2) - (thumb_height/2) => 4px - 11px = -7px */
   transition: transform 0.1s ease, background-color 0.1s ease;
 }
 
@@ -931,7 +927,15 @@ input[type="range"].premium-slider::-webkit-slider-thumb:active {
   cursor: grabbing;
 }
 
-/* Firefox */
+/* Firefox Track */
+input[type="range"].premium-slider::-moz-range-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  background: linear-gradient(to left, #f59e0b var(--slider-fill-percent, 0%), #27272a var(--slider-fill-percent, 0%));
+}
+
+/* Firefox Thumb */
 input[type="range"].premium-slider::-moz-range-thumb {
   width: 22px;
   height: 22px;
@@ -952,6 +956,7 @@ input[type="range"].premium-slider::-moz-range-thumb:active {
   transform: scale(0.95);
   cursor: grabbing;
 }
+
 
 
 
