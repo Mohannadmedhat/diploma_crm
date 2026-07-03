@@ -91,6 +91,8 @@ export default function DiplomaManager({
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<Diploma['status']>('Active');
   const [typeId, setTypeId] = useState('');
+  const [round, setRound] = useState<number | null>(null);
+  const AVAILABLE_ROUNDS = [33, 34, 35, 36, 37, 38];
   const [instructorName, setInstructorName] = useState('');
   const [instructorPhone, setInstructorPhone] = useState('');
   const [instructorEmail, setInstructorEmail] = useState('');
@@ -150,6 +152,7 @@ export default function DiplomaManager({
     setEndDate(sixMonthsLater.toISOString().split('T')[0]);
     setStatus('Active');
     setTypeId(activeDiplomaTypes[0]?.id || '');
+    setRound(null);
     setInstructorName(''); setInstructorPhone(''); setInstructorEmail('');
     setMentorName(''); setMentorPhone(''); setMentorEmail('');
     setGoogleSheetUrl(''); setGoogleFormUrl(''); setWhatsappGroupUrl('');
@@ -175,6 +178,7 @@ export default function DiplomaManager({
     setName(d.name); setDescription(d.description);
     setStartDate(d.startDate); setEndDate(d.endDate); setStatus(d.status);
     setTypeId(d.typeId || '');
+    setRound(d.round ?? null);
     setInstructorName(d.instructorName || ''); setInstructorPhone(d.instructorPhone || ''); setInstructorEmail(d.instructorEmail || '');
     setMentorName(d.mentorName || ''); setMentorPhone(d.mentorPhone || ''); setMentorEmail(d.mentorEmail || '');
     setGoogleSheetUrl(d.googleSheetUrl || ''); setGoogleFormUrl(d.googleFormUrl || ''); setWhatsappGroupUrl(d.whatsappGroupUrl || '');
@@ -222,6 +226,7 @@ export default function DiplomaManager({
       startDate: startDate || new Date().toISOString().split('T')[0],
       endDate: endDate || '',
       status, typeId,
+      round: round ?? undefined,
       instructorName: instructorName.trim(), instructorPhone: instructorPhone.trim(), instructorEmail: instructorEmail.trim(),
       mentorName: mentorName.trim(), mentorPhone: mentorPhone.trim(), mentorEmail: mentorEmail.trim(),
       googleSheetUrl: googleSheetUrl.trim(), googleFormUrl: googleFormUrl.trim(), whatsappGroupUrl: whatsappGroupUrl.trim(),
@@ -330,6 +335,13 @@ export default function DiplomaManager({
           <div>
             <div className="text-zinc-600 mb-0.5">التخصص</div>
             <div className="text-indigo-400 font-semibold">{selectedTypeName}</div>
+          </div>
+        )}
+
+        {round !== null && (
+          <div>
+            <div className="text-zinc-600 mb-0.5">الدورة</div>
+            <div className="text-blue-400 font-bold font-mono">Round {round}</div>
           </div>
         )}
 
@@ -444,6 +456,46 @@ export default function DiplomaManager({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Round Number */}
+      <div>
+        <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-300 mb-2">
+          <Star className="w-3.5 h-3.5 text-blue-400" />
+          رقم الدورة (Round) التي بدأت فيها هذه الدبلومة
+          <span className="text-zinc-600 text-[10px] mr-1">(اختياري)</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {AVAILABLE_ROUNDS.map(r => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRound(round === r ? null : r)}
+              className={`px-4 py-2 rounded-lg border text-sm font-bold transition-all cursor-pointer ${
+                round === r
+                  ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg shadow-blue-500/10'
+                  : 'bg-[#0A0A0A] border-[#262626] text-zinc-500 hover:border-zinc-600 hover:text-zinc-200'
+              }`}
+            >
+              R{r}
+            </button>
+          ))}
+          {round !== null && (
+            <button
+              type="button"
+              onClick={() => setRound(null)}
+              className="px-3 py-2 rounded-lg border border-rose-900/40 bg-rose-950/10 text-rose-400 text-xs font-semibold cursor-pointer hover:bg-rose-950/20 transition-all"
+            >
+              ✕ إلغاء
+            </button>
+          )}
+        </div>
+        {round !== null && (
+          <p className="text-[10px] text-blue-400 mt-1.5 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            الدورة المحددة: Round {round}
+          </p>
+        )}
       </div>
 
       {/* Status */}
@@ -1064,7 +1116,15 @@ export default function DiplomaManager({
               <div className="space-y-3">
                 {/* Status + Actions */}
                 <div className="flex items-start justify-between gap-2">
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>{statusText}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>{statusText}</span>
+                    {dip.round && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-800/40 bg-blue-950/20 text-blue-400 font-mono">
+                        R{dip.round}
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => handleStartEdit(dip)}

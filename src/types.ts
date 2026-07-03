@@ -36,6 +36,7 @@ export interface Diploma {
   endDate: string; // YYYY-MM-DD
   status: 'Upcoming' | 'Active' | 'Completed'; // 'قادم' | 'نشط' | 'مكتمل'
   typeId?: string; // links to DiplomaType
+  round?: number; // رقم الدورة التي بدأت فيها الدبلومة (e.g. 33, 34, ...)
   instructorId?: string; // links to Instructor
   mentorId?: string; // links to Mentor
   instructorName?: string;
