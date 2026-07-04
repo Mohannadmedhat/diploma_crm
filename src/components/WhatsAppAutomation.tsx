@@ -65,8 +65,8 @@ export default function WhatsAppAutomation({
   autoTriggerOptions,
   onClearAutoTrigger
 }: WhatsAppAutomationProps) {
-  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart'
-  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart'>('smart');
+  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart' | 'quick-blast'
+  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart' | 'quick-blast'>('smart');
 
   // Search/Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,6 +123,11 @@ export default function WhatsAppAutomation({
   const broadcastTextAreaRef = useRef<HTMLTextAreaElement>(null);
   const [broadcastSelectionStart, setBroadcastSelectionStart] = useState<number | null>(null);
 
+  // 7️⃣ QUICK BLAST STATE
+  const [quickNumbers, setQuickNumbers] = useState('');
+  const [quickMessage, setQuickMessage] = useState('');
+  const [polishingQuickBlast, setPolishingQuickBlast] = useState(false);
+
   useEffect(() => {
     if (diplomas.length > 0 && Object.keys(selectedBroadcastDiplomas).length === 0) {
       const initial: Record<string, boolean> = {};
@@ -148,7 +153,7 @@ export default function WhatsAppAutomation({
   const [polishingAbsence, setPolishingAbsence] = useState(false);
   const [polishingCustom, setPolishingCustom] = useState(false);
 
-  const handlePolishMessage = async (type: 'absence' | 'custom' | 'broadcaster', tone: 'friendly' | 'warning' | 'formal') => {
+  const handlePolishMessage = async (type: 'absence' | 'custom' | 'broadcaster' | 'quick-blast', tone: 'friendly' | 'warning' | 'formal') => {
     const activeApiKey = config?.groqApiKey || (import.meta as any).env.VITE_GROQ_API_KEY || '';
     if (!activeApiKey) {
       alert('الرجاء تهيئة مفتاح Groq API في الإعدادات أولاً لتفعيل تحسين الرسائل بالذكاء الاصطناعي.');
@@ -158,12 +163,14 @@ export default function WhatsAppAutomation({
     let currentText = '';
     if (type === 'absence') currentText = absenceCustomText;
     else if (type === 'custom') currentText = customMessageText;
+    else if (type === 'quick-blast') currentText = quickMessage;
     else currentText = broadcastMessageText;
 
     if (!currentText.trim()) return;
 
     if (type === 'absence') setPolishingAbsence(true);
     else if (type === 'custom') setPolishingCustom(true);
+    else if (type === 'quick-blast') setPolishingQuickBlast(true);
     else setPolishingBroadcast(true);
 
     try {
@@ -177,6 +184,8 @@ export default function WhatsAppAutomation({
         setAbsenceCustomText(improved);
       } else if (type === 'custom') {
         setCustomMessageText(improved);
+      } else if (type === 'quick-blast') {
+        setQuickMessage(improved);
       } else {
         setBroadcastMessageText(improved);
       }
@@ -186,7 +195,60 @@ export default function WhatsAppAutomation({
       setPolishingAbsence(false);
       setPolishingCustom(false);
       setPolishingBroadcast(false);
+      setPolishingQuickBlast(false);
     }
+  };
+
+  const parseQuickNumbers = (rawText: string) => {
+    if (!rawText.trim()) return [];
+    const items = rawText.split(/[\n,;\t|]/);
+    const result: string[] = [];
+    items.forEach(item => {
+      let clean = item.replace(/[^\d+]/g, '').trim();
+      if (clean) {
+        if (clean.replace(/\D/g, '').length >= 5) {
+          result.push(clean);
+        }
+      }
+    });
+    return Array.from(new Set(result));
+  };
+
+  const handleStartQuickBlast = () => {
+    const lines = parseQuickNumbers(quickNumbers);
+    if (lines.length === 0) {
+      alert('الرجاء إدخال رقم هاتف واحد على الأقل.');
+      return;
+    }
+    if (!quickMessage.trim()) {
+      alert('الرجاء كتابة نص الرسالة.');
+      return;
+    }
+
+    const queueItems: QueueItem[] = lines.map((phone, idx) => {
+      const dummyStudent: Student = {
+        id: `dummy_quick_${Date.now()}_${idx}`,
+        name: `رقم خارجي (${phone})`,
+        parentName: '',
+        phone: phone,
+        diplomaIds: [],
+        joinedDate: new Date().toISOString().split('T')[0],
+        notes: 'مستلم خارجي'
+      };
+
+      return {
+        student: dummyStudent,
+        message: quickMessage,
+        phone: phone,
+        status: 'pending'
+      };
+    });
+
+    setQueue(queueItems);
+    setQueueIndex(0);
+    setCopied(false);
+    setIsQueueActive(true);
+    setIsAutoSending(false);
   };
 
   // Workflow states
@@ -953,6 +1015,7 @@ export default function WhatsAppAutomation({
           { id: 'class-reminder', label: 'تذكير الجلسة', icon: Clock, activeGrad: 'from-indigo-600 to-blue-600', activeTxt: 'text-white' },
           { id: 'custom-message', label: 'رسالة خاصة', icon: FileText, activeGrad: 'from-emerald-600 to-teal-600', activeTxt: 'text-white' },
           { id: 'broadcaster', label: 'تعميم موحد', icon: Users, activeGrad: 'from-amber-500 to-orange-500', activeTxt: 'text-white' },
+          { id: 'quick-blast', label: 'إرسال خارجي 🚀', icon: Send, activeGrad: 'from-pink-500 to-rose-500', activeTxt: 'text-white' },
           { id: 'schedules', label: 'الجدولة', icon: Calendar, activeGrad: 'from-purple-600 to-fuchsia-600', activeTxt: 'text-white' }
         ].map((tab) => {
           const Icon = tab.icon;
@@ -2096,6 +2159,147 @@ export default function WhatsAppAutomation({
                   </div>
                 </div>
 
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ==========================================
+            TAB 6: QUICK BLAST (EXTERNAL SEND)
+            ========================================== */}
+        {activeTab === 'quick-blast' && (
+          <div className="lg:col-span-12 space-y-6 animate-fadeIn" dir="rtl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Right Column: Numbers Input & Message Text */}
+              <div className="lg:col-span-7 space-y-6">
+                
+                {/* Numbers Card */}
+                <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-pink-400" />
+                      <h3 className="text-xs font-bold text-white">قائمة أرقام الهواتف</h3>
+                    </div>
+                    <span className="text-[10px] text-zinc-500 font-sans font-bold">
+                      الأرقام المكتشفة: {parseQuickNumbers(quickNumbers).length}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[11px] text-zinc-400 font-sans font-bold">
+                      أدخل الأرقام هنا (رقم في كل سطر، أو مفصولة بفاصلة):
+                    </label>
+                    <textarea
+                      value={quickNumbers}
+                      onChange={(e) => setQuickNumbers(e.target.value)}
+                      className="w-full h-40 px-3 py-2.5 bg-black border border-zinc-800 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-xs text-white rounded-xl outline-none resize-y font-mono leading-relaxed text-left"
+                      placeholder={`+966500000000\n0500000000\n+201000000000`}
+                    />
+                    <p className="text-[10px] text-zinc-500 font-sans leading-normal">
+                      💡 نصيحة: تأكد من كتابة كود الدولة (مثال: +966 أو +20) لضمان وصول الرسالة بشكل صحيح إذا كان المستلم من خارج دولتك.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Message Editor Card */}
+                <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5 text-pink-400" />
+                      <h3 className="text-xs font-bold text-white">نص الرسالة المراد إرسالها</h3>
+                    </div>
+
+                    {/* AI Polishing Buttons */}
+                    <div className="flex items-center gap-1.5 font-sans">
+                      <span className="text-[10px] text-zinc-500 ml-1">تحسين الذكاء الاصطناعي:</span>
+                      <button
+                        disabled={polishingQuickBlast}
+                        onClick={() => handlePolishMessage('quick-blast', 'friendly')}
+                        className="px-2 py-1 bg-pink-500/10 hover:bg-pink-500/25 border border-pink-500/20 text-pink-400 text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 font-sans"
+                      >
+                        {polishingQuickBlast ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-pink-400" />}
+                        ودي
+                      </button>
+                      <button
+                        disabled={polishingQuickBlast}
+                        onClick={() => handlePolishMessage('quick-blast', 'formal')}
+                        className="px-2 py-1 bg-pink-500/10 hover:bg-pink-500/25 border border-pink-500/20 text-pink-400 text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 font-sans"
+                      >
+                        رسمي
+                      </button>
+                      <button
+                        disabled={polishingQuickBlast}
+                        onClick={() => handlePolishMessage('quick-blast', 'warning')}
+                        className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 text-rose-400 text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 font-sans"
+                      >
+                        تنبيه
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <textarea
+                      value={quickMessage}
+                      onChange={(e) => setQuickMessage(e.target.value)}
+                      className="w-full h-44 px-3 py-2 bg-black border border-zinc-800 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-xs text-white rounded-xl outline-none resize-y font-sans leading-relaxed text-right"
+                      placeholder="اكتب رسالتك الموحدة هنا..."
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Left Column: Parsed Numbers & Action */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="p-5 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-900 pb-2.5">
+                    <h3 className="text-xs font-bold text-white flex items-center gap-1.5 font-sans">
+                      <Send className="w-4 h-4 text-emerald-450" />
+                      الأرقام الجاهزة للإرسال
+                    </h3>
+                    <span className="text-[10px] text-zinc-550 font-sans font-bold bg-zinc-900 px-2 py-0.5 rounded">
+                      العدد: {parseQuickNumbers(quickNumbers).length}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {parseQuickNumbers(quickNumbers).map((phone, idx) => (
+                      <div
+                        key={`quick-phone-${idx}`}
+                        className="flex items-center justify-between p-2.5 bg-[#07070A] border border-zinc-900 rounded-lg text-xs"
+                      >
+                        <span className="font-mono text-zinc-350">{phone}</span>
+                        <button
+                          onClick={() => {
+                            const list = parseQuickNumbers(quickNumbers);
+                            const filtered = list.filter(p => p !== phone);
+                            setQuickNumbers(filtered.join('\n'));
+                          }}
+                          className="text-[10px] text-zinc-550 hover:text-rose-400 font-sans transition-colors cursor-pointer"
+                        >
+                          حذف
+                        </button>
+                      </div>
+                    ))}
+                    {parseQuickNumbers(quickNumbers).length === 0 && (
+                      <div className="p-8 text-center text-zinc-650 bg-neutral-950/20 border border-dashed border-zinc-900 rounded-xl font-sans text-xs">
+                        لم يتم إدخال أو اكتشاف أي أرقام بعد.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-900">
+                    <button
+                      onClick={handleStartQuickBlast}
+                      className="w-full py-3 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white text-xs font-black rounded-xl transition-all cursor-pointer shadow-lg shadow-pink-500/20 flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      بدء الإرسال الجماعي المتسلسل 🚀
+                    </button>
+                  </div>
+                </div>
               </div>
 
             </div>
