@@ -633,7 +633,7 @@ export default function WhatsAppAutomation({
   };
 
   const openWhatsAppLink = (item: QueueItem): boolean => {
-    let cleanPhone = item.phone.replace(/[^\d+]/g, '');
+    let cleanPhone = item.phone.replace(/\D/g, '');
     const encodedText = encodeURIComponent(item.message);
 
     let url = '';
@@ -642,8 +642,9 @@ export default function WhatsAppAutomation({
       if (isAutoSending) {
         url += '&automate=1';
       }
+    } else if (whatsappPlatform === 'desktop') {
+      url = `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
     } else {
-      // Both 'standard' and 'desktop' will use the api.whatsapp.com link for bulk dispatch
       url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
     }
 
@@ -675,20 +676,17 @@ export default function WhatsAppAutomation({
         setPopupBlockerTriggered(false);
         return true;
       }
+    } else if (whatsappPlatform === 'desktop') {
+      // Direct protocol launch for desktop app without blank tabs
+      window.location.href = url;
+      return true;
     } else {
-      // For Desktop/Standard: Close previous window to avoid clutter, and open a new tab.
+      // For Standard api.whatsapp.com link
       if (whatsappWindowRef.current && !whatsappWindowRef.current.closed) {
         try { whatsappWindowRef.current.close(); } catch (_) { }
       }
-
-      const newWin = window.open(
-        url,
-        '_blank',
-        whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
-      );
-
+      const newWin = window.open(url, '_blank');
       whatsappWindowRef.current = newWin;
-
       if (!newWin) {
         setPopupBlockerTriggered(true);
         return false;
@@ -2541,25 +2539,35 @@ export default function WhatsAppAutomation({
 
                           <button
                             onClick={() => {
-                              // Pre-emptively open helper window on user gesture if not open yet
-                              if (!whatsappWindowRef.current || whatsappWindowRef.current.closed) {
-                                const currentItem = queue[queueIndex];
-                                if (currentItem) {
-                                  let cleanPhone = currentItem.phone.replace(/[^\d+]/g, '');
-                                  const encodedText = encodeURIComponent(currentItem.message);
-                                  let url = '';
-                                  if (whatsappPlatform === 'web') {
-                                    url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
-                                  } else {
-                                    url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
-                                  }
+                              const currentItem = queue[queueIndex];
+                              if (currentItem) {
+                                let cleanPhone = currentItem.phone.replace(/\D/g, '');
+                                const encodedText = encodeURIComponent(currentItem.message);
 
-                                  const newWin = window.open(
-                                    url,
-                                    'whatsapp_auto_dispatch',
-                                    whatsappPlatform === 'desktop' ? 'width=450,height=300' : undefined
-                                  );
-                                  whatsappWindowRef.current = newWin;
+                                if (whatsappPlatform === 'desktop') {
+                                  window.location.href = `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
+                                } else {
+                                  // Pre-emptively open helper window on user gesture if not open yet
+                                  if (!whatsappWindowRef.current || whatsappWindowRef.current.closed) {
+                                    let url = '';
+                                    if (whatsappPlatform === 'web') {
+                                      url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+                                      whatsappWindowRef.current = window.open(url, 'whatsapp_auto_dispatch');
+                                    } else {
+                                      url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+                                      whatsappWindowRef.current = window.open(url, '_blank');
+                                    }
+                                  } else {
+                                    let url = '';
+                                    if (whatsappPlatform === 'web') {
+                                      url = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+                                      whatsappWindowRef.current.location.href = url;
+                                      try { whatsappWindowRef.current.focus(); } catch (_) {}
+                                    } else {
+                                      url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+                                      window.open(url, '_blank');
+                                    }
+                                  }
                                 }
                               }
                               processCurrentQueueItem();
