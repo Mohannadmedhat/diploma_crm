@@ -142,13 +142,8 @@ export function parseTemplate(templateText: string, params: ReplacementParams): 
 
 // Generate the WhatsApp direct link API URL
 export function formatWhatsAppLink(phone: string, text: string): string {
-  // Strip non-numbers except the leading plus
-  let cleanPhone = phone.replace(/[^\d+]/g, '');
-  if (!cleanPhone.startsWith('+') && cleanPhone.length > 0) {
-    // If no country code sign, keep it, but note WhatsApp API likes them prefix-friendly
-    // No-op for maximum manual control
-  }
-  
+  // Strip all non-digits to comply with official WhatsApp API guidelines (no plus sign, spaces, or dashes)
+  const cleanPhone = phone.replace(/\D/g, '');
   const encodedText = encodeURIComponent(text);
   // Using api.whatsapp.com/send is universally supported and functions flawlessly inside wrappers/iframes
   return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
