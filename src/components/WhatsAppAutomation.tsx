@@ -2607,12 +2607,70 @@ export default function WhatsAppAutomation({
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 text-center bg-emerald-950/10 border border-emerald-900/20 rounded-xl space-y-2">
-                    <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto" />
-                    <h4 className="text-xs font-bold text-white">اكتمل إرسال جميع الرسائل بنجاح!</h4>
-                    <p className="text-[10px] text-zinc-400 font-sans">
-                      تم المرور على جميع الطلاب وتوجيههم لغرف الواتساب الخاصة بهم.
-                    </p>
+                  <div className="space-y-4">
+                    <div className="p-8 text-center bg-emerald-950/10 border border-emerald-900/20 rounded-xl space-y-2">
+                      <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto" />
+                      <h4 className="text-xs font-bold text-white">اكتمل إرسال جميع الرسائل بنجاح!</h4>
+                      <p className="text-[10px] text-zinc-400 font-sans">
+                        تم المرور على جميع الطلاب وتوجيههم لغرف الواتساب الخاصة بهم.
+                      </p>
+                    </div>
+
+                    {/* Skipped Items Section */}
+                    {(() => {
+                      const skippedItems = queue.filter(q => q.status === 'skipped');
+                      if (skippedItems.length === 0) return null;
+
+                      return (
+                        <div className="p-4 bg-zinc-950 border border-zinc-900 rounded-xl space-y-3 text-right">
+                          <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                            <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5 font-sans">
+                              <AlertTriangle className="w-4 h-4 text-amber-500" />
+                              قائمة الأرقام والطلاب الذين تم تخطيهم ({skippedItems.length})
+                            </span>
+                            <button
+                              onClick={() => {
+                                const resetSkipped = skippedItems.map(item => ({
+                                  ...item,
+                                  status: 'pending' as const
+                                }));
+                                setQueue(resetSkipped);
+                                setQueueIndex(0);
+                                setIsAutoSending(false);
+                              }}
+                              className="px-3 py-1 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/20 text-amber-400 text-[10px] font-bold rounded-lg transition-all cursor-pointer font-sans flex items-center gap-1"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              إعادة إرسال المتخطين فقط
+                            </button>
+                          </div>
+
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {skippedItems.map((item, idx) => (
+                              <div
+                                key={`skipped-${idx}`}
+                                className="p-2.5 bg-[#07070A] border border-zinc-900 rounded-lg flex items-center justify-between text-xs gap-3"
+                              >
+                                <div className="space-y-0.5">
+                                  <span className="font-bold text-zinc-200 block text-right">{item.student?.name || 'رقم خارجي'}</span>
+                                  <span className="text-[10px] text-zinc-550 font-mono block text-right">{item.phone}</span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const url = getWhatsAppLink(item.phone, item.message);
+                                    window.open(url, '_blank');
+                                  }}
+                                  className="px-2.5 py-1 bg-zinc-900 hover:bg-emerald-955/20 border border-zinc-800 hover:border-emerald-900/30 text-zinc-300 hover:text-emerald-400 transition-colors rounded-lg text-[9px] font-bold cursor-pointer flex items-center gap-1 font-sans"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  إرسال منفرد
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
