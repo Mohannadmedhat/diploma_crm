@@ -706,6 +706,7 @@ export default function DiplomaManager({
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            onClick={(e) => { try { e.currentTarget.showPicker(); } catch (_) {} }}
             className="w-full px-3 py-2.5 bg-[#0A0A0A] border border-[#262626] focus:border-blue-500 text-xs text-zinc-100 rounded-lg outline-hidden cursor-pointer transition-all"
           />
         </div>
@@ -719,6 +720,7 @@ export default function DiplomaManager({
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
+            onClick={(e) => { try { e.currentTarget.showPicker(); } catch (_) {} }}
             className="w-full px-3 py-2.5 bg-[#0A0A0A] border border-[#262626] focus:border-blue-500 text-xs text-zinc-100 rounded-lg outline-hidden cursor-pointer transition-all"
           />
         </div>
