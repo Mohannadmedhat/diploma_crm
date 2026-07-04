@@ -379,11 +379,8 @@ export default function StudentEnrollment({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-1 text-zinc-400 text-xs font-sans">
-                  <span>
-                    <strong className="text-zinc-500 text-[10px]">المسؤول المباشر:</strong> {st.parentName}
-                  </span>
-                  <span className="font-mono text-right" dir="ltr">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-zinc-400 text-xs font-sans">
+                  <span className="font-mono" dir="ltr">
                     <strong className="text-zinc-500 text-[10px] font-sans">الواتساب:</strong> {st.phone}
                   </span>
                   <span>

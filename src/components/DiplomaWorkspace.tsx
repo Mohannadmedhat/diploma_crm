@@ -400,7 +400,7 @@ export default function DiplomaWorkspace({
     const newSt: Student = {
       id: `st-${Date.now()}`,
       name: newStudentName.trim(),
-      parentName: newStudentParent.trim() || `أبو ${newStudentName.trim()}`,
+      parentName: '',
       phone: newStudentPhone.trim(),
       diplomaIds: [diploma.id],
       joinedDate: new Date().toISOString().split('T')[0],
@@ -1160,7 +1160,7 @@ export default function DiplomaWorkspace({
                             )}
                           </div>
                           <div className="text-[11px] text-zinc-500 font-sans">
-                            ولي الأمر: <span className="text-zinc-400">{st.parentName || 'غير معلم'}</span> • الواتساب: <span className="text-zinc-400 font-mono tracking-wide">{st.phone}</span>
+                            الواتساب: <span className="text-zinc-400 font-mono tracking-wide">{st.phone}</span>
                           </div>
 
                           {/* CRM Financial Metadata Block */}
@@ -1323,16 +1323,7 @@ export default function DiplomaWorkspace({
                       />
                     </div>
 
-                    <div>
-                      <label className="block mb-1">اسم ولي الأمر المقابل:</label>
-                      <input
-                        type="text"
-                        value={newStudentParent}
-                        onChange={(e) => setNewStudentParent(e.target.value)}
-                        placeholder="عبد الله الحربي"
-                        className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 text-zinc-200 rounded outline-hidden"
-                      />
-                    </div>
+                    {/* Guardian Input Removed */}
 
                     <div>
                       <label className="block mb-1">رقم الواتساب الرسمي:</label>
@@ -2933,7 +2924,7 @@ export default function DiplomaWorkspace({
                         </span>
                       )}
                     </h3>
-                    <p className="text-[10px] text-zinc-500 mt-1">{st.phone} · {st.parentName || 'ولي الأمر غير مسجل'}</p>
+                    <p className="text-[10px] text-zinc-500 mt-1">{st.phone}</p>
                   </div>
                 </div>
                 <button

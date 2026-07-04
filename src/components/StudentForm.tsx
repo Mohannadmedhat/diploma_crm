@@ -88,10 +88,7 @@ export default function StudentForm({
       setError('يرجى إدخال اسم الطالب ثلاثي.');
       return;
     }
-    if (!parentName.trim()) {
-      setError('يرجى إدخال اسم ولي الأمر أو جهة الاتصال الأساسية.');
-      return;
-    }
+    // Removed parent validation
     
     // Strip empty spaces, validate phone has digits
     const cleanPhone = phone.replace(/\s+/g, '');
@@ -108,7 +105,7 @@ export default function StudentForm({
     const savedStudent: Student = {
       id: studentToEdit ? studentToEdit.id : `st-${Date.now()}`,
       name: name.trim(),
-      parentName: parentName.trim(),
+      parentName: '',
       phone: cleanPhone,
       email: email.trim(),
       diplomaIds: selectedDiplomaIds,
@@ -181,25 +178,7 @@ export default function StudentForm({
           </div>
         </div>
 
-        {/* Guardian Name */}
-        <div>
-          <label className="block text-xs font-semibold text-zinc-400 mb-1.5" htmlFor="guardian-name-input">
-            جهة الاتصال / اسم ولي الأمر
-          </label>
-          <div className="relative">
-            <User className="absolute right-3 top-2.5 w-4 h-4 text-zinc-500" />
-            <input
-              id="guardian-name-input"
-              type="text"
-              value={parentName}
-              onChange={(e) => setParentName(e.target.value)}
-              placeholder="مثال: أبو سليمان الحربي (لصيغ رسائل WhatsApp)"
-              className="w-full pr-9 pl-4 py-2 bg-[#0A0A0A] border border-[#262626] hover:border-[#333] focus:border-[#3B82F6] rounded text-xs text-zinc-100 placeholder-zinc-700 outline-hidden transition-all text-right"
-              required
-            />
-          </div>
-          <span className="text-[10px] text-zinc-500 mt-1 block">يستخدم كمتغير ديناميكي في صياغة نصوص التنبيهات.</span>
-        </div>
+        {/* Guardian Name input removed */}
 
         {/* Whatsapp contact */}
         <div>

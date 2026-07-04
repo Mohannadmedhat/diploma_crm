@@ -432,13 +432,12 @@ export default function SessionManager({
     if (!diploma) return;
 
     let msg = '';
-    const parent = st.parentName || 'ولي الأمر';
     if (status === 'Absent') {
-      msg = `السلام عليكم سعادة ${parent}، نود إحاطتكم بغياب الطالب ${st.name} عن المحاضرة التعليمية لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نأمل حث الطالب على المواظبة ومراجعة التسجيل لتعويض ما فاته. شاكرين تعاونكم!`;
+      msg = `السلام عليكم يا ${st.name}، نود إحاطتك بغيابك عن المحاضرة التعليمية لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نأمل منك المواظبة ومراجعة التسجيل لتعويض ما فاتك. بالتوفيق!`;
     } else if (status === 'Excused') {
-      msg = `السلام عليكم سعادة ${parent}، تم تسجيل غياب الطالب ${st.name} بعذر عن المحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نتمنى له السلامة والتوفيق!`;
+      msg = `السلام عليكم يا ${st.name}، تم تسجيل غيابك بعذر عن المحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. نتمنى لك السلامة والتوفيق!`;
     } else {
-      msg = `السلام عليكم سعادة ${parent}، نشكركم على مواظبة وحضور الطالب ${st.name} للمحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. تقديرنا لاهتمامكم!`;
+      msg = `السلام عليكم يا ${st.name}، نشكرك على مواظبتك وحضورك للمحاضرة لدبلوم ${diploma.name} بتاريخ ${sessionDate}. بالتوفيق والنجاح الدائم!`;
     }
     
     let cleanedPhone = st.phone.replace(/[\s\+\-]/g, '');
@@ -942,7 +941,7 @@ export default function SessionManager({
                                         <MessageCircle className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
-                                    <span className="text-[10px] text-zinc-500 block font-sans">ولي الأمر: {st.parentName} | {st.phone}</span>
+                                    <span className="text-[10px] text-zinc-500 block font-sans">الواتساب: {st.phone}</span>
                                   </div>
 
                                   {/* Right side controls */}
@@ -1073,7 +1072,7 @@ export default function SessionManager({
                         // Construct customized message
                         let msg = customMessageTemplate
                           .replace(/\[اسم_الطالب\]/g, st.name)
-                          .replace(/\[ولي_الأمر\]/g, st.parentName || 'ولي الأمر')
+                          .replace(/\[ولي_الأمر\]/g, st.name)
                           .replace(/\[الدبلوم\]/g, diploma?.name || '')
                           .replace(/\[التاريخ\]/g, currentSession.date);
 
@@ -1089,7 +1088,7 @@ export default function SessionManager({
                           }`}>
                             <div className="text-right">
                               <span className="text-xs font-bold text-zinc-100 block">{st.name}</span>
-                              <span className="text-[10px] text-zinc-500 block font-sans">ولي الأمر: {st.parentName} | الهاتف: {st.phone}</span>
+                              <span className="text-[10px] text-zinc-500 block font-sans">الواتساب: {st.phone}</span>
                             </div>
                             
                             <div className="flex items-center gap-2">

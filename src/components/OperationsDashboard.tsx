@@ -313,7 +313,7 @@ export default function OperationsDashboard({
       if (template) {
         const textStr = parseTemplate(template.text, {
           studentName: activeWarningStudent.student.name,
-          parentName: activeWarningStudent.student.parentName || 'ولي الأمر',
+          parentName: activeWarningStudent.student.name,
           course: activeWarningStudent.diplomaName,
           date: selectedDateStr
         });
@@ -1703,7 +1703,7 @@ export default function OperationsDashboard({
                                 <button
                                   onClick={() => {
                                     const dipNames = activeDips.map(d => d.name).join(' و');
-                                    const msg = `السلام عليكم ورحمة الله وبركاته ${st.parentName}، نود تذكيركم بلطف بقيمة القسط المستحق والمتبقي من رسوم الطالب ${st.name} في ${dipNames} بقيمة ${remaining} ر.س. يرجى التكرم بالسداد عبر الحساب البنكي المعتمد. شاكرين ومقدرين لكم تعاونكم الدائم.`;
+                                    const msg = `السلام عليكم ورحمة الله وبركاته يا ${st.name}، نود تذكيرك بلطف بقيمة القسط المستحق والمتبقي من رسوم الدبلوم (${dipNames}) بقيمة ${remaining} ر.س. يرجى التكرم بالسداد عبر الحساب البنكي المعتمد. بالتوفيق!`;
                                     window.open(formatWhatsAppLink(st.phone, msg), '_blank');
                                   }}
                                   className="px-2 py-1 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/20 text-amber-400 rounded text-[11px] font-bold cursor-pointer font-sans"
@@ -2080,7 +2080,6 @@ export default function OperationsDashboard({
 
                 <div className="p-3 bg-[#050505] rounded-lg border border-zinc-900/60 text-[11px] text-zinc-400 leading-relaxed font-sans">
                   <span>اسم الطالب: <strong>{activeWarningStudent.student.name}</strong></span><br />
-                  <span>اسم الولي: <strong>{activeWarningStudent.student.parentName}</strong></span><br />
                   <span>المستلم المباشر: <strong>{activeWarningStudent.phone}</strong></span>
                 </div>
 

@@ -234,7 +234,6 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
       reportName = `تقرير_الحضور_والغياب_${selectedDiploma.name}`;
       headers = [
         'اسم الطالب',
-        'اسم ولي الأمر',
         'رقم هاتف الواتساب',
         'إجمالي الجلسات المسجلة',
         'عدد المحاضرات التي تم تحضيره فيها',
@@ -244,7 +243,6 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
       ];
       rows = reportData.map(({ student, stats }) => [
         student.name,
-        student.parentName,
         student.phone,
         stats.totalSessions,
         stats.markedSessions,
@@ -437,7 +435,6 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
                 <thead>
                   <tr className="bg-[#0A0A0A] border-b border-[#232323] text-zinc-400 text-[11px] select-none font-sans">
                     <th className="p-3">اسم الطالب كاملاً</th>
-                    <th className="p-3">اسم ولي الأمر</th>
                     <th className="p-3">هاتف الـ WhatsApp</th>
                     <th className="p-3 text-center">المحاضرات الكلية</th>
                     <th className="p-3 text-center text-emerald-400">حاضر</th>
@@ -450,7 +447,6 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
                   {reportData.map(({ student, stats }) => (
                     <tr key={student.id} className="hover:bg-zinc-900/10">
                       <td className="p-3 font-semibold text-zinc-150">{student.name}</td>
-                      <td className="p-3 text-zinc-400">{student.parentName}</td>
                       <td className="p-3 text-zinc-400 font-mono" dir="ltr">{student.phone}</td>
                       <td className="p-3 text-center text-zinc-400 font-mono">{stats.totalSessions}</td>
                       <td className="p-3 text-center text-emerald-400 font-mono font-bold">{stats.present}</td>
@@ -463,7 +459,7 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
                   ))}
                   {reportData.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-zinc-500">لا يوجد طلاب منتسبين لهذا الدبلوم حالياً لاستعراض الأرشيف.</td>
+                      <td colSpan={7} className="p-8 text-center text-zinc-500">لا يوجد طلاب منتسبين لهذا الدبلوم حالياً لاستعراض الأرشيف.</td>
                     </tr>
                   )}
                 </tbody>
@@ -752,7 +748,7 @@ export default function ReportingCenter({ students, diplomas, sessions, tasks = 
                       <div key={st.id} className="flex items-center justify-between p-2 bg-rose-950/10 border border-rose-900/20 rounded">
                         <span className="text-xs font-semibold text-rose-200">{st.name}</span>
                         <a
-                          href={`https://api.whatsapp.com/send?phone=${st.phone.replace(/[\s\+\-]/g,'').replace(/^0/,'966')}&text=${encodeURIComponent(`السلام عليكم ${st.parentName}، نود إحاطتكم بتكرار غياب الطالب ${st.name} هذا الأسبوع. نرجو المتابعة معه وحثه على الحضور.`)}`}
+                          href={`https://api.whatsapp.com/send?phone=${st.phone.replace(/[\s\+\-]/g,'').replace(/^0/,'966')}&text=${encodeURIComponent(`السلام عليكم يا ${st.name}، نود تنبيهك لتكرار غيابك هذا الأسبوع. نرجو الالتزام والحضور.`)}`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded flex items-center gap-1"
