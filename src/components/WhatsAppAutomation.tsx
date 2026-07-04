@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Student, Session, Diploma, MessageTemplate, AppConfig, ScheduledMessage } from '../types';
 import { improveWhatsAppMessage } from '../services/groq';
-import { parseTemplate, formatWhatsAppLink } from '../utils';
+import { parseTemplate, formatWhatsAppLink, formatInternationalPhone } from '../utils';
 import { calculateStudentDiplomaAttendance } from '../services/business';
 import { formatScheduledAt } from '../services/scheduler';
 import SmartNotifications from './SmartNotifications';
@@ -620,7 +620,7 @@ export default function WhatsAppAutomation({
   };
 
   const getWhatsAppLink = (phone: string, text: string) => {
-    let cleanPhone = phone.replace(/[^\d+]/g, '');
+    let cleanPhone = formatInternationalPhone(phone);
     const encodedText = encodeURIComponent(text);
 
     if (whatsappPlatform === 'desktop') {
@@ -633,7 +633,7 @@ export default function WhatsAppAutomation({
   };
 
   const openWhatsAppLink = (item: QueueItem): boolean => {
-    let cleanPhone = item.phone.replace(/\D/g, '');
+    let cleanPhone = formatInternationalPhone(item.phone);
     const encodedText = encodeURIComponent(item.message);
 
     let url = '';
@@ -2541,7 +2541,7 @@ export default function WhatsAppAutomation({
                             onClick={() => {
                               const currentItem = queue[queueIndex];
                               if (currentItem) {
-                                let cleanPhone = currentItem.phone.replace(/\D/g, '');
+                                let cleanPhone = formatInternationalPhone(currentItem.phone);
                                 const encodedText = encodeURIComponent(currentItem.message);
 
                                 if (whatsappPlatform === 'desktop') {

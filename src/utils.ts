@@ -140,10 +140,37 @@ export function parseTemplate(templateText: string, params: ReplacementParams): 
   return text;
 }
 
+// Format local Egypt/Saudi phone numbers into valid international formats for WhatsApp
+export function formatInternationalPhone(phone: string): string {
+  // Strip all non-digits
+  let digits = phone.replace(/\D/g, '');
+
+  if (!digits) return '';
+
+  // Handle Egyptian numbers: 
+  // starts with 01 (length 11) or 1 (length 10)
+  if (digits.startsWith('01') && digits.length === 11) {
+    return '20' + digits.substring(1);
+  }
+  if ((digits.startsWith('10') || digits.startsWith('11') || digits.startsWith('12') || digits.startsWith('15')) && digits.length === 10) {
+    return '20' + digits;
+  }
+
+  // Handle Saudi numbers:
+  // starts with 05 (length 10) or 5 (length 9)
+  if (digits.startsWith('05') && digits.length === 10) {
+    return '966' + digits.substring(1);
+  }
+  if (digits.startsWith('5') && digits.length === 9) {
+    return '966' + digits;
+  }
+
+  return digits;
+}
+
 // Generate the WhatsApp direct link API URL
 export function formatWhatsAppLink(phone: string, text: string): string {
-  // Strip all non-digits to comply with official WhatsApp API guidelines (no plus sign, spaces, or dashes)
-  const cleanPhone = phone.replace(/\D/g, '');
+  const cleanPhone = formatInternationalPhone(phone);
   const encodedText = encodeURIComponent(text);
   // Using api.whatsapp.com/send is universally supported and functions flawlessly inside wrappers/iframes
   return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
