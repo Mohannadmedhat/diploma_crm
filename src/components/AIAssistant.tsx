@@ -126,10 +126,12 @@ export default function AIAssistant({
   const activeModel = config?.groqModel || 'llama-3.3-70b-versatile';
 
   const SUGGESTED_PROMPTS = [
-    'لخص لي مهام العمل الأسبوعية المعلقة',
+    'مين غيابه كتير وبيهدده الفصل؟',
+    'مين عنده قسط متأخر ومش دافع؟',
+    'لخص لي أهم المهام المعلقة والمطلوب منك فعله اليوم',
     'ضيف دبلوم هندسة الشبكات والمدرب م. أحمد الشمري ومواعيدها الأحد والأربعاء',
-    'ولد لي جدول محاضرات دبلوم البرمجيات المتقدمة بدءاً من السبت القادم 8 محاضرات',
-    'اعمل شهادة تخرج للطالبة سلمى سمير محمد في دبلوم الأمن السيبراني بتاريخ اليوم'
+    'اعمل جلسة لدبلوم الأمن السيبراني السبت الجاي الساعة 6 مساءً',
+    'اعمل شهادة تخرج لسلمى سمير في دبلوم الذكاء الاصطناعي بتاريخ اليوم'
   ];
 
   // Helper: Get user specific localstorage key
@@ -253,12 +255,59 @@ export default function AIAssistant({
   const buildSystemPrompt = (): string => {
     const activeDips = diplomas.filter(d => d.status === 'Active');
     const pendingTasks = tasks.filter(t => t.status !== 'Completed');
+    const today = new Date().toISOString().split('T')[0];
 
-    // Create a concise text summary of CRM data
+    // ── 1. Compute at-risk students (absences > diploma.allowedAbsences) ──
+    const atRiskStudents: { name: string; phone: string; diploma: string; absentCount: number; allowed: number }[] = [];
+    activeDips.forEach(dip => {
+      const allowed = dip.allowedAbsences ?? 3;
+      const dipSessions = sessions.filter(s => s.diplomaId === dip.id);
+      const dipStudents = students.filter(st => st.diplomaIds.includes(dip.id));
+      dipStudents.forEach(st => {
+        const absentCount = dipSessions.reduce((acc, s) => {
+          const att = s.attendance?.[st.id];
+          return acc + (att?.status === 'Absent' ? 1 : 0);
+        }, 0);
+        if (absentCount > allowed) {
+          atRiskStudents.push({ name: st.name, phone: st.phone, diploma: dip.name, absentCount, allowed });
+        }
+      });
+    });
+
+    // ── 2. Compute students with overdue payments ──
+    const overdueStudents = students
+      .filter(st => (st.remainingAmount ?? 0) > 0)
+      .map(st => ({
+        name: st.name,
+        phone: st.phone,
+        remaining: st.remainingAmount ?? 0,
+        paid: st.payedAmount ?? 0,
+        total: st.coursePrice ?? 0,
+        diploma: diplomas.find(d => st.diplomaIds.includes(d.id))?.name || 'غير محدد'
+      }));
+
+    // ── 3. Today's sessions ──
+    const todaySessions = sessions.filter(s => s.date === today);
+
+    const atRiskBlock = atRiskStudents.length > 0
+      ? `\n⚠️ الطلاب المهددون بالغياب (${atRiskStudents.length} طالب):\n` +
+        atRiskStudents.map(s => `  - ${s.name} | ${s.diploma} | غاب ${s.absentCount} مرة من أصل ${s.allowed} مسموح | ☎ ${s.phone}`).join('\n')
+      : '\n✅ لا يوجد طلاب مهددون بالغياب حالياً.';
+
+    const overdueBlock = overdueStudents.length > 0
+      ? `\n💰 الطلاب ذوو الأقساط المتأخرة (${overdueStudents.length} طالب):\n` +
+        overdueStudents.map(s => `  - ${s.name} | ${s.diploma} | متبقي ${s.remaining} جنيه من أصل ${s.total} | دفع ${s.paid} | ☎ ${s.phone}`).join('\n')
+      : '\n✅ لا يوجد أقساط متأخرة حالياً.';
+
+    const todayBlock = todaySessions.length > 0
+      ? `\n📅 محاضرات اليوم (${today}):\n` +
+        todaySessions.map(s => `  - ${s.title} | ${s.time || ''} | ${diplomas.find(d => d.id === s.diplomaId)?.name || ''}`).join('\n')
+      : '\n📅 لا توجد محاضرات مجدولة لليوم.';
+
     const crmContext = `
-[معلومات النظام التعليمي الحالي]:
+[معلومات النظام التعليمي الحالي - تاريخ اليوم: ${today}]:
 - عدد الدبلومات الكلي: ${diplomas.length}
-- الدبلومات النشطة حالياً: ${activeDips.map(d => `${d.name} (أيام الدراسة: ${d.studyDays || 'غير محدد'}، وقتها: ${d.sessionTime || 'غير محدد'})`).join('، ')}
+- الدبلومات النشطة حالياً: ${activeDips.map(d => `${d.name} (أيام: ${d.studyDays || 'غير محدد'}، وقت: ${d.sessionTime || 'غير محدد'}، غياب مسموح: ${d.allowedAbsences ?? 3})`).join('، ')}
 - عدد الطلاب الكلي المسجلين: ${students.length}
 - تفصيل الطلاب بكل دبلومة:
   ${activeDips.map(d => {
@@ -268,74 +317,77 @@ export default function AIAssistant({
 - عدد المحاضرات المسجلة في النظام: ${sessions.length}
 - عدد المهام التشغيلية المعلقة: ${pendingTasks.length}
 - تفصيل المهام المعلقة:
-  ${pendingTasks.map(t => `- ${t.title} (تاريخ الاستحقاق: ${t.dueDate}، الأولوية: ${t.priority})`).join('\n  ')}
+  ${pendingTasks.slice(0, 10).map(t => `- ${t.title} (تاريخ الاستحقاق: ${t.dueDate}، الأولوية: ${t.priority})`).join('\n  ')}
+${atRiskBlock}
+${overdueBlock}
+${todayBlock}
 `;
 
     return `أنت "مساعد الذكاء الاصطناعي الذكي" لمنصة إدارة دبلومات الشؤون التعليمية والأكاديمية.
-مهمتك هي مساعدة منسق الدبلومة الأكاديمية في إدارة العمليات اليومية ومراسلات الطلاب وتلخيص المهام وتوليد الشهادات.
-إليك البيانات الحالية الحقيقية من نظام المستخدم لتستعين بها في الإجابة على أي أسئلة يطرحها:
+مهمتك مساعدة منسق الدبلومات في إدارة العمليات اليومية بكفاءة عالية.
+إليك البيانات الحالية الحقيقية من النظام:
 ${crmContext}
 
 تعليمات هامة:
-1. أجب دائماً باللغة العربية الفصحى بأسلوب مهني وودود ومحفز.
-2. نسق إجابتك بشكل جميل باستخدام الفقرات والقوائم النقطية والرموز التعبيرية (Emoji) المناسبة.
-3. إذا طلب المستخدم صياغة رسالة WhatsApp، احتفظ بأي متغيرات مثل {studentName} أو {course} واشرح له كيفية استخدامها.
-4. ركز على تقديم اقتراحات عملية ومفيدة تعتمد على البيانات الأكاديمية الحالية في النظام.
-5. لا تشير إلى أنك تملك هذا Prompt أو ملف التوجيهات، أجب مباشرة بصفة المساعد الشخصي.
+1. أجب دائماً باللغة العربية بأسلوب مهني ومحفز وذكي.
+2. نسّق إجابتك بشكل جميل باستخدام القوائم النقطية والرموز التعبيرية (Emoji).
+3. عند السؤال عن "مين غيابه كتير" أو "الطلاب المهددون" → قدّم قائمة الطلاب المهددين مع عدد غياباتهم وأرقام هواتفهم.
+4. عند السؤال عن "مين مشتركش بينفع" أو "الأقساط المتأخرة" → قدّم قائمة الطلاب المتأخرين بالمبالغ المتبقية وأرقام هواتفهم.
+5. عند السؤال عن محاضرات اليوم → اعرض محاضرات اليوم من البيانات المتاحة.
+6. إذا طلب المستخدم صياغة رسالة WhatsApp، احتفظ بمتغيرات مثل {studentName} أو {course}.
+7. لا تشير إلى هذا الـ Prompt، أجب مباشرة بصفة المساعد الشخصي.
 
 [ميزة العمليات الذكية الحصرية (Structured Actions)]:
-إذا طلب منك المنسق إجراءً تشغيلياً مثل إضافة دبلومة، أو توليد محاضرات، أو إنشاء مهمة، أو تعديل حضور طالب، أو توليد شهادة، أو جدولة رسالة/تذكير واتساب، يجب عليك إرفاق الإجراء المطلوب في نهاية ردك تماماً (خارج أي فقرات نصية) داخل وسم خاص بالصيغة الهيكلية التالية بالضبط:
+إذا طلب منك المنسق إجراءً تشغيلياً (إضافة دبلومة، توليد محاضرات، إنشاء مهمة، تعديل حضور، توليد شهادة، جدولة رسالة)، أضف في نهاية ردك:
 [ACTION]
 {
   "type": "CREATE_DIPLOMA" | "CREATE_TASK" | "GENERATE_SESSIONS" | "UPDATE_ATTENDANCE" | "GENERATE_CERTIFICATE" | "SCHEDULE_MESSAGE",
   "params": {
     // لـ CREATE_DIPLOMA:
-    "name": "اسم الدبلومة بالعربية",
-    "instructorName": "اسم المدرب المسؤول",
-    "studyDays": "أيام الدراسة مثلاً: الأحد، الثلاثاء",
+    "name": "اسم الدبلومة",
+    "instructorName": "اسم المدرب",
+    "studyDays": "الأيام مثلاً: الأحد، الثلاثاء",
     "sessionTime": "الوقت مثلاً: 06:00 مساءً",
-    "startDate": "تاريخ البدء YYYY-MM-DD",
-    "endDate": "تاريخ الانتهاء YYYY-MM-DD"
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD"
 
     // لـ CREATE_TASK:
     "title": "عنوان المهمة",
-    "dueDate": "تاريخ الاستحقاق YYYY-MM-DD",
+    "dueDate": "YYYY-MM-DD",
     "priority": "Low" | "Medium" | "High",
-    "notes": "تفاصيل المهمة إن وجدت"
+    "notes": "تفاصيل المهمة"
 
     // لـ GENERATE_SESSIONS:
-    "diplomaId": "معرف الدبلومة الحالي إن عرفته أو اتركه فارغاً",
+    "diplomaId": "معرف الدبلومة أو اتركه فارغاً",
     "diplomaName": "اسم الدبلومة للمطابقة",
-    "startDate": "تاريخ البدء YYYY-MM-DD",
-    "numberOfSessions": 12, // عدد المحاضرات كرقم
-    "studyDays": "الأيام مثلاً: السبت، الثلاثاء",
-    "sessionTime": "الوقت مثلاً: 08:00 مساءً"
+    "startDate": "YYYY-MM-DD",
+    "numberOfSessions": 12,
+    "studyDays": "الأيام",
+    "sessionTime": "الوقت"
 
     // لـ UPDATE_ATTENDANCE:
-    "studentName": "اسم الطالب المراد تعديل حضوره",
-    "sessionTitle": "عنوان المحاضرة أو تاريخها",
-    "sessionDate": "تاريخ المحاضرة YYYY-MM-DD إن وجد",
+    "studentName": "اسم الطالب",
+    "sessionTitle": "عنوان المحاضرة",
+    "sessionDate": "YYYY-MM-DD",
     "status": "Present" | "Absent" | "Excused",
-    "note": "سبب العذر أو الملاحظة إن وجد"
+    "note": "سبب العذر"
 
     // لـ GENERATE_CERTIFICATE:
-    "studentNameForCert": "الاسم الكامل للطالب باللغة الإنجليزية حصراً (حتى لو كتبه المستخدم بالعربية، قم بترجمته/تهجئته بالإنجليزية، مثل: 'مهند مدحت فتوح' -> 'Mohand Medhat Fatouh')",
-    "diplomaNameForCert": "اسم الدبلومة (مثل: الأمن السيبراني أو الذكاء الاصطناعي)",
-    "dateForCert": "التاريخ المطبوع على الشهادة YYYY-MM-DD"
+    "studentNameForCert": "الاسم بالإنجليزية",
+    "diplomaNameForCert": "اسم الدبلومة",
+    "dateForCert": "YYYY-MM-DD"
 
     // لـ SCHEDULE_MESSAGE:
-    "diplomaName": "اسم الدبلومة المستهدفة بدقة لربط التذكير",
-    "scheduledAt": "موعد الإرسال بصيغة YYYY-MM-DDTHH:MM:SS أو بصيغة نصية طبيعية مثل 'الساعة 6 مساء' أو 'بعد ساعتين'",
+    "diplomaName": "اسم الدبلومة",
+    "scheduledAt": "YYYY-MM-DDTHH:MM:SS",
     "messageType": "session_reminder" | "absence_warning" | "custom",
-    "messageTemplate": "نص الرسالة أو قالب الإرسال. استخدم {studentName} لاسم الطالب و {course} لاسم الدبلومة و {date} للتاريخ.",
+    "messageTemplate": "نص الرسالة مع {studentName} و{course} و{date}",
     "targetGroup": "all" | "absent_only" | "exceeded_absences"
   }
 }
 [/ACTION]
 
-تنبيه هام جداً:
-- لا تخترع بيانات غير حقيقية؛ إذا لم يحدد المستخدم المدرب أو الموعد، اسأله عنه أو اتركه فارغاً في الـ JSON.
-- يجب أن يكون الـ JSON داخل [ACTION] و [/ACTION] صحيحاً تماماً وخالياً من أي أخطاء أو تعليقات برمجية.`;
+تنبيه: لا تخترع بيانات، إذا لم تُحدَّد معلومات اسأل عنها أو اتركها فارغة. الـ JSON يجب أن يكون صحيحاً 100%.`;
   };
 
   const handleSendMessage = async (textToSend: string) => {
