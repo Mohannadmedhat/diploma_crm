@@ -43,21 +43,23 @@ import {
   setImpersonatedUser as setStorageImpersonatedUser
 } from './services/storage';
 
-// Component Modules
-import OperationsDashboard from './components/OperationsDashboard';
-import DiplomaManager from './components/DiplomaManager';
-import DiplomaTypesManager from './components/DiplomaTypesManager';
-import InstructorsManager from './components/InstructorsManager';
-import MentorsManager from './components/MentorsManager';
-import DiplomaWorkspace from './components/DiplomaWorkspace';
-
-import WeeklyOpsBoard from './components/WeeklyOpsBoard';
-import TemplateManager from './components/TemplateManager';
-import DataBackupRestore from './components/DataBackupRestore';
+// Component Modules — loaded lazily for better performance
 import Login from './components/Login';
 import AdminPanel from './components/AdminPanel';
-import WhatsAppAutomation from './components/WhatsAppAutomation';
-import AIAssistant from './components/AIAssistant';
+
+const OperationsDashboard = React.lazy(() => import('./components/OperationsDashboard'));
+const DiplomaManager = React.lazy(() => import('./components/DiplomaManager'));
+const DiplomaTypesManager = React.lazy(() => import('./components/DiplomaTypesManager'));
+const InstructorsManager = React.lazy(() => import('./components/InstructorsManager'));
+const MentorsManager = React.lazy(() => import('./components/MentorsManager'));
+const DiplomaWorkspace = React.lazy(() => import('./components/DiplomaWorkspace'));
+const WeeklyOpsBoard = React.lazy(() => import('./components/WeeklyOpsBoard'));
+const TemplateManager = React.lazy(() => import('./components/TemplateManager'));
+const DataBackupRestore = React.lazy(() => import('./components/DataBackupRestore'));
+const WhatsAppAutomation = React.lazy(() => import('./components/WhatsAppAutomation'));
+const AIAssistant = React.lazy(() => import('./components/AIAssistant'));
+const QuickNotes = React.lazy(() => import('./components/QuickNotes'));
+
 import { testGroqConnection } from './services/groq';
 import {
   parseSessionTimeTo24h,
@@ -1095,7 +1097,13 @@ export default function App() {
                 exit={{ opacity: 0, y: -3 }}
                 transition={{ duration: 0.12 }}
               >
-                {/* 1. DIPLOMA WORKSPACE */}
+                <React.Suspense fallback={
+                  <div className="flex flex-col items-center justify-center py-24 gap-4 text-zinc-500">
+                    <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                    <span className="text-xs font-sans">جارٍ تحميل الصفحة...</span>
+                  </div>
+                }>
+
                 {activeTab === 'workspace' && (
                   <DiplomaWorkspace
                     diplomaId={selectedDiplomaId}
@@ -1382,6 +1390,7 @@ export default function App() {
                     </div>
                   </div>
                 )}
+                </React.Suspense>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -1414,28 +1423,38 @@ export default function App() {
         </div>
       )}
 
+      {/* Quick Notes Floating Panel */}
+      <React.Suspense fallback={null}>
+        <QuickNotes
+          currentDiplomaId={selectedDiplomaId || undefined}
+          currentDiplomaName={diplomas.find(d => d.id === selectedDiplomaId)?.name}
+        />
+      </React.Suspense>
+
       {/* Global Floating AI Copilot Assistant */}
       {activeTab !== 'ai-assistant' && (
-        <AIAssistant
-          mode="floating"
-          currentUser={currentUser}
-          students={students}
-          diplomas={diplomas}
-          sessions={sessions}
-          tasks={tasks}
-          config={config}
-          instructors={instructors}
-          diplomaTypes={diplomaTypes}
-          onNavigateToSettings={() => {
-            setActiveTab('settings');
-            window.dispatchEvent(new CustomEvent('TOGGLE_SAYED_AI')); // Close chat after routing
-          }}
-          onSaveDiplomas={handleSaveDiplomas}
-          onSaveStudents={handleSaveStudents}
-          onSaveSessions={handleSaveSessions}
-          onSaveTasks={handleSaveTasks}
-          onSaveConfig={handleSaveConfig}
-        />
+        <React.Suspense fallback={null}>
+          <AIAssistant
+            mode="floating"
+            currentUser={currentUser}
+            students={students}
+            diplomas={diplomas}
+            sessions={sessions}
+            tasks={tasks}
+            config={config}
+            instructors={instructors}
+            diplomaTypes={diplomaTypes}
+            onNavigateToSettings={() => {
+              setActiveTab('settings');
+              window.dispatchEvent(new CustomEvent('TOGGLE_SAYED_AI'));
+            }}
+            onSaveDiplomas={handleSaveDiplomas}
+            onSaveStudents={handleSaveStudents}
+            onSaveSessions={handleSaveSessions}
+            onSaveTasks={handleSaveTasks}
+            onSaveConfig={handleSaveConfig}
+          />
+        </React.Suspense>
       )}
 
     </div>

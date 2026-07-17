@@ -27,7 +27,8 @@ import {
   Sparkles,
   Plus,
   RefreshCw,
-  Zap
+  Zap,
+  FolderArchive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -55,6 +56,27 @@ interface QueueItem {
   status: 'pending' | 'opening' | 'success' | 'skipped';
 }
 
+export interface CampaignRecipient {
+  studentId: string;
+  studentName: string;
+  phone: string;
+  status: 'success' | 'skipped' | 'pending';
+  message: string;
+}
+
+export interface WhatsAppCampaign {
+  id: string;
+  title: string;
+  date: string; // ISO string
+  campaignType: 'absence' | 'reminder' | 'custom' | 'broadcaster' | 'quick-blast' | 'smart';
+  diplomaName: string;
+  totalRecipients: number;
+  sentCount: number;
+  skippedCount: number;
+  recipients: CampaignRecipient[];
+}
+
+
 export default function WhatsAppAutomation({
   students,
   sessions,
@@ -65,8 +87,8 @@ export default function WhatsAppAutomation({
   autoTriggerOptions,
   onClearAutoTrigger
 }: WhatsAppAutomationProps) {
-  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart' | 'quick-blast'
-  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart' | 'quick-blast'>('smart');
+  // Tabs: 'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart' | 'quick-blast' | 'campaigns-archive'
+  const [activeTab, setActiveTab] = useState<'absence' | 'class-reminder' | 'custom-message' | 'broadcaster' | 'schedules' | 'smart' | 'quick-blast' | 'campaigns-archive'>('smart');
 
   // Search/Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,6 +100,22 @@ export default function WhatsAppAutomation({
   const [manualSchedMessageType, setManualSchedMessageType] = useState<'session_reminder' | 'absence_warning' | 'custom'>('session_reminder');
   const [manualSchedDateTime, setManualSchedDateTime] = useState('');
   const [manualSchedTemplate, setManualSchedTemplate] = useState('');
+
+  // --- CAMPAIGNS STATE & REFS ---
+  const [campaigns, setCampaigns] = useState<WhatsAppCampaign[]>(() => {
+    try {
+      const saved = localStorage.getItem('whatsapp_campaigns_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [selectedCampaignDetail, setSelectedCampaignDetail] = useState<WhatsAppCampaign | null>(null);
+
+  const currentCampaignIdRef = useRef<string | null>(null);
+  const savedCampaignIds = useRef<Set<string>>(new Set());
+
 
   useEffect(() => {
     if (manualSchedMessageType === 'session_reminder') {
@@ -249,6 +287,7 @@ export default function WhatsAppAutomation({
     setCopied(false);
     setIsQueueActive(true);
     setIsAutoSending(false);
+    currentCampaignIdRef.current = `camp-${Date.now()}`;
   };
 
   // Workflow states
@@ -570,6 +609,81 @@ export default function WhatsAppAutomation({
     setSelectionStart(e.currentTarget.selectionStart);
   };
 
+  // --- SAVE CAMPAIGN UTILITY ---
+  const saveCampaignFromQueue = (isInterrupted: boolean = false) => {
+    const activeQueue = queueRef.current;
+    if (activeQueue.length === 0) return;
+
+    const campaignId = currentCampaignIdRef.current || `camp-${Date.now()}`;
+    if (savedCampaignIds.current.has(campaignId)) return;
+
+    // Filter processed items (either succeeded or skipped)
+    const processed = activeQueue.filter(q => q.status === 'success' || q.status === 'skipped');
+    if (processed.length === 0) return;
+
+    const successes = activeQueue.filter(q => q.status === 'success').length;
+    const skips = activeQueue.filter(q => q.status === 'skipped').length;
+
+    let type: WhatsAppCampaign['campaignType'] = 'custom';
+    let title = 'حملة مراسلة مخصصة';
+    let diplomaName = 'عام';
+
+    const currentActiveDiploma = diplomas.find(d => d.id === selectedDiplomaId);
+    if (currentActiveDiploma) {
+      diplomaName = currentActiveDiploma.name;
+    }
+
+    if (activeTab === 'smart') {
+      type = 'smart';
+      title = `إشعارات ذكية - ${diplomaName}`;
+    } else if (activeTab === 'absence') {
+      type = 'absence';
+      const targetSession = sessions.find(s => s.id === selectedAbsenceSessionId);
+      title = `إنذار غياب - حصة: ${targetSession ? targetSession.title : 'غير محددة'}`;
+    } else if (activeTab === 'class-reminder') {
+      type = 'reminder';
+      const targetSession = sessions.find(s => s.id === selectedReminderSessionId);
+      title = `تذكير بمحاضرة - حصة: ${targetSession ? targetSession.title : 'غير محددة'}`;
+    } else if (activeTab === 'quick-blast') {
+      type = 'quick-blast';
+      title = 'حملة إرسال سريع (أرقام خارجية)';
+      diplomaName = 'أرقام خارجية';
+    } else if (activeTab === 'broadcaster') {
+      type = 'broadcaster';
+      title = `تعميم موحد - ${diplomaName}`;
+    }
+
+    if (isInterrupted) {
+      title += ' (غير مكتملة)';
+    }
+
+    const newCampaign: WhatsAppCampaign = {
+      id: campaignId,
+      title,
+      date: new Date().toISOString(),
+      campaignType: type,
+      diplomaName,
+      totalRecipients: activeQueue.length,
+      sentCount: successes,
+      skippedCount: skips,
+      recipients: activeQueue.map(q => ({
+        studentId: q.student.id,
+        studentName: q.student.name,
+        phone: q.phone,
+        status: q.status === 'success' ? 'success' : q.status === 'skipped' ? 'skipped' : 'pending',
+        message: q.message
+      }))
+    };
+
+    setCampaigns(prev => {
+      const updated = [newCampaign, ...prev];
+      localStorage.setItem('whatsapp_campaigns_history', JSON.stringify(updated));
+      return updated;
+    });
+
+    savedCampaignIds.current.add(campaignId);
+  };
+
   // ==========================================
   // BULK SENDING QUEUE WORKFLOW
   // ==========================================
@@ -602,6 +716,7 @@ export default function WhatsAppAutomation({
     }
 
     // Build the queue
+    currentCampaignIdRef.current = `camp-${Date.now()}`;
     const queueItems: QueueItem[] = list.map(student => {
       const finalMsg = compileMessage(templateText, student, diplomaObj, sessionObj);
       return {
@@ -807,6 +922,7 @@ export default function WhatsAppAutomation({
         console.log('[DEBUG] Queue fully processed.');
         setIsAutoSending(false);
         setCountdown(null);
+        saveCampaignFromQueue(false); // <--- Save completed campaign
         if (currentScheduleIdRef.current) {
           updateScheduleStatus('sent');
         }
@@ -855,6 +971,7 @@ export default function WhatsAppAutomation({
             } else {
               setIsAutoSending(false);
               setCountdown(null);
+              saveCampaignFromQueue(false); // <--- Save completed campaign
             }
           }
         }
@@ -915,6 +1032,8 @@ export default function WhatsAppAutomation({
     setCountdown(null);
     if (autoSendTimerRef.current) clearTimeout(autoSendTimerRef.current);
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+
+    saveCampaignFromQueue(queueIndex < queue.length); // <--- Save as interrupted if not finished
 
     if (currentScheduleIdRef.current) {
       const status = queueIndex >= queue.length ? 'sent' : 'cancelled';
@@ -1014,7 +1133,8 @@ export default function WhatsAppAutomation({
           { id: 'custom-message', label: 'رسالة خاصة', icon: FileText, activeGrad: 'from-emerald-600 to-teal-600', activeTxt: 'text-white' },
           { id: 'broadcaster', label: 'تعميم موحد', icon: Users, activeGrad: 'from-amber-500 to-orange-500', activeTxt: 'text-white' },
           { id: 'quick-blast', label: 'إرسال خارجي 🚀', icon: Send, activeGrad: 'from-pink-500 to-rose-500', activeTxt: 'text-white' },
-          { id: 'schedules', label: 'الجدولة', icon: Calendar, activeGrad: 'from-purple-600 to-fuchsia-600', activeTxt: 'text-white' }
+          { id: 'schedules', label: 'الجدولة', icon: Calendar, activeGrad: 'from-purple-600 to-fuchsia-600', activeTxt: 'text-white' },
+          { id: 'campaigns-archive', label: 'أرشيف الحملات 📁', icon: FolderArchive, activeGrad: 'from-indigo-600 to-violet-600', activeTxt: 'text-white' }
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -1053,6 +1173,7 @@ export default function WhatsAppAutomation({
               onSaveConfig={(newConfig) => { if (onSaveConfig) onSaveConfig(newConfig); }}
               onSendQueue={(queueStudents, template, diploma) => {
                 // Build queue items and start auto-send
+                currentCampaignIdRef.current = `camp-${Date.now()}`;
                 const queueItems: QueueItem[] = queueStudents.map(student => ({
                   student,
                   message: template.replace(/\{studentName\}/g, student.name),
@@ -2303,7 +2424,263 @@ export default function WhatsAppAutomation({
             </div>
           </div>
         )}
+
+        {/* ==========================================
+            TAB 6: CAMPAIGNS ARCHIVE
+            ========================================== */}
+        {activeTab === 'campaigns-archive' && (
+          <div className="lg:col-span-12 space-y-6">
+            
+            {/* Header and Quick Stats */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <FolderArchive className="w-5 h-5 text-indigo-400" />
+                  أرشيف حملات الواتساب التاريخي
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans mt-1">
+                  تتبع المراسلات الجماعية السابقة وتأكيد إرسال الرسائل للطلاب
+                </p>
+              </div>
+
+              {campaigns.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('🚨 هل أنت متأكد من رغبتك في حذف كل تاريخ الأرشيف؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                      setCampaigns([]);
+                      localStorage.removeItem('whatsapp_campaigns_history');
+                    }
+                  }}
+                  className="px-3.5 py-1.5 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer font-sans"
+                >
+                  مسح الأرشيف بالكامل
+                </button>
+              )}
+            </div>
+
+            {/* Campaign Quick Stats Cards */}
+            {campaigns.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+                <div className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl flex flex-col justify-between">
+                  <span className="text-zinc-500 text-[10px] font-bold">إجمالي الحملات</span>
+                  <span className="text-2xl font-mono text-white font-black mt-1">{campaigns.length}</span>
+                </div>
+                <div className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl flex flex-col justify-between">
+                  <span className="text-indigo-400 text-[10px] font-bold">إجمالي الرسائل الموجهة</span>
+                  <span className="text-2xl font-mono text-white font-black mt-1">
+                    {campaigns.reduce((acc, c) => acc + c.totalRecipients, 0)}
+                  </span>
+                </div>
+                <div className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl flex flex-col justify-between">
+                  <span className="text-emerald-400 text-[10px] font-bold">تم إرسالها بنجاح</span>
+                  <span className="text-2xl font-mono text-emerald-400 font-black mt-1">
+                    {campaigns.reduce((acc, c) => acc + c.sentCount, 0)}
+                  </span>
+                </div>
+                <div className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl flex flex-col justify-between">
+                  <span className="text-amber-500 text-[10px] font-bold">تم تخطيها</span>
+                  <span className="text-2xl font-mono text-amber-550 font-black mt-1">
+                    {campaigns.reduce((acc, c) => acc + c.skippedCount, 0)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Main Campaign List */}
+            {campaigns.length === 0 ? (
+              <div className="p-12 text-center bg-zinc-950/20 border border-dashed border-zinc-900 rounded-2xl space-y-2.5 font-sans">
+                <FolderArchive className="w-12 h-12 text-zinc-700 mx-auto" />
+                <p className="text-sm text-zinc-400">لا توجد حملات مسجلة في الأرشيف بعد</p>
+                <p className="text-xs text-zinc-650">سيتم حفظ أي حملة مراسلة جماعية تقوم بها هنا تلقائياً</p>
+              </div>
+            ) : (
+              <div className="bg-[#0c0c0f]/40 border border-zinc-900 rounded-2xl overflow-hidden font-sans">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right border-collapse">
+                    <thead>
+                      <tr className="border-b border-zinc-900 bg-zinc-950/60 text-zinc-450 text-[10px] uppercase font-bold">
+                        <th className="p-3.5">اسم الحملة / المجموعات</th>
+                        <th className="p-3.5">الدبلوم</th>
+                        <th className="p-3.5">تاريخ الإرسال</th>
+                        <th className="p-3.5 text-center">نوع الحملة</th>
+                        <th className="p-3.5 text-center">حالة الإرسال</th>
+                        <th className="p-3.5 text-center">العمليات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-900 text-xs">
+                      {campaigns.map((camp) => {
+                        const allDone = camp.skippedCount === 0;
+                        const dateStr = new Date(camp.date).toLocaleDateString('ar-EG', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        });
+
+                        return (
+                          <tr key={camp.id} className="hover:bg-zinc-900/30 transition-colors">
+                            <td className="p-3.5">
+                              <span className="font-bold text-white block">{camp.title}</span>
+                              <span className="text-[9px] text-zinc-550 mt-0.5 block">
+                                معرّف: {camp.id}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-zinc-300">
+                              📚 {camp.diplomaName}
+                            </td>
+                            <td className="p-3.5 text-zinc-400 font-mono text-[11px] dir-ltr">
+                              {dateStr}
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                camp.campaignType === 'absence' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/20' :
+                                camp.campaignType === 'reminder' ? 'bg-indigo-950/40 text-indigo-400 border border-indigo-900/20' :
+                                camp.campaignType === 'smart' ? 'bg-violet-955/30 text-violet-400 border border-violet-900/20' :
+                                camp.campaignType === 'broadcaster' ? 'bg-amber-955/20 text-amber-500 border border-amber-900/25' :
+                                'bg-zinc-900 text-zinc-400 border border-zinc-800'
+                              }`}>
+                                {camp.campaignType === 'absence' ? 'إنذار غياب' :
+                                 camp.campaignType === 'reminder' ? 'تذكير جلسة' :
+                                 camp.campaignType === 'smart' ? 'إشعار ذكي' :
+                                 camp.campaignType === 'broadcaster' ? 'تعميم موحد' :
+                                 camp.campaignType === 'quick-blast' ? 'إرسال سريع' : 'مخصصة'}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <div className="flex flex-col items-center">
+                                <span className={`text-[10px] font-bold ${allDone ? 'text-emerald-400' : 'text-amber-500'}`}>
+                                  {camp.sentCount} نجح / {camp.skippedCount} تخطي
+                                </span>
+                                <span className="text-[9px] text-zinc-500">
+                                  من أصل {camp.totalRecipients}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => setSelectedCampaignDetail(camp)}
+                                  className="px-2.5 py-1 bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded transition-all cursor-pointer font-bold text-[10px]"
+                                >
+                                  تفاصيل المستلمين 🔍
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm('هل تريد حذف هذه الحملة من السجل؟')) {
+                                      setCampaigns(prev => {
+                                        const updated = prev.filter(c => c.id !== camp.id);
+                                        localStorage.setItem('whatsapp_campaigns_history', JSON.stringify(updated));
+                                        return updated;
+                                      });
+                                    }
+                                  }}
+                                  className="p-1 text-zinc-600 hover:text-rose-400 hover:bg-rose-955/20 rounded transition-all cursor-pointer"
+                                  title="حذف الحملة"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* --- CAMPAIGN DETAILS VIEW MODAL --- */}
+      <AnimatePresence>
+        {selectedCampaignDetail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs text-right" dir="rtl">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-zinc-900 flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <FolderArchive className="w-4 h-4 text-indigo-400" />
+                    تفاصيل حملة: {selectedCampaignDetail.title}
+                  </h3>
+                  <span className="text-[10px] text-zinc-500 font-sans block">
+                    الدبلومة: {selectedCampaignDetail.diplomaName} · التاريخ: {new Date(selectedCampaignDetail.date).toLocaleString('ar-EG')}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedCampaignDetail(null)}
+                  className="p-1.5 hover:bg-zinc-900 rounded text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Recipients list */}
+              <div className="p-5 overflow-y-auto space-y-3.5 flex-1 max-h-[50vh] scrollbar-thin">
+                <span className="text-[10px] text-zinc-500 font-bold block pb-1 border-b border-zinc-900">قائمة الطلاب والمراسلات الفردية:</span>
+                
+                {selectedCampaignDetail.recipients.map((rec, idx) => (
+                  <div
+                    key={`${rec.studentId}-${idx}`}
+                    className="p-3 bg-zinc-900/35 border border-zinc-900 rounded-xl space-y-2 font-sans"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{rec.studentName}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono">({rec.phone})</span>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        rec.status === 'success' ? 'bg-emerald-950/40 text-emerald-400' :
+                        rec.status === 'skipped' ? 'bg-amber-955/20 text-amber-500' :
+                        'bg-zinc-800 text-zinc-500'
+                      }`}>
+                        {rec.status === 'success' ? '✓ تم الفتح' :
+                         rec.status === 'skipped' ? '⏩ تخطي' : '● انتظار'}
+                      </span>
+                    </div>
+
+                    <div className="text-[10px] text-zinc-400 bg-black/60 p-2.5 border border-zinc-950 rounded leading-relaxed text-right">
+                      {rec.message}
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        onClick={() => {
+                          const url = getWhatsAppLink(rec.phone, rec.message);
+                          window.open(url, '_blank');
+                        }}
+                        className="px-2.5 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-700 text-zinc-400 hover:text-white rounded text-[9px] font-bold cursor-pointer flex items-center gap-1"
+                      >
+                        <Send className="w-2.5 h-2.5" />
+                        إعادة فتح الشات
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-zinc-900 flex items-center justify-end bg-zinc-950/25">
+                <button
+                  onClick={() => setSelectedCampaignDetail(null)}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 rounded-lg text-xs cursor-pointer transition-colors"
+                >
+                  إغلاق النافذة
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ==========================================
           MODAL: BULK DISPATCH QUEUE SYSTEM

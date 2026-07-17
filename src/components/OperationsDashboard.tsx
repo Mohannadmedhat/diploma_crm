@@ -20,6 +20,7 @@ import {
   Plus,
   Trash2,
   Calendar,
+  CalendarCheck2,
   Layers,
   Link,
   Upload,
@@ -36,7 +37,9 @@ import {
   ShieldCheck,
   Coins,
   ShieldAlert,
-  ClipboardEdit
+  ClipboardEdit,
+  BarChart2,
+  Zap
 } from 'lucide-react';
 import { parseTemplate, formatWhatsAppLink } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -70,7 +73,7 @@ export default function OperationsDashboard({
 }: OperationsDashboardProps) {
   
   // --- Active Tab for Dashboard Navigation ---
-  const [dashTab, setDashTab] = useState<'overview' | 'my-diplomas' | 'attendance-followup' | 'student-import' | 'sla-radar' | 'finance'>('overview');
+  const [dashTab, setDashTab] = useState<'overview' | 'my-diplomas' | 'attendance-followup' | 'student-import' | 'sla-radar' | 'finance' | 'today-sessions'>('overview');
   
   // Custom date selection to test or check different days (Defaults to today)
   const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
@@ -345,6 +348,55 @@ export default function OperationsDashboard({
       return days.toLowerCase().includes(tomorrowArabicWeekDay.toLowerCase());
     });
   }, [diplomas, tomorrowArabicWeekDay]);
+
+  // --- Today's Sessions Data (Feature: جلسات اليوم) ---
+  const todaySessionsData = useMemo(() => {
+    return diplomasStudyingToday.map(dip => {
+      // Find the session for this diploma on selected date
+      const todaySess = sessions.find(s => s.diplomaId === dip.id && s.date === selectedDateStr);
+      const enrolledStudents = students.filter(s => s.diplomaIds.includes(dip.id));
+      const totalEnrolled = enrolledStudents.length;
+
+      let presentCount = 0;
+      let absentCount = 0;
+      let absentStudents: Student[] = [];
+
+      if (todaySess) {
+        Object.entries(todaySess.attendance || {}).forEach(([sid, rec]) => {
+          if (rec.status === 'Present') presentCount++;
+          else if (rec.status === 'Absent') {
+            absentCount++;
+            const st = students.find(s => s.id === sid);
+            if (st) absentStudents.push(st);
+          }
+        });
+      }
+
+      const attendanceRecorded = todaySess && Object.keys(todaySess.attendance || {}).length > 0;
+      const attendancePct = totalEnrolled > 0 ? Math.round((presentCount / totalEnrolled) * 100) : 0;
+
+      // Next session after today for this diploma
+      const futureSessions = sessions
+        .filter(s => s.diplomaId === dip.id && s.date > selectedDateStr)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const nextSession = futureSessions[0] || null;
+
+      return {
+        diploma: dip,
+        session: todaySess || null,
+        totalEnrolled,
+        presentCount,
+        absentCount,
+        absentStudents,
+        attendanceRecorded: !!attendanceRecorded,
+        attendancePct,
+        recordingUploaded: todaySess?.recordingUploaded || false,
+        materialsUploaded: todaySess?.materialsUploaded || false,
+        absenteesFollowedUp: todaySess?.absenteesFollowedUp || false,
+        nextSession
+      };
+    });
+  }, [diplomasStudyingToday, sessions, students, selectedDateStr]);
 
   // 2. Today's automatic tasks list generator
   // Generates 5 baseline operations tasks for each diploma running today
@@ -834,6 +886,7 @@ export default function OperationsDashboard({
         <div className="flex flex-wrap gap-2.5 mt-6 pt-5 border-t border-zinc-900">
           {[
             { id: 'overview', label: 'اللوحة الرئيسية والمهام اليومية', icon: ClipboardList },
+            { id: 'today-sessions', label: `جلسات اليوم`, icon: CalendarCheck2, badge: diplomasStudyingToday.length > 0 ? diplomasStudyingToday.length : null },
             { id: 'my-diplomas', label: `الدبلومات التي أتابعها (${trackedDiplomas.length})`, icon: BookOpen },
             { id: 'attendance-followup', label: 'متابعة الغياب والاتصال الموثق', icon: UserCheck },
             { id: 'sla-radar', label: 'رادار الأخطاء والتأخيرات (SLA)', icon: ShieldAlert },
@@ -842,11 +895,12 @@ export default function OperationsDashboard({
           ].map(tab => {
             const TabIcon = tab.icon;
             const isSelected = dashTab === tab.id;
+            const badge = (tab as any).badge;
             return (
               <button
                 key={tab.id}
                 onClick={() => setDashTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/15'
                     : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-900 hover:bg-zinc-900'
@@ -854,6 +908,11 @@ export default function OperationsDashboard({
               >
                 <TabIcon className="w-3.5 h-3.5 shrink-0" />
                 <span>{tab.label}</span>
+                {badge && (
+                  <span className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-amber-500 text-black text-[9px] font-black rounded-full flex items-center justify-center">
+                    {badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -927,6 +986,100 @@ export default function OperationsDashboard({
               </div>
 
             </div>
+
+            {/* ✨ TODAY'S BRIEF CARD */}
+            {diplomasStudyingToday.length > 0 && (
+              <div className="bg-gradient-to-l from-indigo-950/30 via-[#0e0e14] to-[#0e0e14] border border-indigo-800/30 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
+                      <Zap className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-black text-white">ملخص اليوم السريع — {arabicWeekDay} {selectedDateStr}</h3>
+                      <p className="text-[11px] text-zinc-500 font-sans mt-0.5">{diplomasStudyingToday.length} دبلومة عندها جلسة اليوم</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setDashTab('today-sessions')}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
+                  >
+                    <CalendarCheck2 className="w-3.5 h-3.5" />
+                    افتح جلسات اليوم
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {todaySessionsData.map(item => {
+                    const allDone = item.attendanceRecorded && item.recordingUploaded && item.materialsUploaded;
+                    return (
+                      <div
+                        key={item.diploma.id}
+                        className={`p-3.5 rounded-xl border flex flex-col gap-2.5 transition-all ${
+                          allDone
+                            ? 'bg-emerald-950/10 border-emerald-900/30'
+                            : 'bg-zinc-950/60 border-zinc-800/60'
+                        }`}
+                      >
+                        {/* Diploma name + time */}
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs font-bold text-white leading-tight">{item.diploma.name}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap ${
+                            allDone
+                              ? 'bg-emerald-500/15 text-emerald-400'
+                              : 'bg-amber-500/10 text-amber-400'
+                          }`}>
+                            {allDone ? '✓ مكتمل' : '● جارٍ'}
+                          </span>
+                        </div>
+
+                        {/* Attendance bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-sans text-zinc-400">
+                            <span>الحضور</span>
+                            <span className="font-bold text-white">{item.attendanceRecorded ? `${item.presentCount} / ${item.totalEnrolled}` : `— / ${item.totalEnrolled}`}</span>
+                          </div>
+                          <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                item.attendancePct >= 75 ? 'bg-emerald-500' : item.attendancePct > 0 ? 'bg-amber-500' : 'bg-zinc-700'
+                              }`}
+                              style={{ width: `${item.attendancePct}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Status pills */}
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                            item.attendanceRecorded ? 'bg-emerald-900/40 text-emerald-400' : 'bg-zinc-800 text-zinc-500'
+                          }`}>{item.attendanceRecorded ? '✓' : '○'} حضور</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                            item.recordingUploaded ? 'bg-emerald-900/40 text-emerald-400' : 'bg-zinc-800 text-zinc-500'
+                          }`}>{item.recordingUploaded ? '✓' : '○'} تسجيل</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                            item.materialsUploaded ? 'bg-emerald-900/40 text-emerald-400' : 'bg-zinc-800 text-zinc-500'
+                          }`}>{item.materialsUploaded ? '✓' : '○'} مواد</span>
+                          {item.absentCount > 0 && (
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                              item.absenteesFollowedUp ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/30 text-rose-400'
+                            }`}>{item.absenteesFollowedUp ? '✓' : '!'} {item.absentCount} غياب</span>
+                          )}
+                        </div>
+
+                        {/* Session time */}
+                        <div className="text-[10px] text-zinc-500 font-sans border-t border-zinc-800/60 pt-2">
+                          🕐 {item.diploma.sessionTime || 'وقت غير محدد'}
+                          {item.nextSession && (
+                            <span className="mr-2 text-indigo-400">· القادمة: {item.nextSession.date}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* MAIN OPERATIONAL WORKSPACE GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1146,6 +1299,212 @@ export default function OperationsDashboard({
               </div>
 
             </div>
+          </motion.div>
+        )}
+
+        {/* TAB: TODAY'S SESSIONS — جلسات اليوم */}
+        {dashTab === 'today-sessions' && (
+          <motion.div
+            key="today-sessions"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-5"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <CalendarCheck2 className="w-5 h-5 text-indigo-400" />
+                  جلسات اليوم — {arabicWeekDay} {selectedDateStr}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans mt-1">
+                  كل الدبلومات اللي عندها جلسة النهارده في مكان واحد
+                </p>
+              </div>
+              {/* Summary counts */}
+              <div className="flex items-center gap-3 text-xs font-sans">
+                <span className="px-3 py-1.5 bg-indigo-950/40 border border-indigo-900/30 text-indigo-300 rounded-lg font-bold">
+                  {diplomasStudyingToday.length} دبلومة
+                </span>
+                <span className="px-3 py-1.5 bg-emerald-950/30 border border-emerald-900/20 text-emerald-400 rounded-lg font-bold">
+                  {todaySessionsData.reduce((a, i) => a + i.presentCount, 0)} حاضر
+                </span>
+                <span className="px-3 py-1.5 bg-rose-950/20 border border-rose-900/20 text-rose-400 rounded-lg font-bold">
+                  {todaySessionsData.reduce((a, i) => a + i.absentCount, 0)} غائب
+                </span>
+              </div>
+            </div>
+
+            {diplomasStudyingToday.length === 0 ? (
+              <div className="p-12 text-center bg-[#070707] border border-dashed border-zinc-800 rounded-2xl space-y-2 font-sans">
+                <CalendarCheck2 className="w-10 h-10 text-zinc-700 mx-auto" />
+                <p className="text-sm text-zinc-400">لا توجد دبلومات مجدولة اليوم ({arabicWeekDay})</p>
+                <p className="text-xs text-zinc-600">جرّب تغيير التاريخ من أعلى الصفحة</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {todaySessionsData.map(item => {
+                  const allDone = item.attendanceRecorded && item.recordingUploaded && item.materialsUploaded && (item.absentCount === 0 || item.absenteesFollowedUp);
+                  const completedSteps = [item.attendanceRecorded, item.recordingUploaded, item.materialsUploaded, item.absentCount === 0 || item.absenteesFollowedUp].filter(Boolean).length;
+                  const progressPct = Math.round((completedSteps / 4) * 100);
+
+                  return (
+                    <div
+                      key={item.diploma.id}
+                      className={`rounded-2xl border p-5 space-y-4 transition-all ${
+                        allDone
+                          ? 'bg-emerald-950/10 border-emerald-900/30'
+                          : 'bg-[#0e0e14] border-zinc-800/70'
+                      }`}
+                    >
+                      {/* Header row */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <h4 className="text-sm font-black text-white leading-tight truncate">{item.diploma.name}</h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] text-zinc-400 font-sans">
+                              🕐 {item.diploma.sessionTime || 'وقت غير محدد'}
+                            </span>
+                            {item.diploma.instructorName && (
+                              <span className="text-[10px] text-zinc-500 font-sans">
+                                · المدرب: {item.diploma.instructorName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold whitespace-nowrap shrink-0 ${
+                          allDone
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-800/30'
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-800/20'
+                        }`}>
+                          {allDone ? '✓ مكتمل' : `${progressPct}% منجز`}
+                        </span>
+                      </div>
+
+                      {/* Overall progress bar */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[10px] text-zinc-500 font-sans">
+                          <span>تقدم مهام الجلسة</span>
+                          <span>{completedSteps}/4 مهام</span>
+                        </div>
+                        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${
+                              progressPct === 100 ? 'bg-emerald-500' : progressPct >= 50 ? 'bg-amber-500' : 'bg-indigo-500'
+                            }`}
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Attendance stats */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-zinc-900/60 rounded-lg p-2">
+                          <div className="text-lg font-mono font-black text-white">{item.totalEnrolled}</div>
+                          <div className="text-[9px] text-zinc-500 font-sans">مسجل</div>
+                        </div>
+                        <div className={`rounded-lg p-2 ${item.presentCount > 0 ? 'bg-emerald-950/30' : 'bg-zinc-900/60'}`}>
+                          <div className={`text-lg font-mono font-black ${item.presentCount > 0 ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                            {item.attendanceRecorded ? item.presentCount : '—'}
+                          </div>
+                          <div className="text-[9px] text-zinc-500 font-sans">حاضر</div>
+                        </div>
+                        <div className={`rounded-lg p-2 ${item.absentCount > 0 ? 'bg-rose-950/20' : 'bg-zinc-900/60'}`}>
+                          <div className={`text-lg font-mono font-black ${item.absentCount > 0 ? 'text-rose-400' : 'text-zinc-600'}`}>
+                            {item.attendanceRecorded ? item.absentCount : '—'}
+                          </div>
+                          <div className="text-[9px] text-zinc-500 font-sans">غائب</div>
+                        </div>
+                      </div>
+
+                      {/* Attendance progress bar */}
+                      {item.attendanceRecorded && item.totalEnrolled > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-sans text-zinc-400">
+                            <span>نسبة الحضور</span>
+                            <span className="font-bold text-white">{item.attendancePct}%</span>
+                          </div>
+                          <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                item.attendancePct >= 75 ? 'bg-emerald-500' : item.attendancePct >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                              }`}
+                              style={{ width: `${item.attendancePct}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4 Task Checklist */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        {[
+                          { done: item.attendanceRecorded, label: 'تسجيل الحضور', key: 'review_attendance' },
+                          { done: item.recordingUploaded, label: 'رفع التسجيل', key: 'upload_recording' },
+                          { done: item.materialsUploaded, label: 'رفع المواد', key: 'upload_material' },
+                          { done: item.absentCount === 0 || item.absenteesFollowedUp, label: 'متابعة الغائبين', key: 'follow_absents' }
+                        ].map(task => (
+                          <button
+                            key={task.key}
+                            onClick={() => toggleDailyTask(item.diploma.id, task.key)}
+                            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] font-semibold text-right transition-all cursor-pointer border ${
+                              task.done
+                                ? 'bg-emerald-950/20 border-emerald-900/30 text-emerald-400'
+                                : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white'
+                            }`}
+                          >
+                            <span className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                              task.done ? 'bg-emerald-600 border-emerald-500' : 'border-zinc-600 bg-transparent'
+                            }`}>
+                              {task.done && <Check className="w-2.5 h-2.5 text-white" />}
+                            </span>
+                            <span className={task.done ? 'line-through opacity-60' : ''}>{task.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/60">
+                        {item.absentCount > 0 && !item.absenteesFollowedUp && (
+                          <button
+                            onClick={() => {
+                              const firstAbsent = item.absentStudents[0];
+                              if (firstAbsent) {
+                                setActiveWarningStudent({
+                                  student: firstAbsent,
+                                  diplomaName: item.diploma.name,
+                                  rate: 0,
+                                  phone: firstAbsent.phone
+                                });
+                              }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-rose-500/10 border border-rose-800/30 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            تواصل مع الغائبين ({item.absentCount})
+                          </button>
+                        )}
+                        {item.diploma.whatsappGroupUrl && (
+                          <a
+                            href={item.diploma.whatsappGroupUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 py-1.5 px-3 bg-zinc-900/60 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-lg text-[10px] font-bold transition-all"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            مجموعة WA
+                          </a>
+                        )}
+                        {item.nextSession && (
+                          <span className="text-[10px] text-zinc-600 font-sans mr-auto">
+                            القادمة: <span className="text-indigo-400">{item.nextSession.date}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
         )}
 
