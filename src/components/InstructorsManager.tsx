@@ -369,7 +369,7 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                 </div>
 
                 <div className="space-y-1 flex-1 min-w-0">
-                  <span className="text-xs font-bold text-white block group-hover:text-indigo-400 transition-colors leading-relaxed truncate" title={ins.name}>
+                  <span className="text-xs font-bold text-white block group-hover:text-indigo-400 transition-colors leading-relaxed truncate pl-14" title={ins.name}>
                     {ins.name}
                   </span>
                   

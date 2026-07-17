@@ -354,7 +354,7 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
                 </div>
 
                 <div className="space-y-1 flex-1 min-w-0">
-                  <span className="text-xs font-bold text-white block group-hover:text-teal-400 transition-colors leading-relaxed truncate" title={men.name}>
+                  <span className="text-xs font-bold text-white block group-hover:text-teal-400 transition-colors leading-relaxed truncate pl-14" title={men.name}>
                     {men.name}
                   </span>
                   
