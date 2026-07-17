@@ -368,7 +368,7 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                   {getInitials(ins.name)}
                 </div>
 
-                <div className="space-y-1 overflow-hidden">
+                <div className="space-y-1 flex-1 min-w-0">
                   <span className="text-xs font-bold text-white block group-hover:text-indigo-400 transition-colors leading-relaxed truncate" title={ins.name}>
                     {ins.name}
                   </span>

@@ -353,7 +353,7 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
                   {getInitials(men.name)}
                 </div>
 
-                <div className="space-y-1 overflow-hidden">
+                <div className="space-y-1 flex-1 min-w-0">
                   <span className="text-xs font-bold text-white block group-hover:text-teal-400 transition-colors leading-relaxed truncate" title={men.name}>
                     {men.name}
                   </span>
