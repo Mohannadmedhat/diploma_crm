@@ -1247,24 +1247,24 @@ export default function OperationsDashboard({
                       أداء مذهل! جميع الحصص والمحاضرات مغلقة ومسجلة بشكل كامل دون متأخرات معلقة.
                     </div>
                   ) : (
-                    <div className="space-y-3 font-sans">
+                    <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 scrollbar-thin font-sans">
                       {overdueOperations.map((op, idx) => (
-                        <div key={`${op.sessionId}-${op.type}-${idx}`} className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-900 space-y-2">
-                          <div className="flex items-baseline justify-between gap-1 text-[10px] text-zinc-500">
-                            <span className="font-bold text-zinc-300 block leading-tight">{op.sessionTitle}</span>
-                            <span className="font-mono whitespace-nowrap">{op.sessionDate}</span>
+                        <div key={`${op.sessionId}-${op.type}-${idx}`} className="p-2.5 bg-zinc-950/60 rounded-xl border border-zinc-900/60 flex flex-col gap-1.5 hover:border-zinc-800 transition-all">
+                          <div className="flex items-baseline justify-between gap-1 text-[9px] text-zinc-500">
+                            <span className="font-bold text-zinc-400 truncate max-w-[150px] block leading-tight">{op.sessionTitle}</span>
+                            <span className="font-mono whitespace-nowrap shrink-0">{op.sessionDate}</span>
                           </div>
 
-                          <div className="flex items-center gap-1.5 text-xs text-red-400">
+                          <div className="flex items-center gap-1.5 text-[11px] text-red-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
-                            <span>{op.title}</span>
+                            <span className="truncate">{op.title}</span>
                           </div>
 
                           <button
                             onClick={() => handleResolveOverdue(op.sessionId, op.type)}
-                            className="w-full py-1 bg-[#1c1208] border border-amber-800/30 text-amber-500 hover:text-white hover:bg-amber-600 rounded text-[10px] font-semibold transition-all cursor-pointer"
+                            className="w-full py-1 bg-[#1c1208] border border-amber-800/30 text-amber-500 hover:text-white hover:bg-amber-600 rounded text-[9px] font-semibold transition-all cursor-pointer text-center"
                           >
-                            تحديد كـ كامل ومنجز الآن ✓
+                            تحديد كـ منجز ✓
                           </button>
                         </div>
                       ))}
