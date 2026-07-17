@@ -114,11 +114,19 @@ function findEnabledSendButton() {
 }
 
 function notifyDone() {
-  chrome.runtime.sendMessage({ action: "wa_automation_done" }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.warn("[WA-Extension] Error:", chrome.runtime.lastError.message);
-    } else {
-      console.log("[WA-Extension] Background acknowledged:", response);
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+    try {
+      chrome.runtime.sendMessage({ action: "wa_automation_done" }, (response) => {
+        if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.lastError) {
+          console.warn("[WA-Extension] Error:", chrome.runtime.lastError.message);
+        } else {
+          console.log("[WA-Extension] Background acknowledged:", response);
+        }
+      });
+    } catch (e) {
+      console.warn("[WA-Extension] Extension context invalidated (extension probably reloaded or updated).", e);
     }
-  });
+  } else {
+    console.warn("[WA-Extension] chrome.runtime.sendMessage is not available. Extension context invalidated.");
+  }
 }
