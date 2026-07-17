@@ -319,33 +319,6 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
                   : 'border-dashed border-zinc-900 opacity-60'
               }`}
             >
-              {/* Status Badge */}
-              <div className="absolute top-4 left-4">
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleStatus(men)}
-                    className={`text-[8px] font-bold border px-2 py-0.5 rounded-full cursor-pointer transition-all ${
-                      men.status === 'Active'
-                        ? 'text-teal-450 bg-teal-950/20 border-teal-900/30'
-                        : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
-                    }`}
-                  >
-                    {men.status === 'Active' ? 'نشط' : 'معطل'}
-                  </button>
-                ) : (
-                  <div
-                    className={`text-[8px] font-bold border px-2 py-0.5 rounded-full transition-all ${
-                      men.status === 'Active'
-                        ? 'text-teal-450 bg-teal-950/20 border-teal-900/30'
-                        : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
-                    }`}
-                  >
-                    {men.status === 'Active' ? 'نشط' : 'معطل'}
-                  </div>
-                )}
-              </div>
-
               {/* Main Card Content */}
               <div className="flex gap-3 text-right">
                 {/* Avatar Badge */}
@@ -354,9 +327,42 @@ export default function MentorsManager({ mentors, onSaveMentors, isAdmin = false
                 </div>
 
                 <div className="space-y-1 flex-1 min-w-0">
-                  <span className="text-xs font-bold text-white block group-hover:text-teal-400 transition-colors leading-relaxed truncate pl-14" title={men.name}>
-                    {men.name}
-                  </span>
+                  {/* Name and Status row */}
+                  <div className="flex items-center justify-between gap-2.5">
+                    <span 
+                      className="text-xs font-bold text-white block group-hover:text-teal-400 transition-colors leading-relaxed truncate flex-1 min-w-0" 
+                      title={men.name}
+                      dir="ltr"
+                      style={{ textAlign: 'right' }}
+                    >
+                      {men.name}
+                    </span>
+                    <div className="shrink-0">
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleStatus(men)}
+                          className={`text-[8px] font-bold border px-2 py-0.5 rounded-full cursor-pointer transition-all ${
+                            men.status === 'Active'
+                              ? 'text-teal-450 bg-teal-950/20 border-teal-900/30'
+                              : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
+                          }`}
+                        >
+                          {men.status === 'Active' ? 'نشط' : 'معطل'}
+                        </button>
+                      ) : (
+                        <div
+                          className={`text-[8px] font-bold border px-2 py-0.5 rounded-full transition-all ${
+                            men.status === 'Active'
+                              ? 'text-teal-450 bg-teal-950/20 border-teal-900/30'
+                              : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
+                          }`}
+                        >
+                          {men.status === 'Active' ? 'نشط' : 'معطل'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   
                   {/* Specialty */}
                   <span className="inline-flex items-center gap-1 text-[9px] text-zinc-400 bg-zinc-900/60 border border-zinc-850 px-2 py-0.5 rounded font-sans">

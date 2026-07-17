@@ -334,33 +334,6 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                   : 'border-dashed border-zinc-900 opacity-60'
               }`}
             >
-              {/* Status Badge */}
-              <div className="absolute top-4 left-4">
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleStatus(ins)}
-                    className={`text-[8px] font-bold border px-2 py-0.5 rounded-full cursor-pointer transition-all ${
-                      ins.status === 'Active'
-                        ? 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30'
-                        : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
-                    }`}
-                  >
-                    {ins.status === 'Active' ? 'نشط' : 'معطل'}
-                  </button>
-                ) : (
-                  <div
-                    className={`text-[8px] font-bold border px-2 py-0.5 rounded-full transition-all ${
-                      ins.status === 'Active'
-                        ? 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30'
-                        : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
-                    }`}
-                  >
-                    {ins.status === 'Active' ? 'نشط' : 'معطل'}
-                  </div>
-                )}
-              </div>
-
               {/* Main Card Content */}
               <div className="flex gap-3 text-right">
                 {/* Avatar Badge */}
@@ -369,9 +342,42 @@ export default function InstructorsManager({ instructors, onSaveInstructors, isA
                 </div>
 
                 <div className="space-y-1 flex-1 min-w-0">
-                  <span className="text-xs font-bold text-white block group-hover:text-indigo-400 transition-colors leading-relaxed truncate pl-14" title={ins.name}>
-                    {ins.name}
-                  </span>
+                  {/* Name and Status row */}
+                  <div className="flex items-center justify-between gap-2.5">
+                    <span 
+                      className="text-xs font-bold text-white block group-hover:text-indigo-400 transition-colors leading-relaxed truncate flex-1 min-w-0" 
+                      title={ins.name}
+                      dir="ltr"
+                      style={{ textAlign: 'right' }}
+                    >
+                      {ins.name}
+                    </span>
+                    <div className="shrink-0">
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleStatus(ins)}
+                          className={`text-[8px] font-bold border px-2 py-0.5 rounded-full cursor-pointer transition-all ${
+                            ins.status === 'Active'
+                              ? 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30'
+                              : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
+                          }`}
+                        >
+                          {ins.status === 'Active' ? 'نشط' : 'معطل'}
+                        </button>
+                      ) : (
+                        <div
+                          className={`text-[8px] font-bold border px-2 py-0.5 rounded-full transition-all ${
+                            ins.status === 'Active'
+                              ? 'text-emerald-400 bg-emerald-950/20 border-emerald-900/30'
+                              : 'text-zinc-500 bg-zinc-900/50 border-zinc-800'
+                          }`}
+                        >
+                          {ins.status === 'Active' ? 'نشط' : 'معطل'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   
                   {/* Specialty */}
                   <span className="inline-flex items-center gap-1 text-[9px] text-zinc-400 bg-zinc-900/60 border border-zinc-850 px-2 py-0.5 rounded font-sans">
