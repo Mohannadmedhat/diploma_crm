@@ -98,9 +98,41 @@ const KEY_TEMPLATES           = () => `${SHARED_PREFIX}msg_templates`;
 
 export function mergeDefaultInstructors(currentList: Instructor[]): { merged: Instructor[]; wasUpdated: boolean } {
   let wasUpdated = false;
-  const list = [...currentList];
-  const existingNames = new Set(list.map(inst => inst.name.trim().toLowerCase()));
 
+  // Create a map of default instructors for quick lookup
+  const defaultMap = new Map<string, Instructor>();
+  DEFAULT_INSTRUCTORS.forEach(d => {
+    defaultMap.set(d.name.trim().toLowerCase(), d);
+  });
+
+  // Sync existing list with defaults
+  const list = currentList.map(inst => {
+    const cleanName = inst.name.trim().toLowerCase();
+    const defaultInst = defaultMap.get(cleanName);
+    if (defaultInst) {
+      let instUpdated = false;
+
+      // Update phone if it differs and default has value
+      if (defaultInst.phone && inst.phone !== defaultInst.phone) {
+        inst.phone = defaultInst.phone;
+        instUpdated = true;
+      }
+
+      // Update hourlyRate if it differs and default has value
+      if (defaultInst.hourlyRate !== undefined && inst.hourlyRate !== defaultInst.hourlyRate) {
+        inst.hourlyRate = defaultInst.hourlyRate;
+        instUpdated = true;
+      }
+
+      if (instUpdated) {
+        wasUpdated = true;
+      }
+    }
+    return inst;
+  });
+
+  // Add missing defaults
+  const existingNames = new Set(list.map(inst => inst.name.trim().toLowerCase()));
   DEFAULT_INSTRUCTORS.forEach(defaultInst => {
     const cleanName = defaultInst.name.trim().toLowerCase();
     if (!existingNames.has(cleanName)) {
