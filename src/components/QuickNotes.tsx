@@ -115,7 +115,7 @@ export default function QuickNotes({ currentDiplomaId, currentDiplomaName }: Qui
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 select-none print:hidden flex flex-col items-end gap-2" dir="rtl">
+    <div className="fixed bottom-6 right-24 z-50 select-none print:hidden flex flex-col items-end gap-2" dir="rtl">
       <AnimatePresence>
         {open && (
           <motion.div
