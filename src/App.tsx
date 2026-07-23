@@ -919,7 +919,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-sm font-black text-white tracking-wide flex items-center gap-1.5 leading-relaxed">
-                سيد | SAYED CRM
+                SAYED CRM
                 <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-sm border border-indigo-900/30 uppercase font-mono font-black animate-pulse">Workspace 2.0</span>
               </h1>
               <p className="text-[10px] text-zinc-500 font-sans mt-0.5">لوحة ذكية لتعقب المواظبة اليومية والتحذيرات التلقائية عبر WhatsApp</p>

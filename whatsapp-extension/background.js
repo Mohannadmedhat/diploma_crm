@@ -47,7 +47,7 @@ function checkDueSchedules() {
       chrome.notifications.create(due.id, {
         type: "basic",
         iconUrl: "logo.png",
-        title: "سيد | SAYED CRM ⏰",
+        title: "SAYED CRM ⏰",
         message: `حان موعد إرسال الرسائل المجدولة لدبلوم "${due.diplomaName}". يرجى فتح لوحة التحكم للبدء.`,
         priority: 2
       });
@@ -152,7 +152,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "show_smart_notification") {
     const { notifType, title, body } = message;
     console.log("[WA-Extension] Smart notification request:", notifType, title);
-    showSmartNotification(notifType, title || "سيد | SAYED CRM", body || "", `smart_${notifType}_${Date.now()}`);
+    showSmartNotification(notifType, title || "SAYED CRM", body || "", `smart_${notifType}_${Date.now()}`);
     sendResponse({ ok: true });
     return true;
   }
