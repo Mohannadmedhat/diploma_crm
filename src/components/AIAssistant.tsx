@@ -23,6 +23,10 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { useAIChatSessions, ChatMessage, ChatSession } from '../hooks/useAIChatSessions';
+import { AIChatHeader } from './ai/AIChatHeader';
+import { AIChatHistoryDrawer } from './ai/AIChatHistoryDrawer';
 
 interface AIAssistantProps {
   currentUser: string | null;
@@ -113,11 +117,31 @@ export default function AIAssistant({
       setIsOpen(true);
     }
   }, [mode]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Custom Hooks for Chat Sessions & Speech Recognition
+  const {
+    sessionsList,
+    currentSessionId,
+    messages,
+    setMessages,
+    showHistoryDrawer,
+    setShowHistoryDrawer,
+    startNewSession,
+    saveChatHistory,
+    selectSession,
+    deleteSession,
+    clearAllSessions,
+    clearCurrentChat
+  } = useAIChatSessions(currentUser);
+
+  const { isListening, toggleListening: handleToggleListening } = useSpeechRecognition({
+    lang: 'ar-EG',
+    onTranscript: (transcript) => setInputValue(prev => prev ? prev + ' ' + transcript : transcript)
+  });
 
   // AI Actions State
   const [pendingAction, setPendingAction] = useState<AIAction | null>(null);
@@ -127,10 +151,6 @@ export default function AIAssistant({
   const [editCertDiploma, setEditCertDiploma] = useState('');
   const [editCertHours, setEditCertHours] = useState('');
   const [editCertDate, setEditCertDate] = useState('');
-
-  // Speech Recognition States
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
 
   const activeApiKey = config?.groqApiKey || (import.meta as any).env.VITE_GROQ_API_KEY || '';
   const hasApiKey = !!activeApiKey.trim();
@@ -145,16 +165,6 @@ export default function AIAssistant({
     'اعمل شهادة تخرج لسلمى سمير في دبلوم الذكاء الاصطناعي بتاريخ اليوم'
   ];
 
-  // Multi-session History States
-  const [sessionsList, setSessionsList] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string>('');
-  const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
-
-  // Helper: Get user-scoped storage key for sessions
-  const getSessionsStorageKey = () => {
-    return currentUser ? `crm_ai_chat_sessions_${currentUser}` : 'crm_ai_chat_sessions';
-  };
-
   useEffect(() => {
     const handleToggle = () => {
       setIsOpen(prev => !prev);
@@ -165,182 +175,10 @@ export default function AIAssistant({
     };
   }, []);
 
-  // Initialize Speech Recognition
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = 'ar-EG';
-
-      rec.onstart = () => {
-        setIsListening(true);
-      };
-
-      rec.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputValue(prev => prev ? prev + ' ' + transcript : transcript);
-      };
-
-      rec.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-      };
-
-      rec.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = rec;
-    }
-  }, []);
-
-  const handleToggleListening = () => {
-    if (!recognitionRef.current) {
-      alert('إملاء الصوت غير مدعوم في متصفحك الحالي. يرجى استخدام متصفح Google Chrome.');
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-    }
-  };
-
   // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
-
-  const createWelcomeMessage = (): ChatMessage => ({
-    role: 'assistant',
-    content: 'مرحباً بك! أنا مساعدك الذكي المرتبط بنظام الدبلومات. يمكنني مساعدتك في صياغة الرسائل، كتابة الإعلانات، تلخيص المهام، أو تحليل بيانات المنصة. كيف يمكنني مساعدتك اليوم؟',
-    timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
-  });
-
-  const startNewSession = () => {
-    const newId = 'session_' + Date.now();
-    const newSession: ChatSession = {
-      id: newId,
-      title: 'محادثة جديدة',
-      createdAt: new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
-      messages: [createWelcomeMessage()]
-    };
-    setCurrentSessionId(newId);
-    setMessages(newSession.messages);
-    setShowHistoryDrawer(false);
-    setPendingAction(null);
-    setError('');
-  };
-
-  // Load saved sessions on mount & ALWAYS open a clean NEW chat session
-  useEffect(() => {
-    const storageKey = getSessionsStorageKey();
-    const saved = localStorage.getItem(storageKey);
-    let loadedSessions: ChatSession[] = [];
-
-    if (saved) {
-      try {
-        loadedSessions = JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse chat sessions', e);
-      }
-    } else {
-      // Migrate old single history format if present
-      const oldKey = currentUser ? `crm_ai_chat_history_${currentUser}` : 'crm_ai_chat_history';
-      const oldSaved = localStorage.getItem(oldKey);
-      if (oldSaved) {
-        try {
-          const oldMsgs: ChatMessage[] = JSON.parse(oldSaved);
-          if (oldMsgs.length > 1) {
-            const firstUser = oldMsgs.find(m => m.role === 'user');
-            const title = firstUser ? (firstUser.content.slice(0, 30) + '...') : 'المحادثة السابقة';
-            loadedSessions = [{
-              id: 'session_migrated_' + Date.now(),
-              title,
-              createdAt: 'سابقاً',
-              messages: oldMsgs
-            }];
-            localStorage.setItem(storageKey, JSON.stringify(loadedSessions));
-          }
-        } catch (e) {}
-      }
-    }
-
-    setSessionsList(loadedSessions);
-    // Always start with a fresh new session when opening/entering the AI Assistant!
-    startNewSession();
-  }, [currentUser]);
-
-  // Save active conversation into current session in sessionsList & LocalStorage
-  const saveChatHistory = (msgs: ChatMessage[]) => {
-    if (!currentSessionId) return;
-
-    const firstUserMsg = msgs.find(m => m.role === 'user');
-    if (!firstUserMsg) return;
-
-    const autoTitle = firstUserMsg.content.trim().slice(0, 35) + (firstUserMsg.content.length > 35 ? '...' : '');
-
-    setSessionsList(prevSessions => {
-      const existingIdx = prevSessions.findIndex(s => s.id === currentSessionId);
-      const updatedSession: ChatSession = {
-        id: currentSessionId,
-        title: existingIdx >= 0 && prevSessions[existingIdx].title !== 'محادثة جديدة' ? prevSessions[existingIdx].title : autoTitle,
-        createdAt: existingIdx >= 0 ? prevSessions[existingIdx].createdAt : new Date().toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
-        messages: msgs
-      };
-
-      let newSessions: ChatSession[];
-      if (existingIdx >= 0) {
-        newSessions = [...prevSessions];
-        newSessions[existingIdx] = updatedSession;
-      } else {
-        newSessions = [updatedSession, ...prevSessions];
-      }
-
-      localStorage.setItem(getSessionsStorageKey(), JSON.stringify(newSessions));
-      return newSessions;
-    });
-  };
-
-  const handleSelectSession = (session: ChatSession) => {
-    setCurrentSessionId(session.id);
-    setMessages(session.messages);
-    setShowHistoryDrawer(false);
-    setPendingAction(null);
-    setError('');
-  };
-
-  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = sessionsList.filter(s => s.id !== sessionId);
-    setSessionsList(updated);
-    localStorage.setItem(getSessionsStorageKey(), JSON.stringify(updated));
-    if (currentSessionId === sessionId) {
-      startNewSession();
-    }
-  };
-
-  const handleClearAllSessions = () => {
-    if (window.confirm('هل تريد مسح جميع المحادثات المخزنة في السجل؟')) {
-      setSessionsList([]);
-      localStorage.removeItem(getSessionsStorageKey());
-      startNewSession();
-    }
-  };
-
-  const handleClearCurrentChat = () => {
-    if (window.confirm('هل تريد مسح المحادثة الحالية؟')) {
-      if (currentSessionId) {
-        const updated = sessionsList.filter(s => s.id !== currentSessionId);
-        setSessionsList(updated);
-        localStorage.setItem(getSessionsStorageKey(), JSON.stringify(updated));
-      }
-      startNewSession();
-    }
-  };
 
   const buildSystemPrompt = (): string => {
     const activeDips = diplomas.filter(d => d.status === 'Active');
@@ -1243,162 +1081,30 @@ ${crmContext}
             dir="rtl"
           >
             {/* Header of Chatbox */}
-            <div className="p-4 bg-zinc-950/90 border-b border-zinc-900 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-950/40 border border-indigo-900/30 flex items-center justify-center text-indigo-400">
-                  <Sparkles className="w-4 h-4 animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-white flex items-center gap-1.5 leading-none">
-                    مساعد سيد الذكي
-                    <span className="text-[8px] bg-indigo-950 text-indigo-400 px-1.5 py-0.5 rounded-sm border border-indigo-900/20 font-mono font-bold">Groq AI</span>
-                  </h3>
-                  <p className="text-[9px] text-zinc-500 mt-1 leading-none">أتمتة العمليات والأكاديميات الذكية</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-1.5">
-                {/* New Chat Button */}
-                <button
-                  onClick={startNewSession}
-                  className="px-2 py-1.5 rounded-md bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600/30 text-indigo-300 transition-all cursor-pointer flex items-center gap-1 text-[10px] font-bold"
-                  title="بدء محادثة جديدة"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">محادثة جديدة</span>
-                </button>
-
-                {/* History Drawer Toggle Button */}
-                <button
-                  onClick={() => setShowHistoryDrawer(prev => !prev)}
-                  className={`px-2 py-1.5 rounded-md border transition-all cursor-pointer flex items-center gap-1 text-[10px] font-medium ${
-                    showHistoryDrawer || sessionsList.length > 0
-                      ? 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-                      : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-                  }`}
-                  title="عرض سجل المحادثات السابقة المحفوظة"
-                >
-                  <History className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="hidden sm:inline">السجل ({sessionsList.length})</span>
-                </button>
-
-                {/* Delete/Clear current session button */}
-                <button
-                  onClick={handleClearCurrentChat}
-                  className="p-1.5 rounded-md bg-zinc-900/60 border border-zinc-800 hover:bg-rose-950/40 hover:border-rose-800/50 text-zinc-400 hover:text-rose-400 transition-all cursor-pointer"
-                  title="مسح هذه المحادثة الحالية"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-
-                {mode === 'floating' && (
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-1.5 rounded-md bg-zinc-900/60 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer"
-                    title="تصغير"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
+            <AIChatHeader
+              mode={mode}
+              sessionsCount={sessionsList.length}
+              showHistoryDrawer={showHistoryDrawer}
+              onNewSession={startNewSession}
+              onToggleHistory={() => setShowHistoryDrawer(prev => !prev)}
+              onClearCurrentChat={clearCurrentChat}
+              onClose={() => setIsOpen(false)}
+            />
 
             {/* History Drawer Overlay */}
-            <AnimatePresence>
-              {showHistoryDrawer && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute inset-x-0 top-[65px] bottom-0 z-50 bg-[#0A0A0D]/95 backdrop-blur-md flex flex-col p-4 text-right border-t border-zinc-800"
-                >
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <History className="w-4 h-4 text-indigo-400" />
-                      <h4 className="text-xs font-bold text-white">سجل المحادثات المحفوظة</h4>
-                      <span className="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-900/50 px-2 py-0.5 rounded-full font-mono font-bold">
-                        {sessionsList.length}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {sessionsList.length > 0 && (
-                        <button
-                          onClick={handleClearAllSessions}
-                          className="text-[10px] text-rose-400 hover:text-rose-300 transition-all flex items-center gap-1 cursor-pointer font-medium bg-rose-950/20 border border-rose-900/30 px-2 py-1 rounded-md"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          مسح جميع المحادثات
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setShowHistoryDrawer(false)}
-                        className="p-1 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="py-2 shrink-0">
-                    <button
-                      onClick={startNewSession}
-                      className="w-full py-2.5 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all shadow-md cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      بدء محادثة جديدة الآن
-                    </button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto space-y-2 mt-2 pr-1 custom-scrollbar">
-                    {sessionsList.length === 0 ? (
-                      <div className="text-center py-16 text-zinc-500 text-xs">
-                        لا توجد محادثات سابقة محفوظة في السجل حتى الآن.
-                      </div>
-                    ) : (
-                      sessionsList.map(session => {
-                        const isActive = session.id === currentSessionId;
-                        return (
-                          <div
-                            key={session.id}
-                            onClick={() => handleSelectSession(session)}
-                            className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
-                              isActive
-                                ? 'bg-indigo-950/50 border-indigo-500/50 text-white shadow-sm'
-                                : 'bg-zinc-900/40 border-zinc-800/80 text-zinc-300 hover:bg-zinc-800/70 hover:border-zinc-700'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                isActive ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200'
-                              }`}>
-                                <MessageSquare className="w-4 h-4" />
-                              </div>
-                              <div className="truncate flex-1">
-                                <h5 className="text-xs font-bold truncate leading-tight">{session.title}</h5>
-                                <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-2">
-                                  <span>{session.createdAt}</span>
-                                  <span>•</span>
-                                  <span>{session.messages.length} رسالة</span>
-                                </p>
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={(e) => handleDeleteSession(session.id, e)}
-                              className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/50 transition-all opacity-80 group-hover:opacity-100 shrink-0 cursor-pointer mr-2"
-                              title="حذف هذه المحادثة من السجل"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <AIChatHistoryDrawer
+              isOpen={showHistoryDrawer}
+              sessionsList={sessionsList}
+              currentSessionId={currentSessionId}
+              onSelectSession={selectSession}
+              onDeleteSession={(id, e) => {
+                e.stopPropagation();
+                deleteSession(id);
+              }}
+              onClearAllSessions={clearAllSessions}
+              onStartNewSession={startNewSession}
+              onClose={() => setShowHistoryDrawer(false)}
+            />
 
             {/* Warning Banner if API Key is missing */}
             {!hasApiKey && (
