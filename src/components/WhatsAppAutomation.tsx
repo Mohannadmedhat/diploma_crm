@@ -28,7 +28,8 @@ import {
   Plus,
   RefreshCw,
   Zap,
-  FolderArchive
+  FolderArchive,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 

@@ -1344,9 +1344,14 @@ export default function OperationsDashboard({
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {todaySessionsData.map(item => {
-                  const allDone = item.attendanceRecorded && item.recordingUploaded && item.materialsUploaded && (item.absentCount === 0 || item.absenteesFollowedUp);
-                  const completedSteps = [item.attendanceRecorded, item.recordingUploaded, item.materialsUploaded, item.absentCount === 0 || item.absenteesFollowedUp].filter(Boolean).length;
+                  const isAttendanceDone = item.attendanceRecorded || isDailyTaskCompleted(item.diploma.id, 'review_attendance');
+                  const isRecordingDone = item.recordingUploaded || isDailyTaskCompleted(item.diploma.id, 'upload_recording');
+                  const isMaterialsDone = item.materialsUploaded || isDailyTaskCompleted(item.diploma.id, 'upload_material');
+                  const isFollowupDone = (item.absentCount === 0 || item.absenteesFollowedUp) || isDailyTaskCompleted(item.diploma.id, 'follow_absents');
+
+                  const completedSteps = [isAttendanceDone, isRecordingDone, isMaterialsDone, isFollowupDone].filter(Boolean).length;
                   const progressPct = Math.round((completedSteps / 4) * 100);
+                  const allDone = completedSteps === 4;
 
                   return (
                     <div
@@ -1438,10 +1443,10 @@ export default function OperationsDashboard({
                       {/* 4 Task Checklist */}
                       <div className="grid grid-cols-2 gap-2 pt-1">
                         {[
-                          { done: item.attendanceRecorded, label: 'تسجيل الحضور', key: 'review_attendance' },
-                          { done: item.recordingUploaded, label: 'رفع التسجيل', key: 'upload_recording' },
-                          { done: item.materialsUploaded, label: 'رفع المواد', key: 'upload_material' },
-                          { done: item.absentCount === 0 || item.absenteesFollowedUp, label: 'متابعة الغائبين', key: 'follow_absents' }
+                          { done: isAttendanceDone, label: 'تسجيل الحضور', key: 'review_attendance' },
+                          { done: isRecordingDone, label: 'رفع التسجيل', key: 'upload_recording' },
+                          { done: isMaterialsDone, label: 'رفع المواد', key: 'upload_material' },
+                          { done: isFollowupDone, label: 'متابعة الغائبين', key: 'follow_absents' }
                         ].map(task => (
                           <button
                             key={task.key}

@@ -1321,7 +1321,9 @@ export default function App() {
                             onChange={(e) => setTempModel(e.target.value)}
                             className="w-full px-3 py-2 bg-[#0A0A0A] border border-[#262626] focus:border-indigo-500 text-xs text-zinc-100 rounded-lg outline-hidden text-right cursor-pointer"
                           >
+                            <option value="deepseek-r1-distill-llama-70b">DeepSeek-R1 70B (Reasoning - Ultra Smart)</option>
                             <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Recommended for Arabic)</option>
+                            <option value="gemma2-9b-it">Gemma 2 9B (Google - Excellent Arabic)</option>
                             <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fast & Light)</option>
                             <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
                           </select>
